@@ -7,60 +7,13 @@
 import { gsap } from "gsap";
 import { type CSSProperties, useEffect, useMemo, useRef } from "react";
 import { renderScene } from "../../../hyperframes-composer/components/registry.mjs";
+import { getComponentDef, type SeekableTimeline } from "../lib/component-defs";
 import type { PlanCard } from "../lib/packaging-plan";
 import { isImageMediaPath } from "../lib/scene-templates";
 import "./composer-card.css";
 
 const FRAME_W = 1920;
 const FRAME_H = 1080;
-
-// 开场数据卡（StatsHero）真实入场/强调动效——逐字 port 自 composer 的 timelines.mjs（renderTimelineScript 里的
-// StatsHero 分支）。这里 scene.start=0（CardVisual.toScene 把每张卡当独立时间轴），所以各 beat 起点是 composer
-// 里 stats.start + offset 的 offset 本身：stat 0.705 进场、数字 1.355 弹大、browser 2.539 入场、icon-cloud 2.939
-// 逐个揭示、title 9.781 入场。timeline 建成后 paused，由播放头 seek 到 (composeT - card.start) 推进。
-// 选择器用 #${id}-stat / -browser / -title（renderOpeningStat 产出的子场景 id），在 .hf-frame 容器内 scope。
-function buildStatsHeroTimeline(id: string): gsap.core.Timeline {
-  const tl = gsap.timeline({ paused: true });
-  const statStart = 0.705;
-  const browserStart = 2.539;
-  const titleStart = 9.781;
-  const returnStart = 8.448;
-
-  tl.from(`#${id}-stat`, { opacity: 0, duration: 0.001 }, statStart);
-  tl.from(`#${id}-stat`, { clipPath: "inset(0 100% 0 0)", duration: 0.3, ease: "power2.inOut" }, statStart);
-  tl.fromTo(`#${id}-stat .stat-pack`, { opacity: 0.62, x: 124, y: -66, scale: 0.72 }, { opacity: 1, x: 0, y: 0, scale: 1, duration: 0.7, ease: "power3.out" }, statStart + 0.15);
-  tl.from(`#${id}-stat .stat-shell`, { opacity: 0, scale: 0.78, duration: 0.24, ease: "power3.out" }, statStart + 0.27);
-  tl.from(`#${id}-stat .stat-label`, { opacity: 0, x: -16, duration: 0.18, ease: "power2.out" }, statStart + 0.57);
-  tl.fromTo(`#${id}-stat .stat-number`, { opacity: 0, x: -34, scale: 0.52 }, { opacity: 1, x: 0, scale: 1.18, duration: 0.18, ease: "power4.out" }, statStart + 0.65);
-  tl.to(`#${id}-stat .stat-number`, { scale: 1, duration: 0.18, ease: "power2.out" }, statStart + 0.83);
-  tl.from(`#${id}-stat .stat-unit`, { opacity: 0, x: -20, scale: 0.65, duration: 0.18, ease: "power3.out" }, statStart + 0.83);
-  tl.from(`#${id}-stat .stat-title`, { opacity: 0, y: 12, duration: 0.18, ease: "power2.out" }, statStart + 0.95);
-  tl.to(`#${id}-stat .stat-pack`, { x: -18, y: 8, scale: 1.065, duration: 0.86, ease: "power1.out" }, statStart + 0.95);
-  tl.to(`#${id}-stat`, { opacity: 0, duration: 0.18, ease: "power1.out" }, statStart + 2.0);
-  tl.set(`#${id}-stat`, { opacity: 0 }, statStart + 2.24);
-
-  tl.fromTo(`#${id}-browser .browser-stage`, { opacity: 0, x: -360, y: 22, scale: 0.72, clipPath: "inset(0 88% 0 0)" }, { opacity: 1, x: 0, y: 0, scale: 1, clipPath: "inset(0 0% 0 0)", duration: 0.66, ease: "power3.out" }, browserStart);
-  tl.fromTo(`#${id}-browser .browser-video-card`, { opacity: 0.72, x: -260, y: 18, scale: 0.58, clipPath: "inset(0 82% 0 0)" }, { opacity: 1, x: 12, y: 0, scale: 1.15, clipPath: "inset(0 0% 0 0)", duration: 0.18, ease: "power4.out" }, browserStart + 0.11);
-  tl.to(`#${id}-browser .browser-video-card`, { x: 0, y: 0, scale: 1, duration: 0.24, ease: "power2.out" }, browserStart + 0.3);
-  tl.from(`#${id}-browser .icon-cloud span`, { opacity: 0, scale: 0.25, stagger: 0.035, duration: 0.16, ease: "power2.out" }, browserStart + 0.4);
-  tl.to(`#${id}-browser .browser-stage`, { x: 18, y: -8, scale: 1.018, duration: 0.72, ease: "power1.inOut" }, browserStart + 0.67);
-  tl.to(`#${id}-browser .browser-video-card`, { x: 14, y: 8, scale: 1.035, duration: 0.75, ease: "power1.inOut" }, browserStart + 0.69);
-  tl.to(`#${id}-browser .browser-stage`, { x: 7, y: 0, scale: 1.006, duration: 0.45, ease: "power1.out" }, browserStart + 1.39);
-  tl.to(`#${id}-browser .browser-video-card`, { x: 4, y: 0, scale: 1.01, duration: 0.55, ease: "power1.out" }, browserStart + 1.45);
-  tl.to(`#${id}-browser`, { opacity: 0, duration: 0.16, ease: "power1.out" }, returnStart - 0.12);
-  tl.set(`#${id}-browser`, { opacity: 0 }, returnStart);
-
-  tl.from(`#${id}-title`, { opacity: 0, duration: 0.001 }, titleStart);
-  tl.from(`#${id}-title`, { clipPath: "inset(0 100% 0 0)", duration: 0.34, ease: "power2.inOut" }, titleStart);
-  tl.from(`#${id}-title .main-title`, { opacity: 0, x: -20, filter: "blur(6px)", duration: 0.38, ease: "power3.out" }, titleStart + 0.33);
-  tl.from(`#${id}-title .title-kicker`, { opacity: 0, y: 10, duration: 0.22, ease: "power2.out" }, titleStart + 0.45);
-  tl.from(`#${id}-title .title-sub`, { opacity: 0, y: 10, duration: 0.22, ease: "power2.out" }, titleStart + 0.73);
-  tl.from(`#${id}-title .underline-stack i`, { scaleX: 0, stagger: 0.1, duration: 0.28, ease: "none" }, titleStart + 1.42);
-  tl.to(`#${id}-title`, { opacity: 0, duration: 0.22, ease: "power1.in" }, titleStart + 2.84);
-  tl.set(`#${id}-title`, { opacity: 0 }, titleStart + 3.04);
-
-  return tl;
-}
 
 export interface CardVisualProps {
   card: PlanCard;
@@ -135,12 +88,25 @@ function PipFrame({ card, mediaUrls, currentTime, videoHidden }: { card: PlanCar
   );
 }
 
-// 开场数据卡：composer renderScene 产出真实 HTML（与成片一致）+ 真正的 GSAP 入场/强调动效随播放头同步。
-// timeline paused，currentTime 变化时 seek 到对应秒数——播放/拖播放头即可看到数字弹大、icon-cloud 逐个揭示、
-// browser 框入场等过程态（而非静态基态）。编辑字段→html 重渲染→timeline 在新 DOM 上重建并 seek 回当前时刻。
-function StatsHeroFrame({ card, frameStyle, currentTime, videoHidden }: { card: PlanCard; frameStyle: CSSProperties; currentTime?: number; videoHidden?: boolean }) {
+// 带动效的卡：composer renderScene 产出真实 HTML（与成片一致）+ 注册表给的真 GSAP 入场/强调动效随播放头同步。
+// timeline paused，currentTime 变化时 seek 到对应秒数——播放/拖播放头即可看到入场过程态（而非静态基态）。
+// 编辑字段→html 重渲染→timeline 在新 DOM 上用 gsap.context 重建并 seek 回当前时刻（timeRef 命令式句柄保时刻）。
+// buildTimeline 由 component-defs 注册表按 card.component 提供（StatsHero/TitleCard/StepCard…），CardVisual 不再硬编码。
+function AnimatedFrame({
+  card,
+  frameStyle,
+  currentTime,
+  videoHidden,
+  buildTimeline,
+}: {
+  card: PlanCard;
+  frameStyle: CSSProperties;
+  currentTime?: number;
+  videoHidden?: boolean;
+  buildTimeline: (id: string) => SeekableTimeline;
+}) {
   const frameRef = useRef<HTMLDivElement>(null);
-  const tlRef = useRef<gsap.core.Timeline | null>(null);
+  const tlRef = useRef<SeekableTimeline | null>(null);
   const timeRef = useRef(0);
   const html = useMemo(() => {
     try {
@@ -151,12 +117,13 @@ function StatsHeroFrame({ card, frameStyle, currentTime, videoHidden }: { card: 
   }, [card]);
 
   // 建/重建 timeline：html 变（编辑字段）或卡 id 变时，在最新 DOM 上重建并 seek 回当前时刻。
-  // biome-ignore lint/correctness/useExhaustiveDependencies: html 即 props 的派生，timeRef 是命令式句柄，故意不入依赖。
+  // biome-ignore lint/correctness/useExhaustiveDependencies: html 即 props 的派生；timeRef/buildTimeline 是命令式句柄，故意不入依赖。
   useEffect(() => {
     const el = frameRef.current;
     if (!el || !html) return;
+    // gsap.context 把选择器 scope 到本卡 .hf-frame，重建/卸载干净。
     const ctx = gsap.context(() => {
-      const tl = buildStatsHeroTimeline(card.id);
+      const tl = buildTimeline(card.id);
       tlRef.current = tl;
       tl.seek(timeRef.current);
     }, el);
@@ -192,10 +159,11 @@ export function CardVisual({ card, stageW, mediaUrls, currentTime, videoHidden, 
   const scale = stageW > 0 ? stageW / FRAME_W : 0.4;
   const frameStyle: CSSProperties = { width: FRAME_W, height: FRAME_H, transform: `scale(${scale})`, transformOrigin: "top left", position: "absolute", left: 0, top: 0 };
   const isPip = card.engine?.component === "ScreenWithPip";
-  const isStatsHero = card.engine?.component === "StatsHero";
+  // 注册表查动效：StatsHero/TitleCard/StepCard… 有 buildTimeline → 跑真 GSAP；未注册 → 静态基态兜底。
+  const buildTimeline = getComponentDef(card.engine?.component)?.buildTimeline;
 
-  if (isStatsHero) {
-    return <StatsHeroFrame card={card} frameStyle={frameStyle} currentTime={currentTime} videoHidden={videoHidden} />;
+  if (!isPip && buildTimeline) {
+    return <AnimatedFrame card={card} frameStyle={frameStyle} currentTime={currentTime} videoHidden={videoHidden} buildTimeline={buildTimeline} />;
   }
 
   if (isPip) {

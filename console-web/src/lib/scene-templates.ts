@@ -28,17 +28,19 @@ const DEFAULT_SCENE_DURATION = 5;
 type PropsFactory = () => Record<string, unknown>;
 
 const DEFAULT_PROPS: Record<string, PropsFactory> = {
+  // Sample preset：插入即成形（非占位）。标题卡是最常用的开场/分段卡。
   TitleCard: () => ({
-    cornerLeft: "LEFT",
-    cornerName: "Name",
-    kicker: "KICKER",
-    title: "新标题",
-    subline: "副标题占位文本",
+    cornerLeft: "OPENING",
+    cornerName: "PASEO",
+    kicker: "开场",
+    title: "用一句话讲清主题",
+    subline: "副标题承接，引出下文",
   }),
+  // Sample preset：三步上手，逐条出现。
   StepCard: () => ({
-    kicker: "STEP 01",
-    title: "步骤标题",
-    items: ["要点一", "要点二", "要点三"],
+    kicker: "步骤",
+    title: "三步上手",
+    items: ["准备素材与脚本", "一键生成草稿", "微调导出成片"],
   }),
   StatsHero: () => ({
     media: { presenter: MEDIA_PLACEHOLDER },

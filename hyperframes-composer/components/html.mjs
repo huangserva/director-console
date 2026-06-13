@@ -17,12 +17,21 @@ export function required(value, label) {
   return value;
 }
 
+export function safeMediaSrc(value, label) {
+  const src = String(required(value, label)).trim();
+  const protocolMatch = src.match(/^([a-zA-Z][a-zA-Z0-9+.-]*):/);
+  if (!protocolMatch) return src;
+  const protocol = protocolMatch[1].toLowerCase();
+  if (protocol === "http" || protocol === "https" || protocol === "file" || protocol === "blob") return src;
+  return "";
+}
+
 export function renderVideo({ id, className, src, start, duration, mediaStart = 0, track, extra = "", scene }) {
   const idAttr = id ? ` id="${esc(id)}"` : "";
   const classAttr = className ? ` class="${esc(className)}"` : "";
   const sceneAttr = scene ? ` data-memos-scene="${esc(scene)}"` : "";
   const trackAttr = track === undefined ? "" : ` data-track-index="${Number(track)}"`;
-  return `<video${idAttr}${classAttr}${sceneAttr} src="${esc(required(src, "video.src"))}" muted playsinline data-start="${f(required(start, "video.start"))}" data-duration="${f(required(duration, "video.duration"))}" data-media-start="${f(mediaStart)}"${trackAttr}${extra}></video>`;
+  return `<video${idAttr}${classAttr}${sceneAttr} src="${esc(safeMediaSrc(src, "video.src"))}" muted playsinline data-start="${f(required(start, "video.start"))}" data-duration="${f(required(duration, "video.duration"))}" data-media-start="${f(mediaStart)}"${trackAttr}${extra}></video>`;
 }
 
 export function isImageMedia(src) {
@@ -33,12 +42,12 @@ export function renderImage({ id, className, src, start, duration, mediaStart = 
   const idAttr = id ? ` id="${esc(id)}"` : "";
   const classAttr = className ? ` class="${esc(className)}"` : "";
   const trackAttr = track === undefined ? "" : ` data-track-index="${Number(track)}"`;
-  return `<img${idAttr}${classAttr} src="${esc(required(src, "image.src"))}" data-media-kind="image" data-start="${f(required(start, "image.start"))}" data-duration="${f(required(duration, "image.duration"))}" data-media-start="${f(mediaStart)}"${trackAttr}${extra}>`;
+  return `<img${idAttr}${classAttr} src="${esc(safeMediaSrc(src, "image.src"))}" data-media-kind="image" data-start="${f(required(start, "image.start"))}" data-duration="${f(required(duration, "image.duration"))}" data-media-start="${f(mediaStart)}"${trackAttr}${extra}>`;
 }
 
 export function renderAudio({ id, src, start, duration, mediaStart = 0, track = 90, volume = 1 }) {
   const idAttr = id ? ` id="${esc(id)}"` : "";
-  return `<audio${idAttr} src="${esc(required(src, "audio.src"))}" data-start="${f(required(start, "audio.start"))}" data-duration="${f(required(duration, "audio.duration"))}" data-media-start="${f(mediaStart)}" data-track-index="${Number(track)}" data-volume="${Number(volume)}"></audio>`;
+  return `<audio${idAttr} src="${esc(safeMediaSrc(src, "audio.src"))}" data-start="${f(required(start, "audio.start"))}" data-duration="${f(required(duration, "audio.duration"))}" data-media-start="${f(mediaStart)}" data-track-index="${Number(track)}" data-volume="${Number(volume)}"></audio>`;
 }
 
 export function renderCards(cards = [], className = "course-card") {

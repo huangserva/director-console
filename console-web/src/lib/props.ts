@@ -58,6 +58,23 @@ const clone = <T>(value: T): T =>
  * The original object is never mutated. Each edited value is coerced to the
  * type of the existing leaf, so a numeric field stays a number after editing.
  */
+/**
+ * Set an arbitrary value (e.g. an edited string[] for a list field) at a dotted path
+ * on a deep clone of `props`. Pure — original untouched. Unlike applyEdits it does not
+ * coerce types, so arrays/objects pass through intact. No-ops if an intermediate key is missing.
+ */
+export function setAtPath<T>(props: T, path: string, value: unknown): T {
+  const next = clone(props) as any;
+  const keys = path.split(".");
+  let cursor: any = next;
+  for (let i = 0; i < keys.length - 1; i++) {
+    cursor = cursor?.[keys[i]];
+    if (cursor == null) return next;
+  }
+  cursor[keys[keys.length - 1]] = value;
+  return next;
+}
+
 export function applyEdits<T>(props: T, edits: Record<string, string | number>): T {
   const next = clone(props) as unknown as Record<string, unknown> | unknown[];
 

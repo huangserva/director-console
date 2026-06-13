@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { PlanCard } from "../lib/packaging-plan";
 import CardVisual from "./CardVisual";
+import { renderScene } from "../../../hyperframes-composer/components/registry.mjs";
 
 // CardVisual 现用 composer 的真实 renderScene（单一真相）：断言产出 composer 卡片类名/文本，
 // 而非旧手搓 cv-* 近似。engine.props 提供原始 scene props（renderScene 读它）。
@@ -54,5 +55,57 @@ describe("CardVisual — 复用 composer 真实卡片渲染", () => {
     expect(html).toContain("screen-shell");
     expect(html).toContain("circle-pip");
     expect(html).toContain("演示");
+  });
+});
+
+describe("composer renderScene — malicious input regression", () => {
+  const assertNoExecutableHtml = (html: string) => {
+    expect(html).not.toMatch(/<script\b/i);
+    expect(html).not.toMatch(/<img\b[^>]*\bon\w+=/i);
+    expect(html).not.toMatch(/<[^>]+\son\w+=/i);
+    expect(html).not.toMatch(/\s(?:src|href)=["']javascript:/i);
+  };
+
+  it("escapes malicious text fields instead of emitting executable tags or event attributes", () => {
+    const html = renderScene({
+      id: "evil-title",
+      component: "TitleCard",
+      scene_type: "title_card",
+      start: 0,
+      duration: 4,
+      props: {
+        cornerLeft: `"><img src=x onerror=alert(1)>`,
+        cornerName: "<script>alert(1)</script>",
+        kicker: `hello" onmouseover="alert(1)`,
+        title: `<script src=x></script><img src=x onerror=alert(1)>`,
+        subline: `javascript:alert(1)`,
+      },
+    });
+
+    assertNoExecutableHtml(html);
+    expect(html).toContain("&lt;script");
+    expect(html).toContain("&lt;img");
+    expect(html).toContain("&quot;");
+  });
+
+  it("does not emit javascript: media URLs for user-controlled media props", () => {
+    const html = renderScene({
+      id: "evil-pip",
+      component: "ScreenWithPip",
+      scene_type: "screen_demo_pip",
+      start: 0,
+      duration: 4,
+      props: {
+        label: `"><img src=x onerror=alert(1)>`,
+        media: {
+          screen: "javascript:alert(1)",
+          pip: `javascript:alert("pip")`,
+        },
+      },
+    });
+
+    assertNoExecutableHtml(html);
+    expect(html).toContain("screen-shell");
+    expect(html).toContain("circle-pip");
   });
 });
