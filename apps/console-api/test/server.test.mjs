@@ -52,6 +52,9 @@ const productIntroFailedPublishProjectDir = path.join(composerRoot, "projects", 
 const packagingPlanProjectName = `packaging-plan-${process.pid}`;
 const packagingPlanManifestPath = path.join(manifestsDir, `${packagingPlanProjectName}.json`);
 const packagingPlanProjectDir = path.join(composerRoot, "projects", packagingPlanProjectName);
+const mediaPreviewProjectName = `media-preview-${process.pid}`;
+const mediaPreviewManifestPath = path.join(manifestsDir, `${mediaPreviewProjectName}.json`);
+const mediaPreviewProjectDir = path.join(composerRoot, "projects", mediaPreviewProjectName);
 const previewHtmlProjectName = `preview-html-${process.pid}`;
 const previewHtmlManifestPath = path.join(manifestsDir, `${previewHtmlProjectName}.json`);
 const previewHtmlProjectDir = path.join(composerRoot, "projects", previewHtmlProjectName);
@@ -473,6 +476,8 @@ describe("console-api", () => {
     await fs.rm(productIntroFailedPublishProjectDir, { recursive: true, force: true });
     await fs.rm(packagingPlanManifestPath, { force: true });
     await fs.rm(packagingPlanProjectDir, { recursive: true, force: true });
+    await fs.rm(mediaPreviewManifestPath, { force: true });
+    await fs.rm(mediaPreviewProjectDir, { recursive: true, force: true });
     await fs.rm(previewHtmlManifestPath, { force: true });
     await fs.rm(previewHtmlProjectDir, { recursive: true, force: true });
     await fs.rm(browserPreviewManifestPath, { force: true });
@@ -1881,6 +1886,60 @@ describe("console-api", () => {
     await fs.rm(path.join(manifestsDir, `${outsideName}.json`), { force: true });
   });
 
+  test("streams bound card media with HTTP Range support and path validation", async () => {
+    const ranged = await rawRequest(baseUrl, `/api/preview/media?path=${encodeURIComponent(fixtureVideo)}`, {
+      headers: { range: "bytes=0-3" },
+    });
+    assert.equal(ranged.status, 206);
+    assert.equal(ranged.headers.get("content-type"), "video/mp4");
+    assert.equal(ranged.headers.get("accept-ranges"), "bytes");
+    assert.equal(ranged.headers.get("content-range"), "bytes 0-3/16");
+    assert.equal(ranged.text, "fake");
+
+    const outside = await request(baseUrl, `/api/preview/media?path=${encodeURIComponent("/etc/hosts")}`);
+    assert.equal(outside.status, 403);
+    assert.equal(outside.body.ok, false);
+
+    const missing = await request(baseUrl, `/api/preview/media?path=${encodeURIComponent(path.join(fixtureRoot, "missing.mp4"))}`);
+    assert.equal(missing.status, 404);
+    assert.equal(missing.body.ok, false);
+  });
+
+  test("adds serviceable mediaUrls for bound card media in packaging-plan responses", async () => {
+    const pipVideo = path.join(fixtureRoot, "presenter.mp4");
+    await fs.writeFile(pipVideo, "fake presenter bytes");
+    const manifest = titleCardManifest({
+      compositionId: mediaPreviewProjectName,
+      output: `projects/${mediaPreviewProjectName}/index.html`,
+      hyperframesEntry: `projects/${mediaPreviewProjectName}/index.html`,
+      scenes: [
+        {
+          id: "pip-card",
+          component: "ScreenWithPip",
+          scene_type: "screen_demo_pip",
+          start: 0,
+          duration: 2,
+          props: {
+            label: "画中画",
+            media: { screen: fixtureVideo, pip: pipVideo },
+          },
+        },
+      ],
+    });
+    await fs.writeFile(mediaPreviewManifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+    await fs.rm(path.join(mediaPreviewProjectDir, "packaging-plan.json"), { force: true });
+
+    const response = await request(baseUrl, `/projects/${mediaPreviewProjectName}/packaging-plan`);
+
+    assert.equal(response.status, 200);
+    const card = response.body.plan.tracks.card[0];
+    assert.deepEqual(card.media, { screen: fixtureVideo, pip: pipVideo });
+    assert.deepEqual(card.mediaUrls, {
+      screen: `/api/preview/media?path=${encodeURIComponent(fixtureVideo)}`,
+      pip: `/api/preview/media?path=${encodeURIComponent(pipVideo)}`,
+    });
+  });
+
   test("rewrites composed preview html media sources to serviceable preview URLs", async () => {
     const manifest = titleCardManifest({
       compositionId: previewHtmlProjectName,
@@ -1890,6 +1949,22 @@ describe("console-api", () => {
       audio: {
         src: `projects/${previewHtmlProjectName}/audio/asr.wav`,
       },
+      scenes: [
+        {
+          id: "pip-card",
+          component: "ScreenWithPip",
+          scene_type: "screen_demo_pip",
+          start: 0,
+          duration: 2,
+          props: {
+            label: "画中画",
+            media: {
+              screen: fixtureVideo,
+              pip: path.join(fixtureRoot, "B.MOV"),
+            },
+          },
+        },
+      ],
       output: `projects/${previewHtmlProjectName}/index.html`,
       hyperframesEntry: `projects/${previewHtmlProjectName}/index.html`,
     });
@@ -1902,6 +1977,8 @@ describe("console-api", () => {
         "<!doctype html>",
         '<div id="root">',
         `<video id="source-video-background-layer" muted src="${fixtureVideo}"></video>`,
+        `<video id="v-pip-card-screen" muted src="${fixtureVideo}"></video>`,
+        `<video id="v-pip-card-pip" muted src="${path.join(fixtureRoot, "B.MOV")}"></video>`,
         `<audio id="audio" src="projects/${previewHtmlProjectName}/audio/asr.wav"></audio>`,
         "</div>",
       ].join(""),
@@ -1912,8 +1989,11 @@ describe("console-api", () => {
 
     assert.equal(response.status, 200);
     assert.match(response.text, new RegExp(`id="source-video-background-layer"[^>]+src="/api/preview/source/${previewHtmlProjectName}"`));
+    assert.match(response.text, new RegExp(`id="v-pip-card-screen"[^>]+src="/api/preview/media\\?path=${encodeURIComponent(fixtureVideo).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`));
+    assert.match(response.text, new RegExp(`id="v-pip-card-pip"[^>]+src="/api/preview/media\\?path=${encodeURIComponent(path.join(fixtureRoot, "B.MOV")).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`));
     assert.match(response.text, new RegExp(`id="audio"[^>]+src="/api/preview/audio/${previewHtmlProjectName}"`));
     assert.doesNotMatch(response.text, new RegExp(`src="${fixtureVideo.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`));
+    assert.doesNotMatch(response.text, new RegExp(`src="${path.join(fixtureRoot, "B.MOV").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`));
     assert.doesNotMatch(response.text, new RegExp(`src="projects/${previewHtmlProjectName}/audio/asr\\.wav"`));
   });
 

@@ -169,6 +169,32 @@ function projectAudioPreviewUrl(projectName, { previewBasePath }) {
   return `${previewBasePath}/audio/${encodeURIComponent(projectName)}`;
 }
 
+function mediaPreviewUrl(mediaPath, { previewBasePath }) {
+  return `${previewBasePath}/media?path=${encodeURIComponent(mediaPath)}`;
+}
+
+function cardMediaUrls(media = {}, { previewBasePath }) {
+  const entries = Object.entries(media || {}).filter(([, value]) => typeof value === "string" && value.trim());
+  if (!entries.length) return undefined;
+  return Object.fromEntries(entries.map(([slot, value]) => [slot, mediaPreviewUrl(value, { previewBasePath })]));
+}
+
+function mediaBindingsFromManifest(manifest) {
+  const values = new Set();
+  for (const scene of manifest.scenes || []) {
+    for (const value of Object.values(scene.props?.media || {})) {
+      if (typeof value === "string" && value.trim()) values.add(value);
+    }
+  }
+  return [...values];
+}
+
+function replaceSrcValue(html, fromSrc, toSrc) {
+  const escaped = fromSrc.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const safeSrc = htmlAttr(toSrc);
+  return html.replace(new RegExp(`\\ssrc=(["'])${escaped}\\1`, "g"), ` src="${safeSrc}"`);
+}
+
 function rewritePreviewHtmlResources(html, { projectName, manifest, previewBasePath }) {
   let rewritten = html;
   if (manifest.source?.video) {
@@ -181,6 +207,9 @@ function rewritePreviewHtmlResources(html, { projectName, manifest, previewBaseP
   }
   if (manifest.audio?.src) {
     rewritten = replaceElementSrcById(rewritten, "audio", "audio", projectAudioPreviewUrl(projectName, { previewBasePath }));
+  }
+  for (const mediaPath of mediaBindingsFromManifest(manifest)) {
+    rewritten = replaceSrcValue(rewritten, mediaPath, mediaPreviewUrl(mediaPath, { previewBasePath }));
   }
   return rewritten;
 }
@@ -223,9 +252,9 @@ function sourceVideoPreviewUrl(projectName, { previewBasePath }) {
 }
 
 function withSourceVideoPreviewUrl(plan, projectName, { previewBasePath }) {
-  if (!plan?.source?.video) return plan;
+  if (!plan?.source?.video) return withCardMediaPreviewUrls(plan, { previewBasePath });
   const previewUrl = sourceVideoPreviewUrl(projectName, { previewBasePath });
-  return {
+  return withCardMediaPreviewUrls({
     ...plan,
     source: {
       ...plan.source,
@@ -234,6 +263,19 @@ function withSourceVideoPreviewUrl(plan, projectName, { previewBasePath }) {
     tracks: {
       ...plan.tracks,
       video: (plan.tracks?.video || []).map((track, index) => (index === 0 ? { ...track, previewUrl } : track)),
+    },
+  }, { previewBasePath });
+}
+
+function withCardMediaPreviewUrls(plan, { previewBasePath }) {
+  return {
+    ...plan,
+    tracks: {
+      ...plan.tracks,
+      card: (plan.tracks?.card || []).map((card) => {
+        const mediaUrls = cardMediaUrls(card.media, { previewBasePath });
+        return mediaUrls ? { ...card, mediaUrls } : card;
+      }),
     },
   };
 }
@@ -280,6 +322,46 @@ async function serveProjectSourceVideo({ composerRoot, projectName, request, res
   const stat = await fs.stat(check.realPath);
   if (!stat.isFile()) {
     jsonResponse(response, 400, { ok: false, error: "source video must be a file" });
+    return true;
+  }
+  const range = parseRangeHeader(request.headers.range, stat.size);
+  if (range?.error) {
+    response.writeHead(416, { "content-range": `bytes */${stat.size}` });
+    response.end();
+    return true;
+  }
+  const commonHeaders = {
+    "accept-ranges": "bytes",
+    "content-type": "video/mp4",
+  };
+  if (range) {
+    const length = range.end - range.start + 1;
+    response.writeHead(206, {
+      ...commonHeaders,
+      "content-length": length,
+      "content-range": `bytes ${range.start}-${range.end}/${stat.size}`,
+    });
+    fsSync.createReadStream(check.realPath, { start: range.start, end: range.end }).pipe(response);
+    return true;
+  }
+  response.writeHead(200, {
+    ...commonHeaders,
+    "content-length": stat.size,
+  });
+  fsSync.createReadStream(check.realPath).pipe(response);
+  return true;
+}
+
+async function servePreviewMedia({ mediaPath, request, response, importRoots }) {
+  const check = await validateVideoPath(mediaPath, importRoots);
+  if (!check.ok) {
+    const status = check.status === 400 && check.stderr?.startsWith("videoPath not found:") ? 404 : check.status;
+    jsonResponse(response, status, { ok: false, error: check.stderr });
+    return true;
+  }
+  const stat = await fs.stat(check.realPath);
+  if (!stat.isFile()) {
+    jsonResponse(response, 400, { ok: false, error: "media path must be a file" });
     return true;
   }
   const range = parseRangeHeader(request.headers.range, stat.size);
@@ -1444,6 +1526,16 @@ export function createApiServer(options = {}) {
           return;
         }
         await serveProjectAudio({ composerRoot, projectName, request, response });
+        return;
+      }
+
+      if (
+        request.method === "GET" &&
+        ((parts[0] === "preview" && parts[1] === "media" && parts.length === 2) ||
+          (parts[0] === "api" && parts[1] === "preview" && parts[2] === "media" && parts.length === 3))
+      ) {
+        const mediaPath = url.searchParams.get("path");
+        await servePreviewMedia({ mediaPath, request, response, importRoots });
         return;
       }
 

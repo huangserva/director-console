@@ -315,6 +315,39 @@ describe("manifest and packaging-plan projection", () => {
     ]);
   });
 
+  test("ScreenWithPip media bindings survive manifest-plan round-trip", () => {
+    const manifest = readJson(path.join(composerRoot, "manifests", "sample-text.json"));
+    manifest.scenes = [
+      {
+        id: "pip-card",
+        component: "ScreenWithPip",
+        scene_type: "screen_demo_pip",
+        start: 0,
+        duration: 4,
+        track: 10,
+        props: {
+          label: "画中画",
+          media: {
+            screen: "/Users/example/media/screen.mp4",
+            pip: "/Users/example/media/presenter.mp4",
+          },
+        },
+      },
+    ];
+
+    const plan = manifestToPlan(manifest);
+    assert.deepEqual(plan.tracks.card[0].media, {
+      screen: "/Users/example/media/screen.mp4",
+      pip: "/Users/example/media/presenter.mp4",
+    });
+
+    const projected = planToManifest(plan);
+    assert.deepEqual(projected.scenes[0].props.media, {
+      screen: "/Users/example/media/screen.mp4",
+      pip: "/Users/example/media/presenter.mp4",
+    });
+  });
+
   test("manifestToPlan exposes a playable source video URL for API consumers", () => {
     const manifest = {
       ...readJson(path.join(composerRoot, "manifests", "sample-text.json")),

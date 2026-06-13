@@ -80,6 +80,8 @@ export interface PlanCard {
   };
   content: PlanCardContent;
   media: Record<string, unknown>;
+  /** 服务端按 props.media.* 的绝对路径补的可服务 URL（未绑不给）。画中画卡用 mediaUrls.screen / mediaUrls.pip 喂 <video>。 */
+  mediaUrls?: Record<string, string | null>;
   timeline: { track: "card"; start: number; duration: number };
   validation: { status: string; failures: string[] };
   layout?: Record<string, unknown>;

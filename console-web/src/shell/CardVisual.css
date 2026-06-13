@@ -113,7 +113,31 @@
   min-height: 52%;
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 12px;
+  overflow: hidden;
   background: linear-gradient(135deg, rgba(80, 112, 145, 0.32), rgba(10, 12, 15, 0.78));
+}
+
+/* 真合成（dispatch fa669921）：绑定后底层内容视频铺满 + 右下角圆形数字人小窗 */
+.cv-pip-screen-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #000;
+}
+.cv-pip-window-video {
+  position: absolute;
+  right: 8%;
+  bottom: 10%;
+  width: 27%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border: 3px solid var(--cv-accent);
+  border-radius: 50%;
+  background: #000;
+  box-shadow: 0 0 0 5px rgba(0, 0, 0, 0.25);
+  z-index: 2;
 }
 
 .cv-pip-window {

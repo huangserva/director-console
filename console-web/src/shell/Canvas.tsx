@@ -207,7 +207,7 @@ export function Canvas(props: {
                     style={{ left: r.left, top: r.top, width: r.width, height: r.height }}
                     onClick={() => onSelect?.(c.id)}
                   >
-                    <CardVisual card={c} stageW={stageW} />
+                    <CardVisual card={c} stageW={stageW} mediaUrls={c.mediaUrls as { screen?: string | null; pip?: string | null } | undefined} currentTime={composeT - c.timeline.start} />
                   </div>
                 );
               })}

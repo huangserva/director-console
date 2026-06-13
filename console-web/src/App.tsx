@@ -11,6 +11,7 @@ import {
   importFromVideo,
   inspect,
   lint,
+  chooseNativeFile,
   listManifests,
   listRecipes,
   listTemplates,
@@ -475,6 +476,15 @@ export default function App() {
       // 核心编辑 C：source.videoUrl 是 live packaging-plan 提供的播放地址，manifest 派生不含它。
       // 任意编辑（删除/重排/改时长）都会触发本 effect 重新派生，必须把它带过来，否则视频/播放会丢失。
       if (prev?.source.videoUrl) next.source.videoUrl = prev.source.videoUrl;
+      // 同理：card.mediaUrls（画中画 screen/pip 可服务 URL，服务端 getPackagingPlan 补）manifest 派生不含，
+      // 按 id 把上一份 plan 的 mediaUrls 带过来，否则编辑后画中画预览的真视频会丢。
+      if (prev) {
+        const prevUrls = new Map(prev.tracks.card.map((c) => [c.id, c.mediaUrls]));
+        for (const c of next.tracks.card) {
+          const mu = prevUrls.get(c.id);
+          if (mu) c.mediaUrls = mu;
+        }
+      }
       return next;
     });
   }, [manifest]);
@@ -487,6 +497,23 @@ export default function App() {
   const onFieldChange = (path: string, value: string) => {
     if (!selectedScene) return;
     updateScene(selectedScene.id, (s) => ({ ...s, props: applyEdits(s.props ?? {}, { [path]: value }) }));
+  };
+
+  // 媒体绑定：原生文件选择器选一个 mp4 → 把绝对路径写进 card.props.media.<slot>（落 manifest + dirty 持久）。
+  const onBindMedia = async (slotPath: string) => {
+    setError(null);
+    try {
+      const res = await chooseNativeFile("video");
+      if (res.canceled) return;
+      if (res.ok && res.path) onFieldChange(slotPath, res.path);
+      else if (res.error) {
+        setError("选择视频失败，请重试或检查本地服务。");
+        setErrorDetails(res.error);
+      }
+    } catch (e) {
+      setError("选择视频失败，请重试或检查本地服务。");
+      setErrorDetails(String(e));
+    }
   };
 
   const onSceneTypeChange = (value: string) => {
@@ -1091,23 +1118,38 @@ export default function App() {
               <span className="unbound-tag">{mediaSlots.filter((s) => !s.bound).length} 未绑定</span>
             )}
           </div>
-          {mediaSlots.map((slot) => (
-            <label className={slot.bound ? "media-slot" : "media-slot unbound"} key={slot.path}>
-              <span className="prop-path">
-                {slot.path}
-                {!slot.bound && <span className="unbound-dot" title="unbound">●</span>}
-              </span>
-              <input
-                type="text"
-                placeholder="项目素材路径，如 projects/<name>/duix.mp4"
-                value={slot.value}
-                onChange={(e) => onFieldChange(slot.path, e.target.value)}
-              />
-              <button className="clear-btn" title="清除绑定" onClick={() => onFieldChange(slot.path, "")} disabled={slot.value === ""}>
-                清除
-              </button>
-            </label>
-          ))}
+          {mediaSlots.map((slot) => {
+            const isScreen = slot.path.endsWith("screen");
+            const isPip = slot.path.endsWith("pip") || slot.path.endsWith("pip2");
+            const hint = isScreen ? "内容 / 讲解视频（底层大画面）" : isPip ? "数字人口播视频（右下角圆形小窗）" : "视频素材";
+            const fname = slot.bound ? slot.value.split(/[\\/]/).pop() || slot.value : "";
+            return (
+              <div className={slot.bound ? "media-slot" : "media-slot unbound"} key={slot.path}>
+                <span className="prop-path">
+                  {slot.path}
+                  {!slot.bound && <span className="unbound-dot" title="unbound">●</span>}
+                </span>
+                <span className="media-slot-hint muted">{hint}</span>
+                {slot.bound ? <span className="media-slot-file" title={slot.value}>已绑：{fname}</span> : <span className="media-slot-file muted">未绑定</span>}
+                <span className="media-slot-actions">
+                  <button className="pc-btn ghost" onClick={() => onBindMedia(slot.path)} disabled={busy !== null}>
+                    {slot.bound ? "替换视频" : "绑定视频"}
+                  </button>
+                  <button className="clear-btn" title="解除绑定" onClick={() => onFieldChange(slot.path, "")} disabled={slot.value === ""}>
+                    解除绑定
+                  </button>
+                </span>
+                {/* 备用：手动粘贴绝对路径（与「绑定视频」同一写入路径），无原生对话框时也能绑。 */}
+                <input
+                  className="media-slot-input"
+                  type="text"
+                  placeholder="或粘贴视频绝对路径"
+                  value={slot.bound ? slot.value : ""}
+                  onChange={(e) => onFieldChange(slot.path, e.target.value)}
+                />
+              </div>
+            );
+          })}
         </div>
       )}
 

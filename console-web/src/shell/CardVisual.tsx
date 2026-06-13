@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from "react";
+import { type CSSProperties, type ReactNode, useEffect, useRef } from "react";
 import { cardTypeLabel, type CardType, type PlanCard } from "../lib/packaging-plan";
 import "./CardVisual.css";
 
@@ -20,6 +20,10 @@ interface CardVisualModel {
 export interface CardVisualProps {
   card: PlanCard;
   stageW: number;
+  /** 画中画卡真合成：screen=底层内容视频、pip=右下角圆形数字人小窗（服务端可服务 URL）。 */
+  mediaUrls?: { screen?: string | null; pip?: string | null } | null;
+  /** 合成时间相对本卡起点的秒数（composeT - card.start），驱动 screen/pip 视频 currentTime 同步。 */
+  currentTime?: number;
 }
 
 const DEFAULT_ACCENT = "#d8b25a";
@@ -91,14 +95,40 @@ function StepVisual({ model }: { model: CardVisualModel }) {
   );
 }
 
-function PipVisual({ model }: { model: CardVisualModel }) {
+// 把 video.currentTime 同步到合成时间（相对本卡起点）。muted+playsInline，仅作画面预览。
+function useSyncedVideo(time: number | undefined) {
+  const ref = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const v = ref.current;
+    if (!v) return;
+    const t = Math.max(0, time ?? 0);
+    if (Number.isFinite(v.duration) && v.duration > 0) v.currentTime = Math.min(t, v.duration);
+    else v.currentTime = t;
+  }, [time]);
+  return ref;
+}
+
+function PipVisual({ model, mediaUrls, currentTime }: { model: CardVisualModel; mediaUrls?: { screen?: string | null; pip?: string | null } | null; currentTime?: number }) {
+  const screenUrl = mediaUrls?.screen ?? null;
+  const pipUrl = mediaUrls?.pip ?? null;
+  const screenRef = useSyncedVideo(currentTime);
+  const pipRef = useSyncedVideo(currentTime);
   return (
     <>
       <div className="cv-kicker">{model.kicker}</div>
       <h3 className="cv-title">{model.title}</h3>
       <div className="cv-pip-stage">
-        <div className="cv-pip-screen-grid" />
-        <div className="cv-pip-window" aria-label="画中画窗口" />
+        {/* 真合成：绑定后底层内容视频铺满 + 右下角圆形数字人小窗；未绑定保留占位示意。 */}
+        {screenUrl ? (
+          <video ref={screenRef} className="cv-pip-screen-video" src={screenUrl} muted playsInline preload="metadata" />
+        ) : (
+          <div className="cv-pip-screen-grid" />
+        )}
+        {pipUrl ? (
+          <video ref={pipRef} className="cv-pip-window-video" src={pipUrl} muted playsInline preload="metadata" aria-label="数字人画中画" />
+        ) : (
+          <div className="cv-pip-window" aria-label="画中画窗口" />
+        )}
       </div>
     </>
   );
@@ -240,12 +270,12 @@ function BrandVisual({ model }: { model: CardVisualModel }) {
   );
 }
 
-function renderVariant(model: CardVisualModel): ReactNode {
+function renderVariant(model: CardVisualModel, pip?: { mediaUrls?: CardVisualProps["mediaUrls"]; currentTime?: number }): ReactNode {
   switch (model.variant) {
     case "step":
       return <StepVisual model={model} />;
     case "pip":
-      return <PipVisual model={model} />;
+      return <PipVisual model={model} mediaUrls={pip?.mediaUrls} currentTime={pip?.currentTime} />;
     case "comparison":
       return <ComparisonVisual model={model} />;
     case "data-proof":
@@ -274,7 +304,7 @@ function renderVariant(model: CardVisualModel): ReactNode {
   }
 }
 
-export function CardVisual({ card, stageW }: CardVisualProps) {
+export function CardVisual({ card, stageW, mediaUrls, currentTime }: CardVisualProps) {
   const model = cardVisualModel(card, stageW);
   const style = {
     "--cv-accent": model.accent,
@@ -284,7 +314,7 @@ export function CardVisual({ card, stageW }: CardVisualProps) {
 
   return (
     <div className={`cv-card cv-${model.variant}`} style={style}>
-      <div className="cv-inner">{renderVariant(model)}</div>
+      <div className="cv-inner">{renderVariant(model, { mediaUrls, currentTime })}</div>
     </div>
   );
 }
