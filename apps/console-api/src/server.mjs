@@ -373,11 +373,15 @@ async function serveProjectSourceVideo({ composerRoot, projectName, request, res
   return true;
 }
 
-async function servePreviewMedia({ mediaPath, request, response, importRoots, digitalHumansRoot }) {
-  const check = await validateVideoPath(mediaPath, await mediaImportRoots(importRoots, digitalHumansRoot));
+async function servePreviewMedia({ mediaPath, request, response, composerRoot, digitalHumansRoot }) {
+  const check = await validateLocalPreviewMediaPath(mediaPath);
   if (!check.ok) {
-    const status = check.status === 400 && check.stderr?.startsWith("videoPath not found:") ? 404 : check.status;
-    jsonResponse(response, status, { ok: false, error: check.stderr });
+    jsonResponse(response, check.status, { ok: false, error: check.error });
+    return true;
+  }
+  const registered = await isRegisteredPreviewMedia({ composerRoot, digitalHumansRoot, realPath: check.realPath });
+  if (!registered) {
+    jsonResponse(response, 403, { ok: false, error: "media path is not registered to any project or digital-human asset" });
     return true;
   }
   const contentType = previewMediaContentType(check.realPath);
@@ -680,36 +684,6 @@ async function realImportRoots(importRoots = []) {
   return roots;
 }
 
-async function digitalHumanMediaRoots(digitalHumansRoot) {
-  const roots = [];
-  if (!digitalHumansRoot) return roots;
-  try {
-    roots.push(await fs.realpath(digitalHumansRoot));
-  } catch {
-    return roots;
-  }
-  let entries;
-  try {
-    entries = await fs.readdir(digitalHumansRoot, { withFileTypes: true });
-  } catch {
-    return roots;
-  }
-  for (const entry of entries) {
-    if (!entry.isFile() && !entry.isSymbolicLink()) continue;
-    const fullPath = path.join(digitalHumansRoot, entry.name);
-    try {
-      roots.push(await fs.realpath(fullPath));
-    } catch {
-      // Broken symlinks are ignored by the library list and preview allowlist.
-    }
-  }
-  return [...new Set(roots)];
-}
-
-async function mediaImportRoots(importRoots = [], digitalHumansRoot) {
-  return [...importRoots, ...(await digitalHumanMediaRoots(digitalHumansRoot))];
-}
-
 async function listDigitalHumanAssets({ digitalHumansRoot, previewBasePath }) {
   if (!(await pathExists(digitalHumansRoot))) return [];
   const entries = await fs.readdir(digitalHumansRoot, { withFileTypes: true });
@@ -732,6 +706,156 @@ async function listDigitalHumanAssets({ digitalHumansRoot, previewBasePath }) {
     });
   }
   return assets.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+async function validateLocalPreviewMediaPath(mediaPath) {
+  if (typeof mediaPath !== "string" || mediaPath.trim() === "") {
+    return { ok: false, status: 400, error: "path is required and must be a non-empty string" };
+  }
+  if (mediaPath.includes("://")) {
+    return { ok: false, status: 400, error: "path must be a local filesystem path, not a URL/protocol" };
+  }
+  if (mediaPath.includes("\0")) {
+    return { ok: false, status: 400, error: "path contains an invalid null byte" };
+  }
+  if (!path.isAbsolute(mediaPath)) {
+    return { ok: false, status: 400, error: "path must be an absolute path" };
+  }
+  try {
+    return { ok: true, realPath: await fs.realpath(mediaPath) };
+  } catch {
+    return { ok: false, status: 404, error: `path not found: ${mediaPath}` };
+  }
+}
+
+function collectStringMediaValues(value, values = []) {
+  if (!value) return values;
+  if (typeof value === "string") {
+    if (value.trim()) values.push(value);
+    return values;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) collectStringMediaValues(item, values);
+    return values;
+  }
+  if (typeof value === "object") {
+    for (const item of Object.values(value)) collectStringMediaValues(item, values);
+  }
+  return values;
+}
+
+function mediaPathCandidates(composerRoot, baseDir, mediaPath) {
+  if (path.isAbsolute(mediaPath)) return [mediaPath];
+  return [...new Set([path.resolve(baseDir, mediaPath), path.resolve(composerRoot, mediaPath)])];
+}
+
+async function addRegisteredMediaPath(realPaths, composerRoot, baseDir, mediaPath) {
+  if (typeof mediaPath !== "string" || !mediaPath.trim()) return;
+  if (!previewMediaContentType(mediaPath)) return;
+  for (const candidate of mediaPathCandidates(composerRoot, baseDir, mediaPath)) {
+    try {
+      const realPath = await fs.realpath(candidate);
+      const stat = await fs.stat(realPath);
+      if (stat.isFile()) realPaths.add(realPath);
+    } catch {
+      // Missing media is handled by compose/validate paths; it is not registered
+      // for preview until it resolves to a real file.
+    }
+  }
+}
+
+async function addManifestRegisteredMedia(realPaths, composerRoot, manifestPath, manifest) {
+  const baseDir = path.dirname(manifestPath);
+  await addRegisteredMediaPath(realPaths, composerRoot, baseDir, manifest.source?.video);
+  for (const clip of manifest.source?.videoClips || []) await addRegisteredMediaPath(realPaths, composerRoot, baseDir, clip.src);
+  await addRegisteredMediaPath(realPaths, composerRoot, baseDir, manifest.audio?.src);
+  for (const clip of manifest.audio?.clips || []) await addRegisteredMediaPath(realPaths, composerRoot, baseDir, clip.src);
+  for (const scene of manifest.scenes || []) {
+    for (const mediaPath of collectStringMediaValues(scene.props?.media)) {
+      await addRegisteredMediaPath(realPaths, composerRoot, baseDir, mediaPath);
+    }
+  }
+}
+
+async function addPlanRegisteredMedia(realPaths, composerRoot, planPath, plan) {
+  const baseDir = path.dirname(planPath);
+  await addRegisteredMediaPath(realPaths, composerRoot, baseDir, plan.source?.video);
+  await addRegisteredMediaPath(realPaths, composerRoot, baseDir, plan.source?.audio);
+  for (const clip of plan.tracks?.video || []) await addRegisteredMediaPath(realPaths, composerRoot, baseDir, clip.src);
+  for (const clip of plan.tracks?.audio || []) await addRegisteredMediaPath(realPaths, composerRoot, baseDir, clip.src);
+  for (const card of plan.tracks?.card || []) {
+    for (const mediaPath of collectStringMediaValues(card.media)) {
+      await addRegisteredMediaPath(realPaths, composerRoot, baseDir, mediaPath);
+    }
+    for (const mediaPath of collectStringMediaValues(card.props?.media)) {
+      await addRegisteredMediaPath(realPaths, composerRoot, baseDir, mediaPath);
+    }
+  }
+}
+
+async function registeredPreviewMediaRealPaths({ composerRoot, digitalHumansRoot }) {
+  const realPaths = new Set();
+
+  const manifestsRoot = path.join(composerRoot, "manifests");
+  let manifestFiles = [];
+  try {
+    manifestFiles = (await fs.readdir(manifestsRoot)).filter((file) => file.endsWith(".json"));
+  } catch {
+    manifestFiles = [];
+  }
+  for (const file of manifestFiles) {
+    const manifestPath = path.join(manifestsRoot, file);
+    try {
+      await addManifestRegisteredMedia(realPaths, composerRoot, manifestPath, JSON.parse(await fs.readFile(manifestPath, "utf8")));
+    } catch {
+      // A malformed manifest should not grant media access.
+    }
+  }
+
+  const projectsRoot = path.join(composerRoot, "projects");
+  let projectEntries = [];
+  try {
+    projectEntries = await fs.readdir(projectsRoot, { withFileTypes: true });
+  } catch {
+    projectEntries = [];
+  }
+  for (const entry of projectEntries) {
+    if (!entry.isDirectory()) continue;
+    const planPath = path.join(projectsRoot, entry.name, "packaging-plan.json");
+    if (!(await pathExists(planPath))) continue;
+    try {
+      await addPlanRegisteredMedia(realPaths, composerRoot, planPath, JSON.parse(await fs.readFile(planPath, "utf8")));
+    } catch {
+      // A malformed project plan should not grant media access.
+    }
+  }
+
+  if (digitalHumansRoot && (await pathExists(digitalHumansRoot))) {
+    let entries = [];
+    try {
+      entries = await fs.readdir(digitalHumansRoot, { withFileTypes: true });
+    } catch {
+      entries = [];
+    }
+    for (const entry of entries) {
+      if (!entry.isFile() && !entry.isSymbolicLink()) continue;
+      const filePath = path.join(digitalHumansRoot, entry.name);
+      if (!previewMediaContentType(filePath)) continue;
+      try {
+        const realPath = await fs.realpath(filePath);
+        const stat = await fs.stat(realPath);
+        if (stat.isFile()) realPaths.add(realPath);
+      } catch {
+        // Broken library symlinks are skipped.
+      }
+    }
+  }
+
+  return realPaths;
+}
+
+async function isRegisteredPreviewMedia({ composerRoot, digitalHumansRoot, realPath }) {
+  return (await registeredPreviewMediaRealPaths({ composerRoot, digitalHumansRoot })).has(realPath);
 }
 
 // Boundary check for a Route B videoPath BEFORE it ever reaches ffprobe/ffmpeg.
@@ -1626,7 +1750,7 @@ export function createApiServer(options = {}) {
           (parts[0] === "api" && parts[1] === "preview" && parts[2] === "media" && parts.length === 3))
       ) {
         const mediaPath = url.searchParams.get("path");
-        await servePreviewMedia({ mediaPath, request, response, importRoots, digitalHumansRoot });
+        await servePreviewMedia({ mediaPath, request, response, composerRoot, digitalHumansRoot });
         return;
       }
 

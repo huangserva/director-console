@@ -7,6 +7,7 @@ import {
   LIBRARY_CATEGORIES,
   manifestToPlan,
   RECOMMENDED_CARDS,
+  rederivePlanFromManifest,
   summarizePlan,
   type PackagingPlan,
 } from "./packaging-plan";
@@ -161,5 +162,51 @@ describe("library cards filter (#2 category / #3 search)", () => {
   it("category + search combine", () => {
     expect(filterLibraryCards(LIBRARY_CARDS, "opening", "歌词")).toHaveLength(0);
     expect(filterLibraryCards(LIBRARY_CARDS, "mv-rhythm", "歌词")).toHaveLength(1);
+  });
+});
+
+describe("rederivePlanFromManifest — SAVE 用当前 manifest 重建，不被 stale plan 覆盖（S1 回归）", () => {
+  // 模拟视频已 split 成两段：manifest.source.videoClips 写了 2 段（接续 mediaStart）。
+  const splitManifest: Manifest = {
+    compositionId: "demo",
+    duration: 45,
+    source: { video: "projects/demo/source.mp4", videoClips: [
+      { id: "v1", src: "projects/demo/source.mp4", start: 0, duration: 20, mediaStart: 0 },
+      { id: "v2", src: "projects/demo/source.mp4", start: 20, duration: 25, mediaStart: 20 },
+    ] } as any,
+    audio: { src: "projects/demo/audio.wav", captions: "projects/demo/captions.json" } as any,
+    scenes: [
+      { id: "s001", component: "TitleCard", scene_type: "title_card", start: 0, duration: 15, props: { title: "Hi" } },
+      { id: "pip1", component: "ScreenWithPip", scene_type: "screen_demo_pip", start: 15, duration: 30, props: { label: "演示", media: { screen: "/x/a.mp4", pip: "/x/b.mp4" } } },
+    ],
+  };
+  // stale plan：split 前的旧态，video 只有 1 段；但带 client-only 的 videoUrl + 卡片 mediaUrls。
+  const stale: PackagingPlan = manifestToPlan(
+    { ...splitManifest, source: { video: "projects/demo/source.mp4" } as any },
+    { recipeId: "existing-narrated-video" },
+  );
+  stale.source.videoUrl = "/api/preview/source/demo";
+  const pipCard = stale.tracks.card.find((c) => c.id === "pip1");
+  if (pipCard) pipCard.mediaUrls = { screen: "/api/preview/media?path=%2Fx%2Fa.mp4", pip: "/api/preview/media?path=%2Fx%2Fb.mp4" };
+
+  it("video 轨从 manifest 重建为 2 段（stale plan 的 1 段不胜出）", () => {
+    expect(stale.tracks.video).toHaveLength(1); // 旧 plan 确实只有 1 段
+    const rebuilt = rederivePlanFromManifest(splitManifest, stale);
+    expect(rebuilt.tracks.video).toHaveLength(2);
+    expect(rebuilt.tracks.video.map((c) => c.start)).toEqual([0, 20]);
+    expect(rebuilt.tracks.video[1].mediaStart).toBe(20);
+  });
+
+  it("携带 client-only 的 source.videoUrl 与卡片 mediaUrls（manifest 派生不含）", () => {
+    const rebuilt = rederivePlanFromManifest(splitManifest, stale);
+    expect(rebuilt.source.videoUrl).toBe("/api/preview/source/demo");
+    const pip = rebuilt.tracks.card.find((c) => c.id === "pip1");
+    expect(pip?.mediaUrls).toEqual({ screen: "/api/preview/media?path=%2Fx%2Fa.mp4", pip: "/api/preview/media?path=%2Fx%2Fb.mp4" });
+  });
+
+  it("prev=null 时纯从 manifest 派生（无 client-only 字段也不崩）", () => {
+    const rebuilt = rederivePlanFromManifest(splitManifest, null);
+    expect(rebuilt.tracks.video).toHaveLength(2);
+    expect(rebuilt.source.videoUrl ?? null).toBeNull();
   });
 });

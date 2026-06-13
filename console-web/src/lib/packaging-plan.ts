@@ -267,6 +267,38 @@ export function manifestToPlan(
   };
 }
 
+/**
+ * Re-derive a plan from the CURRENT manifest, carrying over only the client-only
+ * display fields a previous plan held (`source.videoUrl` + per-card `mediaUrls`,
+ * which the server supplies and manifest-derive can't reproduce).
+ *
+ * Use this for SAVE and for the manifest→plan sync effect, so a stale `plan` state
+ * can never overwrite manifest edits: split/move/trim write `source.videoClips`,
+ * `audio.clips`, and card timing into the manifest, and rebuilding from the manifest
+ * preserves them. Pure — does not mutate `prev`.
+ */
+export function rederivePlanFromManifest(
+  manifest: Manifest,
+  prev: PackagingPlan | null,
+  options: { recipeId?: string | null } = {},
+): PackagingPlan {
+  const next = manifestToPlan(manifest, {
+    recipeId: options.recipeId ?? prev?.recipeId ?? null,
+    segments: prev?.segments,
+  });
+  // source.videoUrl: live packaging-plan 播放地址，manifest 派生不含——带过来否则视频/播放丢失。
+  if (prev?.source.videoUrl) next.source.videoUrl = prev.source.videoUrl;
+  // card.mediaUrls: 画中画 screen/pip 可服务 URL（服务端补），按 id 带过来。
+  if (prev) {
+    const prevUrls = new Map(prev.tracks.card.map((c) => [c.id, c.mediaUrls]));
+    for (const c of next.tracks.card) {
+      const mu = prevUrls.get(c.id);
+      if (mu) c.mediaUrls = mu;
+    }
+  }
+  return next;
+}
+
 // ── Smart-plan-strip summary (pure) ──────────────────────────────────────────
 export interface PlanSummary {
   segmentCount: number;

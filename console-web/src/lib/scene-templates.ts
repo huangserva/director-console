@@ -189,6 +189,17 @@ export function makeNewScene(
   };
 }
 
+/**
+ * Place `scene` at an explicit start time (free-position model: gaps/overlap allowed,
+ * NO reflow of other scenes — same model as drag-move). Used when a palette card is
+ * dropped at a point on the timeline so it lands there, not appended to the tail.
+ * Clamps start to ≥ 0 and rounds to ms. Pure — returns a fresh scenes array.
+ */
+export function placeSceneAtStart(scenes: Scene[], scene: Scene, start: number): Scene[] {
+  const safe = Number.isFinite(start) ? Math.max(0, start) : 0;
+  return [...scenes, { ...scene, start: round3(safe) }];
+}
+
 /** Insert `scene` immediately after `afterId` (or at the end if not found/null). */
 export function insertScene(manifest: Manifest, scene: Scene, afterId: string | null): Manifest {
   const scenes = [...manifest.scenes];

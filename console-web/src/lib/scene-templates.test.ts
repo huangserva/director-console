@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { validateManifest } from "../../../hyperframes-composer/scripts/manifest-rules.mjs";
 // Real composer renderer — defaults must actually render, not just validate.
 import { renderScene } from "../../../hyperframes-composer/components/registry.mjs";
-import type { Manifest } from "./api";
+import type { Manifest, Scene } from "./api";
 import { allowedSceneTypes, listCatalogComponents } from "./catalog";
 import {
   applyReflow,
@@ -20,6 +20,7 @@ import {
   MIN_SCENE_DURATION,
   moveScene,
   moveSceneToIndex,
+  placeSceneAtStart,
   pxToSeconds,
   reflowTimeline,
   resizeSceneDuration,
@@ -394,5 +395,38 @@ describe("reflow keeps the manifest valid (real validateManifest)", () => {
     expect(reflowed.duration).toBe(10);
     const failures = validateManifest(reflowed, { root: composerRoot, manifestPath, checkMedia: true });
     expect(failures).toEqual([]);
+  });
+});
+
+describe("placeSceneAtStart — 拖拽落点时间生效，不 append 到尾部（S2 回归）", () => {
+  const scenes: Scene[] = [
+    { id: "a", component: "TitleCard", scene_type: "title_card", start: 0, duration: 5, props: {} },
+    { id: "b", component: "StepCard", scene_type: "step_card", start: 5, duration: 5, props: {} },
+  ];
+  const fresh: Scene = { id: "new", component: "TitleCard", scene_type: "title_card", start: 0, duration: 5, props: {} };
+
+  it("把新卡放到指定落点 start（自由摆位，不动其它卡）", () => {
+    const out = placeSceneAtStart(scenes, fresh, 40);
+    expect(out).toHaveLength(3);
+    expect(out.find((s) => s.id === "new")?.start).toBe(40);
+    // 其它卡不被 reflow
+    expect(out.find((s) => s.id === "a")?.start).toBe(0);
+    expect(out.find((s) => s.id === "b")?.start).toBe(5);
+  });
+
+  it("允许落在中部（gap/overlap 不 reflow）", () => {
+    const out = placeSceneAtStart(scenes, fresh, 7.5);
+    expect(out.find((s) => s.id === "new")?.start).toBe(7.5);
+  });
+
+  it("负数/NaN 落点 clamp 到 0；start 四舍五入到毫秒", () => {
+    expect(placeSceneAtStart(scenes, fresh, -3).find((s) => s.id === "new")?.start).toBe(0);
+    expect(placeSceneAtStart(scenes, fresh, Number.NaN).find((s) => s.id === "new")?.start).toBe(0);
+    expect(placeSceneAtStart(scenes, fresh, 12.34567).find((s) => s.id === "new")?.start).toBe(12.346);
+  });
+
+  it("不修改入参数组", () => {
+    placeSceneAtStart(scenes, fresh, 40);
+    expect(scenes).toHaveLength(2);
   });
 });

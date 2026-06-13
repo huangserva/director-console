@@ -368,6 +368,8 @@ describe("console-api", () => {
   let digitalHumanTargetDir;
   let digitalHumanVideo;
   let digitalHumanLink;
+  let digitalHumanNeighborVideo;
+  let unboundVideo;
   let originalIndexHtml;
   const scriptCalls = [];
 
@@ -393,9 +395,13 @@ describe("console-api", () => {
     digitalHumansDir = await fs.mkdtemp(path.join(os.tmpdir(), "console-api-digital-humans-"));
     digitalHumanTargetDir = await fs.mkdtemp(path.join(os.tmpdir(), "console-api-digital-human-target-"));
     digitalHumanVideo = path.join(digitalHumanTargetDir, "duix-prompt-pip.mp4");
+    digitalHumanNeighborVideo = path.join(digitalHumanTargetDir, "not-in-library.mp4");
     digitalHumanLink = path.join(digitalHumansDir, "duix-prompt-pip.mp4");
     await fs.writeFile(digitalHumanVideo, "fake digital human video");
+    await fs.writeFile(digitalHumanNeighborVideo, "fake neighboring video");
     await fs.symlink(digitalHumanVideo, digitalHumanLink);
+    unboundVideo = path.join(fixtureRoot, "unbound.mp4");
+    await fs.writeFile(unboundVideo, "fake unbound media");
     server = http.createServer(
       createApiServer({
         composerRoot,
@@ -543,6 +549,7 @@ describe("console-api", () => {
         ["finished.mp4", "file", true],
         ["notes.txt", "file", false],
         ["screen.png", "file", false],
+        ["unbound.mp4", "file", true],
         ["voice.wav", "file", false],
       ],
     );
@@ -1904,6 +1911,26 @@ describe("console-api", () => {
   });
 
   test("streams bound card media with HTTP Range support and path validation", async () => {
+    const manifest = titleCardManifest({
+      compositionId: mediaPreviewProjectName,
+      output: `projects/${mediaPreviewProjectName}/index.html`,
+      hyperframesEntry: `projects/${mediaPreviewProjectName}/index.html`,
+      scenes: [
+        {
+          id: "pip-card",
+          component: "ScreenWithPip",
+          scene_type: "screen_demo_pip",
+          start: 0,
+          duration: 2,
+          props: {
+            label: "画中画",
+            media: { screen: fixtureImage, pip: fixtureVideo },
+          },
+        },
+      ],
+    });
+    await fs.writeFile(mediaPreviewManifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+
     const ranged = await rawRequest(baseUrl, `/api/preview/media?path=${encodeURIComponent(fixtureVideo)}`, {
       headers: { range: "bytes=0-3" },
     });
@@ -1925,6 +1952,14 @@ describe("console-api", () => {
     assert.equal(symlinkedDigitalHuman.headers.get("content-type"), "video/mp4");
     assert.equal(symlinkedDigitalHuman.headers.get("content-range"), "bytes 0-3/24");
     assert.equal(symlinkedDigitalHuman.text, "fake");
+
+    const unbound = await request(baseUrl, `/api/preview/media?path=${encodeURIComponent(unboundVideo)}`);
+    assert.equal(unbound.status, 403);
+    assert.equal(unbound.body.ok, false);
+
+    const digitalHumanNeighbor = await request(baseUrl, `/api/preview/media?path=${encodeURIComponent(digitalHumanNeighborVideo)}`);
+    assert.equal(digitalHumanNeighbor.status, 403);
+    assert.equal(digitalHumanNeighbor.body.ok, false);
 
     const outside = await request(baseUrl, `/api/preview/media?path=${encodeURIComponent("/etc/hosts")}`);
     assert.equal(outside.status, 403);

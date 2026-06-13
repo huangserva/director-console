@@ -69,11 +69,15 @@ service endpoints and credentials also belong in `.env.local`; do not commit the
 - `GET /preview/media?path=/absolute/file` and
   `GET /api/preview/media?path=/absolute/file` - stream a bound card media file.
   Supports MP4/MOV/M4V/WebM/MKV videos plus PNG/JPG/WebP/GIF images. Videos and
-  images are canonicalized with `realpath` and must resolve inside
-  `ROUTE_B_IMPORT_ROOTS`, or the managed digital-human library / its symlink
-  targets. Video requests support HTTP Range (`206 Partial Content`) for
-  seeking; image requests return the matching `image/*` content type. Bad paths
-  return `4xx { ok:false, error }`.
+  images are canonicalized with `realpath` and must be registered by a project
+  manifest/packaging-plan (`source.video`, `source.videoClips`, `audio.src`,
+  `audio.clips`, or card `media.*`) or by the managed digital-human library.
+  The endpoint does not authorize arbitrary files merely because they live under
+  `$HOME` / `ROUTE_B_IMPORT_ROOTS`; unbound local media returns `403`. Digital
+  human symlinks grant access only to the exact library entry target, not the
+  whole target directory. Video requests support HTTP Range
+  (`206 Partial Content`) for seeking; image requests return the matching
+  `image/*` content type. Bad paths return `4xx { ok:false, error }`.
 - `GET /fs/list?path=/absolute/dir` - list a local directory for file-picker UIs.
   If `path` is omitted, the API starts at the user's home directory (`$HOME` /
   `os.homedir()`). The directory is canonicalized with `realpath` and must resolve
