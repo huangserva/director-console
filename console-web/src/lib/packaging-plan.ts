@@ -60,6 +60,8 @@ export interface PlanCardContent {
   title?: string;
   subline?: string;
   label?: string;
+  number?: string;
+  unit?: string;
   items?: string[];
   cards?: unknown[];
   panels?: unknown[];

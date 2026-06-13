@@ -17,6 +17,7 @@ import {
 } from "../lib/canvas-geometry";
 import type { Cue } from "../lib/captions";
 import { cardTypeLabel, type PlanCard } from "../lib/packaging-plan";
+import { CardVisual } from "./CardVisual";
 
 export function Canvas(props: {
   card: PlanCard | null;
@@ -44,8 +45,10 @@ export function Canvas(props: {
   /** 当前播放秒数（seek/scrub/timeupdate 回流）；播放中另用 rAF 读 video.currentTime 求顺滑。 */
   playTime?: number;
   playing?: boolean;
+  /** 合成预览：点叠加卡片 → 选中（Inspector 切到该卡）。 */
+  onSelect?: (id: string) => void;
 }) {
-  const { card, editable, onLayoutChange, videoUrl, previewMode, onTogglePreviewMode, videoRef, onVideoTime, onPlayStateChange, cards, selectedId, cues, hiddenTracks, playTime, playing } = props;
+  const { card, editable, onLayoutChange, videoUrl, previewMode, onTogglePreviewMode, videoRef, onVideoTime, onPlayStateChange, cards, selectedId, cues, hiddenTracks, playTime, playing, onSelect } = props;
   const stageRef = useRef<HTMLDivElement>(null);
   const [stageW, setStageW] = useState(760);
   // 合成预览时间：播放中用 rAF 读 video.currentTime（顺滑），否则跟随 playTime（seek/scrub/暂停）。
@@ -194,17 +197,17 @@ export function Canvas(props: {
             <div className="pc-composite">
               {activeCards.map((c) => {
                 const r = pxRect(resolveLayout(c.layout as Partial<Layout> | undefined), stageW);
-                const t = cardText(c);
                 const sel = c.id === selectedId;
+                // 真实卡片渲染器（@全栈工程师 CardVisual.tsx，含画中画小人像窗等真实样式）；
+                // 外层 div 按 resolveLayout/pxRect 定位 + 选中高亮 + 点选。
                 return (
                   <div
                     key={c.id}
-                    className={sel ? "pc-overlay-card selected" : "pc-overlay-card"}
-                    style={{ left: r.left, top: r.top, width: r.width, minHeight: r.height, borderColor: t.accent || undefined }}
+                    className={sel ? "pc-overlay-cv selected" : "pc-overlay-cv"}
+                    style={{ left: r.left, top: r.top, width: r.width, height: r.height }}
+                    onClick={() => onSelect?.(c.id)}
                   >
-                    {t.tag && <span className="pc-tag" style={t.accent ? { color: t.accent, background: hexAlpha(t.accent) } : undefined}>{t.tag}</span>}
-                    <h3>{t.title}</h3>
-                    <p>{t.body}</p>
+                    <CardVisual card={c} stageW={stageW} />
                   </div>
                 );
               })}

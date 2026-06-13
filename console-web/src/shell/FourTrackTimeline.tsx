@@ -7,6 +7,7 @@
 // 保留 a62e63ea 的删除（hover × / 右键菜单）与播放控制。
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Scene } from "../lib/api";
+import type { Cue } from "../lib/captions";
 import { DRAG_HINTS } from "../lib/guidance";
 import type { CardType, PackagingPlan } from "../lib/packaging-plan";
 import {
@@ -88,8 +89,13 @@ export function FourTrackTimeline(props: {
   /** 合成预览：轨道可见性由 App 持有（👁 隐藏在预览里真生效）。 */
   hiddenTracks?: Set<string>;
   onToggleTrackHidden?: (key: string) => void;
+  /** 字幕条：真实 cue（含 text+start+end），点击选中可编辑。 */
+  cues?: Cue[];
+  selectedCueId?: string | null;
+  onSelectCue?: (id: string | null) => void;
+  onEditCueText?: (id: string, text: string) => void;
 }) {
-  const { plan, scenes, selectedId, unboundIds, onSelect, onMoveCard, onTrimCard, onDropCard, highlightSubtitle, heightPx, onDeleteScene, playing, playTime, onTogglePlay, onSeek, hiddenTracks, onToggleTrackHidden } = props;
+  const { plan, scenes, selectedId, unboundIds, onSelect, onMoveCard, onTrimCard, onDropCard, highlightSubtitle, heightPx, onDeleteScene, playing, playTime, onTogglePlay, onSeek, hiddenTracks, onToggleTrackHidden, cues, selectedCueId, onSelectCue, onEditCueText } = props;
   const editable = !!onMoveCard;
 
   // 总时长 = 所有轨道 clip 的 max(start+duration)，与 plan.duration 取大。
@@ -109,6 +115,8 @@ export function FourTrackTimeline(props: {
   const [locked, setLocked] = useState<Set<string>>(new Set());
   const [dropActive, setDropActive] = useState(false);
   const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+  // 字幕条点击 → 小编辑框（floating，视口固定定位），改文本回落 captions。
+  const [cueEdit, setCueEdit] = useState<{ id: string; x: number; y: number; text: string } | null>(null);
 
   // ── 视图坐标系：pxPerSecond + 横向滚动 ──────────────────────────────
   const [pps, setPps] = useState<number>(() => {
@@ -411,7 +419,29 @@ export function FourTrackTimeline(props: {
               {plan.tracks.audio.map((c) => clip(c, "audio", "原始音频"))}
             </div>
             <div className={laneCls("subtitle", highlightSubtitle ? "pc-lane-pulse" : "")} onMouseDown={onSeek ? beginScrub : undefined}>
-              {plan.tracks.subtitle.length === 0 ? null : <SubtitleClips total={total} pps={pps} count={plan.tracks.card.length} />}
+              {cues && cues.length > 0
+                ? cues.map((cue) => (
+                    <div
+                      key={cue.id}
+                      // pc-cueclip：字幕条文本是用户转写内容（含品牌/技术英文），非可翻译 UI chrome；
+                      // 与字幕弹窗 .pc-cue 一致，被 i18n 残留检查排除。
+                      className={cue.id === selectedCueId ? "tl-clip cap pc-cueclip selected" : "tl-clip cap pc-cueclip"}
+                      style={{ left: timeToPx(cue.start, pps), width: Math.max(timeToPx(cue.end - cue.start, pps), 3) }}
+                      title={cue.text}
+                      // 点字幕条 = 选中该 cue + 弹小编辑框（不只 seek）。
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelectCue?.(cue.id);
+                        if (onEditCueText) setCueEdit({ id: cue.id, x: e.clientX, y: e.clientY, text: cue.text });
+                      }}
+                    >
+                      {cue.text}
+                    </div>
+                  ))
+                : plan.tracks.subtitle.length === 0
+                  ? null
+                  : <SubtitleClips total={total} pps={pps} count={plan.tracks.card.length} />}
             </div>
             <div
               className={laneCls("card", `pc-cardlane${dropActive ? " pc-cardlane-over" : ""}`)}
@@ -489,6 +519,31 @@ export function FourTrackTimeline(props: {
             <button type="button" className="pc-ctxmenu-item danger" onClick={() => { onDeleteScene(menu.id); setMenu(null); }}>
               删除卡片
             </button>
+          </div>
+        </>
+      )}
+      {/* 字幕条小编辑框：改文本 → 保存落 captions。 */}
+      {cueEdit && onEditCueText && (
+        <>
+          <div className="pc-ctxmenu-backdrop" onMouseDown={() => setCueEdit(null)} />
+          <div className="pc-cueedit" style={{ left: Math.min(cueEdit.x, 1180), top: cueEdit.y }}>
+            <div className="pc-cueedit-title">编辑字幕</div>
+            <textarea
+              className="pc-cueedit-input"
+              value={cueEdit.text}
+              autoFocus
+              onChange={(e) => setCueEdit((c) => (c ? { ...c, text: e.target.value } : c))}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                  onEditCueText(cueEdit.id, cueEdit.text);
+                  setCueEdit(null);
+                } else if (e.key === "Escape") setCueEdit(null);
+              }}
+            />
+            <div className="pc-cueedit-actions">
+              <button type="button" className="pc-cueedit-cancel" onClick={() => setCueEdit(null)}>取消</button>
+              <button type="button" className="pc-cueedit-save" onClick={() => { onEditCueText(cueEdit.id, cueEdit.text); setCueEdit(null); }}>保存</button>
+            </div>
           </div>
         </>
       )}

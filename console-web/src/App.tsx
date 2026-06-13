@@ -38,7 +38,7 @@ import {
   type WorkflowRun,
 } from "./lib/api";
 import type { Layout } from "./lib/canvas-geometry";
-import { cuesToSubtitleTrack, parseCaptions, type Cue } from "./lib/captions";
+import { parseCaptions, type Cue } from "./lib/captions";
 import {
   clampDockHeight,
   deriveWorkflowSteps,
@@ -258,6 +258,17 @@ export default function App() {
       alive = false;
     };
   }, [captionsSrc, captionsReloadKey]);
+
+  // 字幕条选中（时间线点字幕条）。改文本的 onEditCueText 在 onSaveCues 之后定义（见下，避免捕获过期 onSaveCues）。
+  const [selectedCueId, setSelectedCueId] = useState<string | null>(null);
+
+  // 播放跟随：预览播放中，Inspector 自动选中当前播放到的卡片（让属性面板跟着播放头走）。
+  // 仅播放时生效；暂停/scrub 不抢用户的手动选择（用户可随时点别的卡）。
+  useEffect(() => {
+    if (!previewMode || !playing || !plan) return;
+    const active = plan.tracks.card.find((c) => c.timeline.start <= playTime && playTime < c.timeline.start + c.timeline.duration);
+    if (active && active.id !== selectedId) setSelectedId(active.id);
+  }, [previewMode, playing, playTime, plan, selectedId]);
 
   // UI-fix #12: a transient notice auto-clears so it doesn't persist across
   // unrelated states. Manual × still works.
@@ -888,15 +899,33 @@ export default function App() {
       setNotice(`字幕已重新识别（${result.captionCount ?? "?"} 条）。`);
     });
 
-  // 字幕逐句编辑保存进 plan 的字幕轨。送 compose 需后端消费字幕轨 cue（见 report 残差）。
+  // 字幕逐句编辑落盘。服务端 inlineSubtitleCues 读「字幕轨首个 clip 的 cues 数组」写 captions.json，
+  // 故必须把整批 cue 作为单条字幕 clip 的 `cues` 字段送出（不是每 cue 一个 clip）。
   const onSaveCues = (cues: Cue[]) =>
     run("saveCues", async () => {
       if (!plan) return;
-      const nextPlan = { ...plan, tracks: { ...plan.tracks, subtitle: cuesToSubtitleTrack(cues) } };
+      const head = plan.tracks.subtitle[0];
+      const subtitleClip = {
+        id: head?.id ?? "subtitle-main",
+        track: "subtitle" as const,
+        src: head?.src ?? plan.source.captions ?? null,
+        start: head?.start ?? 0,
+        duration: head?.duration ?? plan.duration,
+        cues: cues.map((c) => ({ start: c.start, end: c.end, text: c.text })),
+      };
+      const nextPlan = { ...plan, tracks: { ...plan.tracks, subtitle: [subtitleClip] } } as unknown as typeof plan;
       const res = await putPackagingPlan(name, nextPlan);
       if (!res.saved) setNotice("字幕已记录到本地 plan（当前服务端 PUT 端点不可用）。");
-      else setNotice("字幕已保存进 plan 字幕轨。");
+      else setNotice("字幕已保存写入 captions.json。");
     });
+
+  // 直接改某条字幕文本：先更新本地 cues（UI 立刻反映），再走 onSaveCues 持久化（PUT → 服务端按字幕轨 cue 写 captions.json）。
+  // 普通函数（每次 render 重建，捕获最新 onSaveCues/plan/name），避免 useCallback 空依赖捕获过期闭包。
+  const onEditCueText = (cueId: string, text: string) => {
+    const next = cues.map((c) => (c.id === cueId ? { ...c, text } : c));
+    setCues(next);
+    onSaveCues(next);
+  };
 
   // 风格包: write a theme's color+font to every card, persist, ready to recompose.
   const onApplyTheme = (theme: Theme) =>
@@ -1251,6 +1280,7 @@ export default function App() {
             hiddenTracks={hiddenTracks}
             playTime={playTime}
             playing={playing}
+            onSelect={setSelectedId}
           />
           <SmartStrip plan={visiblePlan} />
         </div>
@@ -1294,6 +1324,10 @@ export default function App() {
         onDeleteScene={manifest && busy === null ? onDeleteScene : undefined}
         hiddenTracks={hiddenTracks}
         onToggleTrackHidden={toggleTrackHidden}
+        cues={cues}
+        selectedCueId={selectedCueId}
+        onSelectCue={setSelectedCueId}
+        onEditCueText={onEditCueText}
         highlightSubtitle={highlightSubtitle}
         heightPx={dockHeight}
         playing={playing}
