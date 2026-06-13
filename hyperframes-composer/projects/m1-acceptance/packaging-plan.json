@@ -6,7 +6,8 @@
   "source": {
     "video": "/Users/huangzongning/development/paseo/creative/director-duix-hyperframes/hyperframes-composer/render/memos-v3-composed-final.mp4",
     "audio": "projects/m1-acceptance/audio/asr.wav",
-    "captions": "projects/m1-acceptance/captions.json"
+    "captions": "projects/m1-acceptance/captions.json",
+    "videoUrl": "/api/preview/source/m1-acceptance"
   },
   "tracks": {
     "video": [
@@ -147,7 +148,7 @@
         "media": {},
         "timeline": {
           "track": "card",
-          "start": 34.91,
+          "start": 52.86,
           "duration": 17.14
         },
         "validation": {
