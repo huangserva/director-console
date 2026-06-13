@@ -137,7 +137,55 @@ function getContentType(filePath) {
   return "application/octet-stream";
 }
 
-async function serveComposerFile({ composerRoot, previewPath, response }) {
+function htmlAttr(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function previewProjectNameFromRelative(relative) {
+  const parts = relative.split(/[\\/]+/);
+  if (parts.length >= 3 && parts[0] === "projects" && parts.at(-1).endsWith(".html")) {
+    return safeProjectNameFromPath(parts[1]);
+  }
+  return null;
+}
+
+function replaceElementSrcById(html, tagName, id, src) {
+  const idPattern = id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const tagPattern = new RegExp(`<${tagName}\\b(?=[^>]*\\bid=["']${idPattern}["'])[^>]*>`, "i");
+  return html.replace(tagPattern, (tag) => {
+    const safeSrc = htmlAttr(src);
+    if (/\ssrc=(["'])[^"']*\1/i.test(tag)) {
+      return tag.replace(/\ssrc=(["'])[^"']*\1/i, ` src="${safeSrc}"`);
+    }
+    return tag.replace(/>$/, ` src="${safeSrc}">`);
+  });
+}
+
+function projectAudioPreviewUrl(projectName, { previewBasePath }) {
+  return `${previewBasePath}/audio/${encodeURIComponent(projectName)}`;
+}
+
+function rewritePreviewHtmlResources(html, { projectName, manifest, previewBasePath }) {
+  let rewritten = html;
+  if (manifest.source?.video) {
+    rewritten = replaceElementSrcById(
+      rewritten,
+      "video",
+      "source-video-background-layer",
+      sourceVideoPreviewUrl(projectName, { previewBasePath }),
+    );
+  }
+  if (manifest.audio?.src) {
+    rewritten = replaceElementSrcById(rewritten, "audio", "audio", projectAudioPreviewUrl(projectName, { previewBasePath }));
+  }
+  return rewritten;
+}
+
+async function serveComposerFile({ composerRoot, previewPath, response, previewBasePath }) {
   let relative;
   try {
     relative = decodeURIComponent(previewPath.replace(/^\/+/, ""));
@@ -154,8 +202,19 @@ async function serveComposerFile({ composerRoot, previewPath, response }) {
     jsonResponse(response, 403, { error: "preview path escapes composer root" });
     return true;
   }
+  const contentType = getContentType(filePath);
   const body = await fs.readFile(filePath);
-  textResponse(response, 200, body, getContentType(filePath));
+  const projectName = contentType.startsWith("text/html") ? previewProjectNameFromRelative(relative) : null;
+  if (projectName) {
+    const manifestPath = path.join(composerRoot, "manifests", `${projectName}.json`);
+    if (await pathExists(manifestPath)) {
+      const manifest = JSON.parse(await fs.readFile(manifestPath, "utf8"));
+      const html = rewritePreviewHtmlResources(body.toString("utf8"), { projectName, manifest, previewBasePath });
+      textResponse(response, 200, html, contentType);
+      return true;
+    }
+  }
+  textResponse(response, 200, body, contentType);
   return true;
 }
 
@@ -248,6 +307,68 @@ async function serveProjectSourceVideo({ composerRoot, projectName, request, res
     "content-length": stat.size,
   });
   fsSync.createReadStream(check.realPath).pipe(response);
+  return true;
+}
+
+async function serveProjectAudio({ composerRoot, projectName, request, response }) {
+  const manifestName = `${projectName}.json`;
+  const manifestPath = path.join(composerRoot, "manifests", manifestName);
+  if (!(await pathExists(manifestPath))) {
+    jsonResponse(response, 404, { ok: false, error: "manifest not found" });
+    return true;
+  }
+  const manifest = await readManifest(composerRoot, manifestName);
+  const audioSrc = manifest.audio?.src;
+  if (!audioSrc) {
+    jsonResponse(response, 404, { ok: false, error: "project audio not found" });
+    return true;
+  }
+
+  const audioPath = resolveComposerPath(composerRoot, audioSrc);
+  let realPath;
+  let composerRealRoot;
+  try {
+    realPath = await fs.realpath(audioPath);
+    composerRealRoot = await fs.realpath(composerRoot);
+  } catch {
+    jsonResponse(response, 404, { ok: false, error: "project audio not found" });
+    return true;
+  }
+  if (!isWithin(realPath, composerRealRoot)) {
+    jsonResponse(response, 403, { ok: false, error: "project audio is outside the composer root" });
+    return true;
+  }
+
+  const stat = await fs.stat(realPath);
+  if (!stat.isFile()) {
+    jsonResponse(response, 400, { ok: false, error: "project audio must be a file" });
+    return true;
+  }
+  const range = parseRangeHeader(request.headers.range, stat.size);
+  if (range?.error) {
+    response.writeHead(416, { "content-range": `bytes */${stat.size}` });
+    response.end();
+    return true;
+  }
+  const commonHeaders = {
+    "accept-ranges": "bytes",
+    "content-type": getContentType(realPath),
+  };
+  if (range) {
+    const length = range.end - range.start + 1;
+    response.writeHead(206, {
+      ...commonHeaders,
+      "content-length": length,
+      "content-range": `bytes ${range.start}-${range.end}/${stat.size}`,
+    });
+    fsSync.createReadStream(realPath, { start: range.start, end: range.end }).pipe(response);
+    return true;
+  }
+  response.writeHead(200, {
+    ...commonHeaders,
+    "content-length": stat.size,
+  });
+  fsSync.createReadStream(realPath).pipe(response);
   return true;
 }
 
@@ -1312,9 +1433,23 @@ export function createApiServer(options = {}) {
         return;
       }
 
+      if (
+        request.method === "GET" &&
+        ((parts[0] === "preview" && parts[1] === "audio" && parts.length === 3) ||
+          (parts[0] === "api" && parts[1] === "preview" && parts[2] === "audio" && parts.length === 4))
+      ) {
+        const projectName = safeProjectNameFromPath(parts[0] === "preview" ? parts[2] : parts[3]);
+        if (!projectName) {
+          jsonResponse(response, 400, { ok: false, error: "invalid project name" });
+          return;
+        }
+        await serveProjectAudio({ composerRoot, projectName, request, response });
+        return;
+      }
+
       if (request.method === "GET" && (parts[0] === "preview" || (parts[0] === "api" && parts[1] === "preview"))) {
         const previewPath = parts[0] === "preview" ? parts.slice(1).join("/") : parts.slice(2).join("/");
-        await serveComposerFile({ composerRoot, previewPath, response });
+        await serveComposerFile({ composerRoot, previewPath, response, previewBasePath });
         return;
       }
 

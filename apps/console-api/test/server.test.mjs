@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { spawn } from "node:child_process";
+import fsSync from "node:fs";
 import fs from "node:fs/promises";
 import http from "node:http";
 import os from "node:os";
@@ -50,6 +52,12 @@ const productIntroFailedPublishProjectDir = path.join(composerRoot, "projects", 
 const packagingPlanProjectName = `packaging-plan-${process.pid}`;
 const packagingPlanManifestPath = path.join(manifestsDir, `${packagingPlanProjectName}.json`);
 const packagingPlanProjectDir = path.join(composerRoot, "projects", packagingPlanProjectName);
+const previewHtmlProjectName = `preview-html-${process.pid}`;
+const previewHtmlManifestPath = path.join(manifestsDir, `${previewHtmlProjectName}.json`);
+const previewHtmlProjectDir = path.join(composerRoot, "projects", previewHtmlProjectName);
+const browserPreviewProjectName = `preview-browser-${process.pid}`;
+const browserPreviewManifestPath = path.join(manifestsDir, `${browserPreviewProjectName}.json`);
+const browserPreviewProjectDir = path.join(composerRoot, "projects", browserPreviewProjectName);
 const templateId = `packaging-template-${process.pid}`;
 const badTemplateId = `bad-template-${process.pid}`;
 const templatesDir = path.join(repoRoot, "templates");
@@ -195,6 +203,155 @@ async function rawRequest(baseUrl, pathname, options = {}) {
   };
 }
 
+function runCommand(command, args, options = {}) {
+  return new Promise((resolve) => {
+    const child = spawn(command, args, { stdio: ["ignore", "pipe", "pipe"], ...options });
+    let stdout = "";
+    let stderr = "";
+    child.stdout?.setEncoding("utf8");
+    child.stderr?.setEncoding("utf8");
+    child.stdout?.on("data", (chunk) => {
+      stdout += chunk;
+    });
+    child.stderr?.on("data", (chunk) => {
+      stderr += chunk;
+    });
+    child.on("error", (error) => resolve({ code: 127, stdout, stderr: `${stderr}${error.message}` }));
+    child.on("close", (code) => resolve({ code, stdout, stderr }));
+  });
+}
+
+async function connectChromePage(chromePort) {
+  const started = Date.now();
+  while (Date.now() - started < 10000) {
+    try {
+      const response = await fetch(`http://127.0.0.1:${chromePort}/json/list`);
+      if (response.ok) {
+        const targets = await response.json();
+        const page = targets.find((target) => target.type === "page" && target.webSocketDebuggerUrl);
+        if (page) return page.webSocketDebuggerUrl;
+      }
+    } catch {
+      // Chrome is still starting.
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error("timed out waiting for Chrome debugging target");
+}
+
+async function probePreviewVideoInChrome(url) {
+  const chromePath = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+  if (!fsSync.existsSync(chromePath)) return { skipped: "Google Chrome is not installed" };
+  const chromePort = 9340;
+  const userDataDir = await fs.mkdtemp(path.join(os.tmpdir(), "console-api-chrome-"));
+  const chrome = spawn(
+    chromePath,
+    [
+      "--headless=new",
+      `--remote-debugging-port=${chromePort}`,
+      `--user-data-dir=${userDataDir}`,
+      "--no-first-run",
+      "--autoplay-policy=no-user-gesture-required",
+      "about:blank",
+    ],
+    { stdio: ["ignore", "ignore", "ignore"] },
+  );
+  try {
+    const websocketUrl = await connectChromePage(chromePort);
+    const websocket = new WebSocket(websocketUrl);
+    await new Promise((resolve, reject) => {
+      websocket.addEventListener("open", resolve, { once: true });
+      websocket.addEventListener("error", reject, { once: true });
+    });
+    let nextId = 1;
+    const pending = new Map();
+    const requests = [];
+    const eventWaiters = new Map();
+    websocket.addEventListener("message", (event) => {
+      const message = JSON.parse(event.data);
+      if (message.id && pending.has(message.id)) {
+        const { resolve, reject } = pending.get(message.id);
+        pending.delete(message.id);
+        if (message.error) reject(new Error(JSON.stringify(message.error)));
+        else resolve(message.result);
+      }
+      if (message.method === "Network.requestWillBeSent") requests.push(message.params.request.url);
+      if (eventWaiters.has(message.method)) {
+        for (const resolve of eventWaiters.get(message.method)) resolve(message.params);
+        eventWaiters.delete(message.method);
+      }
+    });
+    const send = (method, params = {}) => {
+      const id = nextId;
+      nextId += 1;
+      websocket.send(JSON.stringify({ id, method, params }));
+      return new Promise((resolve, reject) => pending.set(id, { resolve, reject }));
+    };
+    const once = (method, timeoutMs = 15000) =>
+      new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error(`timed out waiting for ${method}`)), timeoutMs);
+        const done = (params) => {
+          clearTimeout(timer);
+          resolve(params);
+        };
+        eventWaiters.set(method, [...(eventWaiters.get(method) || []), done]);
+      });
+
+    await send("Page.enable");
+    await send("Network.enable");
+    await send("Runtime.enable");
+    const loaded = once("Page.loadEventFired");
+    await send("Page.navigate", { url });
+    await loaded;
+    const probe = (
+      await send("Runtime.evaluate", {
+        awaitPromise: true,
+        returnByValue: true,
+        expression: `new Promise((resolve) => {
+          const video = document.querySelector('#source-video-background-layer');
+          const audio = document.querySelector('#audio');
+          if (video) {
+            video.muted = true;
+            video.preload = 'auto';
+            video.load();
+            video.play().catch(() => {});
+          }
+          const started = Date.now();
+          function tick() {
+            if (video && video.readyState >= 2 && video.videoWidth > 0) {
+              resolve({
+                readyState: video.readyState,
+                videoWidth: video.videoWidth,
+                videoHeight: video.videoHeight,
+                currentSrc: video.currentSrc,
+                audioSrc: audio ? audio.currentSrc : null,
+              });
+              return;
+            }
+            if (Date.now() - started > 15000) {
+              resolve({
+                timeout: true,
+                readyState: video ? video.readyState : null,
+                videoWidth: video ? video.videoWidth : null,
+                currentSrc: video ? video.currentSrc : null,
+                audioSrc: audio ? audio.currentSrc : null,
+              });
+              return;
+            }
+            setTimeout(tick, 200);
+          }
+          tick();
+        })`,
+      })
+    ).result.value;
+    websocket.close();
+    return { probe, requests };
+  } finally {
+    chrome.kill("SIGTERM");
+    await fs.rm(userDataDir, { recursive: true, force: true });
+  }
+}
+
 describe("console-api", () => {
   let server;
   let baseUrl;
@@ -316,6 +473,10 @@ describe("console-api", () => {
     await fs.rm(productIntroFailedPublishProjectDir, { recursive: true, force: true });
     await fs.rm(packagingPlanManifestPath, { force: true });
     await fs.rm(packagingPlanProjectDir, { recursive: true, force: true });
+    await fs.rm(previewHtmlManifestPath, { force: true });
+    await fs.rm(previewHtmlProjectDir, { recursive: true, force: true });
+    await fs.rm(browserPreviewManifestPath, { force: true });
+    await fs.rm(browserPreviewProjectDir, { recursive: true, force: true });
     await fs.rm(path.join(templatesDir, `${templateId}.json`), { force: true });
     await fs.rm(path.join(templatesDir, `${badTemplateId}.json`), { force: true });
     await fs.rm(applyTemplateManifestPath, { force: true });
@@ -1718,6 +1879,141 @@ describe("console-api", () => {
     assert.equal(outside.status, 403);
     await fs.rm(path.join(manifestsDir, `${noSourceName}.json`), { force: true });
     await fs.rm(path.join(manifestsDir, `${outsideName}.json`), { force: true });
+  });
+
+  test("rewrites composed preview html media sources to serviceable preview URLs", async () => {
+    const manifest = titleCardManifest({
+      compositionId: previewHtmlProjectName,
+      source: {
+        video: fixtureVideo,
+      },
+      audio: {
+        src: `projects/${previewHtmlProjectName}/audio/asr.wav`,
+      },
+      output: `projects/${previewHtmlProjectName}/index.html`,
+      hyperframesEntry: `projects/${previewHtmlProjectName}/index.html`,
+    });
+    await fs.mkdir(path.join(previewHtmlProjectDir, "audio"), { recursive: true });
+    await fs.writeFile(path.join(previewHtmlProjectDir, "audio", "asr.wav"), "fake wav bytes");
+    await fs.writeFile(previewHtmlManifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+    await fs.writeFile(
+      path.join(previewHtmlProjectDir, "index.html"),
+      [
+        "<!doctype html>",
+        '<div id="root">',
+        `<video id="source-video-background-layer" muted src="${fixtureVideo}"></video>`,
+        `<audio id="audio" src="projects/${previewHtmlProjectName}/audio/asr.wav"></audio>`,
+        "</div>",
+      ].join(""),
+      "utf8",
+    );
+
+    const response = await rawRequest(baseUrl, `/api/preview/projects/${previewHtmlProjectName}/index.html`);
+
+    assert.equal(response.status, 200);
+    assert.match(response.text, new RegExp(`id="source-video-background-layer"[^>]+src="/api/preview/source/${previewHtmlProjectName}"`));
+    assert.match(response.text, new RegExp(`id="audio"[^>]+src="/api/preview/audio/${previewHtmlProjectName}"`));
+    assert.doesNotMatch(response.text, new RegExp(`src="${fixtureVideo.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`));
+    assert.doesNotMatch(response.text, new RegExp(`src="projects/${previewHtmlProjectName}/audio/asr\\.wav"`));
+  });
+
+  test("streams project audio with HTTP Range support and composer-root path validation", async () => {
+    await fs.mkdir(path.join(previewHtmlProjectDir, "audio"), { recursive: true });
+    await fs.writeFile(path.join(previewHtmlProjectDir, "audio", "asr.wav"), "fake wav bytes");
+    await fs.writeFile(
+      previewHtmlManifestPath,
+      `${JSON.stringify(
+        titleCardManifest({
+          compositionId: previewHtmlProjectName,
+          audio: { src: `projects/${previewHtmlProjectName}/audio/asr.wav` },
+        }),
+        null,
+        2,
+      )}\n`,
+    );
+
+    const ranged = await rawRequest(baseUrl, `/api/preview/audio/${previewHtmlProjectName}`, {
+      headers: { range: "bytes=0-3" },
+    });
+    assert.equal(ranged.status, 206);
+    assert.equal(ranged.headers.get("content-type"), "audio/wav");
+    assert.equal(ranged.headers.get("accept-ranges"), "bytes");
+    assert.equal(ranged.headers.get("content-range"), "bytes 0-3/14");
+    assert.equal(ranged.text, "fake");
+
+    const outsideName = `${previewHtmlProjectName}-outside-audio`;
+    await fs.writeFile(
+      path.join(manifestsDir, `${outsideName}.json`),
+      `${JSON.stringify(titleCardManifest({ compositionId: outsideName, audio: { src: "/etc/hosts" } }), null, 2)}\n`,
+    );
+    const outside = await request(baseUrl, `/api/preview/audio/${outsideName}`);
+    assert.equal(outside.status, 403);
+    await fs.rm(path.join(manifestsDir, `${outsideName}.json`), { force: true });
+  });
+
+  test("loads rewritten preview video and audio URLs in a real browser when Chrome and ffmpeg are available", async (t) => {
+    const probeVideo = path.join(fixtureRoot, "preview-probe.mp4");
+    const ffmpeg = await runCommand("ffmpeg", [
+      "-y",
+      "-f",
+      "lavfi",
+      "-i",
+      "testsrc=size=160x90:rate=24",
+      "-t",
+      "1",
+      "-pix_fmt",
+      "yuv420p",
+      "-movflags",
+      "+faststart",
+      probeVideo,
+    ]);
+    if (ffmpeg.code !== 0) {
+      t.skip(`ffmpeg unavailable for browser media fixture: ${ffmpeg.stderr}`);
+      return;
+    }
+    await fs.mkdir(path.join(browserPreviewProjectDir, "audio"), { recursive: true });
+    await fs.writeFile(path.join(browserPreviewProjectDir, "audio", "asr.wav"), "fake wav bytes");
+    await fs.writeFile(
+      browserPreviewManifestPath,
+      `${JSON.stringify(
+        titleCardManifest({
+          compositionId: browserPreviewProjectName,
+          source: { video: probeVideo },
+          audio: { src: `projects/${browserPreviewProjectName}/audio/asr.wav` },
+          output: `projects/${browserPreviewProjectName}/index.html`,
+          hyperframesEntry: `projects/${browserPreviewProjectName}/index.html`,
+        }),
+        null,
+        2,
+      )}\n`,
+    );
+    await fs.writeFile(
+      path.join(browserPreviewProjectDir, "index.html"),
+      [
+        "<!doctype html>",
+        "<body>",
+        `<video id="source-video-background-layer" muted playsinline src="${probeVideo}"></video>`,
+        `<audio id="audio" src="projects/${browserPreviewProjectName}/audio/asr.wav"></audio>`,
+        "</body>",
+      ].join(""),
+      "utf8",
+    );
+
+    const result = await probePreviewVideoInChrome(`${baseUrl}/api/preview/projects/${browserPreviewProjectName}/index.html`);
+    if (result.skipped) {
+      t.skip(result.skipped);
+      return;
+    }
+
+    assert.equal(result.probe.timeout, undefined);
+    assert.ok(result.probe.readyState >= 2);
+    assert.ok(result.probe.videoWidth > 0);
+    assert.equal(result.probe.currentSrc, `${baseUrl}/api/preview/source/${browserPreviewProjectName}`);
+    assert.equal(result.probe.audioSrc, `${baseUrl}/api/preview/audio/${browserPreviewProjectName}`);
+    assert.deepEqual(
+      result.requests.filter((url) => url.includes("/private/") || url.includes("/Users/")),
+      [],
+    );
   });
 
   test("puts a valid packaging plan, persists it, and keeps the projected manifest composable", async () => {
