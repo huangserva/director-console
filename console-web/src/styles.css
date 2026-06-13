@@ -1324,6 +1324,23 @@ button.pc-navitem:disabled { opacity: 0.5; cursor: not-allowed; }
 .pc-stage-video.show { opacity: 1; pointer-events: auto; z-index: 6; }
 .pc-stage-preview { background: #000; }
 
+/* 合成预览叠加层（dispatch 4ff723c3）：按 currentTime 把当下卡片 + 字幕叠在视频上。
+   pointer-events:none —— 不挡视频/scrub；隐藏轨道由 React 直接不渲染（👁 生效）。 */
+.pc-composite { position: absolute; inset: 0; z-index: 7; pointer-events: none; }
+.pc-overlay-card {
+  position: absolute; padding: 1.4% 1.8%; border-radius: 10px;
+  background: linear-gradient(165deg, rgba(22, 27, 34, 0.92), rgba(14, 18, 23, 0.95));
+  border: 1px solid rgba(232, 178, 58, 0.5); box-shadow: 0 10px 36px rgba(0, 0, 0, 0.55);
+}
+.pc-overlay-card.selected { outline: 2px solid #fff; outline-offset: 2px; }
+.pc-overlay-card h3 { margin: 8px 0 6px; font-size: clamp(15px, 1.7vw, 22px); line-height: 1.3; color: var(--text); }
+.pc-overlay-card p { margin: 0; font-size: clamp(11px, 1vw, 13px); color: #c7cdd6; line-height: 1.55; }
+.pc-overlay-sub {
+  position: absolute; left: 8%; right: 8%; bottom: 6%; text-align: center;
+  font-size: clamp(14px, 1.9vw, 24px); font-weight: 600; line-height: 1.4; color: #fff;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9); background: rgba(0, 0, 0, 0.35); padding: 6px 14px; border-radius: 6px;
+}
+
 /* ── P0 专业时间轴：缩放控件 / trim / 吸附线 / 播放头 scrub ─────────────── */
 
 /* 缩放控件（缩放滑块 + 适配全片 + 吸附开关） */

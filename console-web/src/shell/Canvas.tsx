@@ -15,6 +15,7 @@ import {
   type Handle,
   type Layout,
 } from "../lib/canvas-geometry";
+import type { Cue } from "../lib/captions";
 import { cardTypeLabel, type PlanCard } from "../lib/packaging-plan";
 
 export function Canvas(props: {
@@ -23,7 +24,7 @@ export function Canvas(props: {
   onLayoutChange?: (layout: Layout) => void;
   /** 核心编辑 C：源视频可播放 URL（@全栈工程师经 plan.source.videoUrl 提供）；为空时预览优雅降级。 */
   videoUrl?: string | null;
-  /** 预览模式：true 时画布显示 <video> 源视频，编辑卡片层隐藏。 */
+  /** 预览模式：true 时画布显示合成预览（视频 + 当下卡片/字幕叠加），编辑卡片层隐藏。 */
   previewMode?: boolean;
   /** 切换编辑↔预览。 */
   onTogglePreviewMode?: () => void;
@@ -33,10 +34,34 @@ export function Canvas(props: {
   onVideoTime?: (sec: number) => void;
   /** video play/pause/ended → 上抛播放状态。 */
   onPlayStateChange?: (playing: boolean) => void;
+  /** 合成预览：全部卡片（按 timeline.start/duration 决定当下是否叠加）。 */
+  cards?: PlanCard[];
+  selectedId?: string | null;
+  /** 合成预览：字幕 cue（按 start/end 决定当下叠加哪句）。 */
+  cues?: Cue[];
+  /** 合成预览：隐藏的轨道在叠加层里真的不显示（👁 生效）。 */
+  hiddenTracks?: Set<string>;
+  /** 当前播放秒数（seek/scrub/timeupdate 回流）；播放中另用 rAF 读 video.currentTime 求顺滑。 */
+  playTime?: number;
+  playing?: boolean;
 }) {
-  const { card, editable, onLayoutChange, videoUrl, previewMode, onTogglePreviewMode, videoRef, onVideoTime, onPlayStateChange } = props;
+  const { card, editable, onLayoutChange, videoUrl, previewMode, onTogglePreviewMode, videoRef, onVideoTime, onPlayStateChange, cards, selectedId, cues, hiddenTracks, playTime, playing } = props;
   const stageRef = useRef<HTMLDivElement>(null);
   const [stageW, setStageW] = useState(760);
+  // 合成预览时间：播放中用 rAF 读 video.currentTime（顺滑），否则跟随 playTime（seek/scrub/暂停）。
+  const [rafT, setRafT] = useState(0);
+  useEffect(() => {
+    if (!previewMode || !playing) return;
+    let raf = 0;
+    const tick = () => {
+      const v = videoRef?.current;
+      if (v) setRafT(v.currentTime);
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [previewMode, playing, videoRef]);
+  const composeT = playing ? rafT : (playTime ?? 0);
   const [preview, setPreview] = useState<Layout | null>(null);
   const dragRef = useRef<{ mode: Handle | "move"; startX: number; startY: number; startLayout: Layout } | null>(null);
 
@@ -102,14 +127,21 @@ export function Canvas(props: {
     window.addEventListener("mouseup", onUp);
   };
 
-  const tag = card?.content.chip ?? card?.content.label ?? card?.content.kicker ?? (card ? cardTypeLabel(card.type) : "");
-  const title = card ? (card.content.title ?? `${cardTypeLabel(card.type)} · 待填标题`) : "（未选中卡片）";
-  const body = card
-    ? (card.content.subline ??
-        (Array.isArray(card.content.items) ? card.content.items.join(" · ") : undefined) ??
-        "在右侧 Inspector 编辑内容 / 布局 / 字体 / 颜色。")
-    : "在左侧时间线或场景列表选中一张卡片，查看它在画面中的样子。";
-  const accent = (card?.color as { accent?: string } | undefined)?.accent;
+  const editTxt = cardText(card);
+  const tag = card ? editTxt.tag : "";
+  const title = card ? editTxt.title : "（未选中卡片）";
+  const body = card ? editTxt.body : "在左侧时间线或场景列表选中一张卡片，查看它在画面中的样子。";
+  const accent = editTxt.accent;
+
+  // 合成预览：当下应出现的卡片（start ≤ t < start+duration）+ 当前字幕 cue；隐藏轨道不参与。
+  const activeCards =
+    previewMode && !hiddenTracks?.has("card")
+      ? (cards ?? []).filter((c) => c.timeline.start <= composeT && composeT < c.timeline.start + c.timeline.duration)
+      : [];
+  const activeCue =
+    previewMode && !hiddenTracks?.has("subtitle")
+      ? (cues ?? []).find((c) => c.start <= composeT && composeT < c.end) ?? null
+      : null;
 
   return (
     <div className="pc-canvas-wrap">
@@ -155,6 +187,29 @@ export function Canvas(props: {
               onPause={() => onPlayStateChange?.(false)}
               onEnded={() => onPlayStateChange?.(false)}
             />
+          )}
+          {/* 合成预览叠加层：按 currentTime 把当下卡片 + 字幕叠在视频上（WYSIWYG）。pointer-events:none，
+              不挡视频/scrub；隐藏轨道在此真不显示（👁 生效）。 */}
+          {previewMode && (
+            <div className="pc-composite">
+              {activeCards.map((c) => {
+                const r = pxRect(resolveLayout(c.layout as Partial<Layout> | undefined), stageW);
+                const t = cardText(c);
+                const sel = c.id === selectedId;
+                return (
+                  <div
+                    key={c.id}
+                    className={sel ? "pc-overlay-card selected" : "pc-overlay-card"}
+                    style={{ left: r.left, top: r.top, width: r.width, minHeight: r.height, borderColor: t.accent || undefined }}
+                  >
+                    {t.tag && <span className="pc-tag" style={t.accent ? { color: t.accent, background: hexAlpha(t.accent) } : undefined}>{t.tag}</span>}
+                    <h3>{t.title}</h3>
+                    <p>{t.body}</p>
+                  </div>
+                );
+              })}
+              {activeCue && <div className="pc-overlay-sub">{activeCue.text}</div>}
+            </div>
           )}
           {!previewMode && showGrid && (
             <div
@@ -209,6 +264,19 @@ export function Canvas(props: {
       </div>
     </div>
   );
+}
+
+// 单卡的展示文本（chip/标题/正文/主色），编辑层与合成叠加层共用。
+function cardText(card: PlanCard | null): { tag: string; title: string; body: string; accent?: string } {
+  if (!card) return { tag: "", title: "", body: "" };
+  const tag = card.content.chip ?? card.content.label ?? card.content.kicker ?? cardTypeLabel(card.type);
+  const title = card.content.title ?? `${cardTypeLabel(card.type)} · 待填标题`;
+  const body =
+    card.content.subline ??
+    (Array.isArray(card.content.items) ? card.content.items.join(" · ") : undefined) ??
+    "在右侧 Inspector 编辑内容 / 布局 / 字体 / 颜色。";
+  const accent = (card.color as { accent?: string } | undefined)?.accent;
+  return { tag, title, body, accent };
 }
 
 function hexAlpha(hex: string): string {

@@ -30,6 +30,10 @@ html, body { width: 1920px; height: 1080px; overflow: hidden; background: #03040
 .scene::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(90deg, rgba(0,0,0,.72), transparent 22%, transparent 78%, rgba(0,0,0,.7)), linear-gradient(180deg, rgba(0,0,0,.24), transparent 22%, transparent 72%, rgba(0,0,0,.52)); }
 video { display: block; object-fit: cover; }
 .source-video { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; object-fit: cover; }
+.source-video-background { z-index: 0; }
+#root[data-has-source-video="1"] .scene { background: transparent; }
+#root[data-has-source-video="1"] .scene::before,
+#root[data-has-source-video="1"] .scene::after { display: none; }
 .corner-name { position: absolute; z-index: 12; top: 58px; right: 120px; color: #f7f1d6; font-size: 22px; font-weight: 900; text-transform: uppercase; }
 .corner-left { position: absolute; z-index: 5; top: 78px; left: 120px; color: #f4c769; font-size: 28px; font-weight: 900; }
 .stat-pack { position: absolute; inset: 0; z-index: 7; transform-origin: 38% 43%; will-change: transform, opacity; }
@@ -162,41 +166,138 @@ video { display: block; object-fit: cover; }
     </style>
   </head>
   <body>
-    <div id="root" data-composition-id="sample-text" data-start="0" data-duration="12" data-width="1920" data-height="1080">
-      
+    <div id="root" data-composition-id="test-duix-ltx" data-start="0" data-duration="119.905" data-width="1920" data-height="1080" data-has-source-video="1">
+      <video id="source-video-background-layer" class="clip source-video source-video-background" src="/Users/huangzongning/Downloads/first120-template-duix-cosy-master-v2-syncfix-final.mp4" muted playsinline data-start="0.000" data-duration="119.905" data-media-start="0.000" data-track-index="0"></video>
+      <audio id="audio" src="projects/test-duix-ltx/audio/asr.wav" data-start="0" data-duration="119.905" data-track-index="90" data-volume="1"></audio>
 
-      <div id="sample-title" class="clip scene title-scene" data-memos-scene="sample-title" data-start="0.000" data-duration="4.000" data-track-index="10">
-        <div class="corner-left">导演</div>
-        <div class="corner-name">样例</div>
+      <div id="s001" class="clip scene title-scene" data-memos-scene="s001" data-start="0.050" data-duration="16.540" data-track-index="10">
+        <div class="corner-left">成片导入</div>
+        <div class="corner-name">场景 1</div>
         <div class="title-block">
-          <div class="title-kicker">可编辑方案</div>
-          <div class="main-title">纯文本预览</div>
-          <div class="title-sub">无需外部媒体素材</div>
+          <div class="title-kicker">自动场景规划</div>
+          <div class="main-title">八十万人看过的 Codex 加</div>
+          <div class="title-sub">八十万人看过的 Codex 加视频渲染实战已经帮</div>
         </div>
         <div class="underline-stack"><i></i><i></i></div>
       </div>
 
-      <div id="sample-steps" class="clip scene step-scene" data-memos-scene="sample-steps" data-start="4.000" data-duration="4.000" data-track-index="20">
+      <div id="s002" class="clip scene step-scene" data-memos-scene="s002" data-start="16.590" data-duration="16.680" data-track-index="20">
         <div class="step-wrap">
           <div class="step-panel">
-            <div class="step-kicker">步骤 01</div>
-            <div class="step-title">编辑属性</div>
-            <div class="step-list"><div class="step-item">加载方案</div><div class="step-item">修改文案</div><div class="step-item">重新合成</div></div>
+            <div class="step-kicker">场景 02</div>
+            <div class="step-title">配配 Codex 用一句句话渲</div>
+            <div class="step-list"><div class="step-item">配配 Codex 用一句</div><div class="step-item">简单说 hyperframe</div><div class="step-item">HTMLCSS javascript</div></div>
           </div>
         </div>
       </div>
 
-      <div id="sample-close" class="clip scene title-scene" data-memos-scene="sample-close" data-start="8.000" data-duration="4.000" data-track-index="30">
-        <div class="corner-left">预览</div>
-        <div class="corner-name">控制台</div>
-        <div class="title-block">
-          <div class="title-kicker">网页壳已就绪</div>
-          <div class="main-title">实时网页输出</div>
-          <div class="title-sub">用于 M0 演示</div>
+      <div id="s003" class="clip scene step-scene" data-memos-scene="s003" data-start="33.570" data-duration="17.020" data-track-index="30">
+        <div class="step-wrap">
+          <div class="step-panel">
+            <div class="step-kicker">场景 03</div>
+            <div class="step-title">这也是它适不合 Agent 的</div>
+            <div class="step-list"><div class="step-item">这也是它适不合 Age</div><div class="step-item">下为视频内容 本质</div><div class="step-item">大模型不用理解 复</div></div>
+          </div>
         </div>
-        <div class="underline-stack"><i></i><i></i></div>
       </div>
 
+      <div id="s004" class="clip scene step-scene" data-memos-scene="s004" data-start="50.950" data-duration="17.200" data-track-index="40">
+        <div class="step-wrap">
+          <div class="step-panel">
+            <div class="step-kicker">场景 04</div>
+            <div class="step-title">直接输入提示词</div>
+            <div class="step-list"><div class="step-item">直接输入提示词 请</div><div class="step-item">第一步 确认制作规</div><div class="step-item">他不是随便生成网页</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="s005" class="clip scene step-scene" data-memos-scene="s005" data-start="68.310" data-duration="17.435" data-track-index="50">
+        <div class="step-wrap">
+          <div class="step-panel">
+            <div class="step-kicker">场景 05</div>
+            <div class="step-title">字幕动画和输出格式</div>
+            <div class="step-list"><div class="step-item">字幕动画和输出格式</div><div class="step-item">第二步联网搜索</div><div class="step-item">因为视频要讲 Codex</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="s006" class="clip scene step-scene" data-memos-scene="s006" data-start="86.010" data-duration="16.530" data-track-index="60">
+        <div class="step-wrap">
+          <div class="step-panel">
+            <div class="step-kicker">场景 06</div>
+            <div class="step-title">如果本地没有装 Agent</div>
+            <div class="step-list"><div class="step-item">如果本地没有装 Age</div><div class="step-item">第四步 初始化项目</div><div class="step-item">现在你只需要用自然</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="s007" class="clip scene step-scene" data-memos-scene="s007" data-start="102.780" data-duration="17.125" data-track-index="70">
+        <div class="step-wrap">
+          <div class="step-panel">
+            <div class="step-kicker">场景 07</div>
+            <div class="step-title">卡片动效和字幕规则</div>
+            <div class="step-list"><div class="step-item">卡片动效和字幕规则</div><div class="step-item">所以 hyperframe 的</div><div class="step-item">对于侦才来说 这比</div></div>
+          </div>
+        </div>
+      </div>
+<div id="cap-0" class="clip caption-line" data-start="0.050" data-duration="3.980" data-track-index="900"><span>八十万人看过的 Codex 加 remotion 实战已经帮助很多小伙伴入门。</span></div>
+<div id="cap-1" class="clip caption-line" data-start="4.430" data-duration="1.040" data-track-index="901"><span>今天我们继续往前走，</span></div>
+<div id="cap-2" class="clip caption-line" data-start="5.610" data-duration="2.419" data-track-index="902"><span>用 Agent 制作像这样的高级感动画视频，</span></div>
+<div id="cap-3" class="clip caption-line" data-start="8.090" data-duration="2.180" data-track-index="903"><span>这次重点测试 HyperFrames。</span></div>
+<div id="cap-4" class="clip caption-line" data-start="10.430" data-duration="6.160" data-track-index="904"><span>你现在就可以用 Codex Claude Code 这种 Agent 请创建科技感口播视频 hyperframe 的这种做果下么？</span></div>
+<div id="cap-5" class="clip caption-line" data-start="16.590" data-duration="4.480" data-track-index="905"><span>配配 Codex 用一句句话渲染软件简我用这视视频讲清楚。</span></div>
+<div id="cap-6" class="clip caption-line" data-start="21.070" data-duration="0.600" data-track-index="906"><span>简单说，</span></div>
+<div id="cap-7" class="clip caption-line" data-start="21.670" data-duration="2.260" data-track-index="907"><span>hyperframe t 是一个开元软件，</span></div>
+<div id="cap-8" class="clip caption-line" data-start="23.930" data-duration="3.400" data-track-index="908"><span>可以用写 HTML 网页的方式来构建视频。</span></div>
+<div id="cap-9" class="clip caption-line" data-start="27.330" data-duration="3.920" data-track-index="909"><span>HTMLCSS javascript 能实现的视觉效果，</span></div>
+<div id="cap-10" class="clip caption-line" data-start="31.370" data-duration="1.900" data-track-index="910"><span>理论上都可以被它渲染出来，</span></div>
+<div id="cap-11" class="clip caption-line" data-start="33.570" data-duration="2.500" data-track-index="911"><span>这也是它适不合 Agent 的原因。</span></div>
+<div id="cap-12" class="clip caption-line" data-start="36.070" data-duration="1.200" data-track-index="912"><span>下为视频内容，</span></div>
+<div id="cap-13" class="clip caption-line" data-start="37.270" data-duration="2.980" data-track-index="913"><span>本质上是页面构构样动动和时间轴。</span></div>
+<div id="cap-14" class="clip caption-line" data-start="40.510" data-duration="0.980" data-track-index="914"><span>大模型不用理解，</span></div>
+<div id="cap-15" class="clip caption-line" data-start="41.490" data-duration="0.920" data-track-index="915"><span>复杂剪辑软件，</span></div>
+<div id="cap-16" class="clip caption-line" data-start="42.530" data-duration="1.780" data-track-index="916"><span>也能一步一步把画面做出来。</span></div>
+<div id="cap-17" class="clip caption-line" data-start="44.530" data-duration="3.020" data-track-index="917"><span>下面我们用 Codex 创建第一个 hHyperFrames 视频，</span></div>
+<div id="cap-18" class="clip caption-line" data-start="47.610" data-duration="0.960" data-track-index="918"><span>先不做复杂效果，</span></div>
+<div id="cap-19" class="clip caption-line" data-start="48.830" data-duration="1.760" data-track-index="919"><span>只测试它能不能一句话出片，</span></div>
+<div id="cap-20" class="clip caption-line" data-start="50.950" data-duration="1.140" data-track-index="920"><span>直接输入提示词，</span></div>
+<div id="cap-21" class="clip caption-line" data-start="52.590" data-duration="1.640" data-track-index="921"><span>请创建一个 Codex 安装教程，</span></div>
+<div id="cap-22" class="clip caption-line" data-start="54.510" data-duration="3.160" data-track-index="922"><span>要求一九二零乘一零八零包含科技感、</span></div>
+<div id="cap-23" class="clip caption-line" data-start="57.670" data-duration="0.380" data-track-index="923"><span>配色、</span></div>
+<div id="cap-24" class="clip caption-line" data-start="58.190" data-duration="2.070" data-track-index="924"><span>字幕动画和完整时间轴，</span></div>
+<div id="cap-25" class="clip caption-line" data-start="60.260" data-duration="1.125" data-track-index="925"><span>接着 a 镇开始创作。</span></div>
+<div id="cap-26" class="clip caption-line" data-start="61.720" data-duration="0.485" data-track-index="926"><span>第一步，</span></div>
+<div id="cap-27" class="clip caption-line" data-start="62.500" data-duration="0.905" data-track-index="927"><span>确认制作规范。</span></div>
+<div id="cap-28" class="clip caption-line" data-start="63.980" data-duration="1.525" data-track-index="928"><span>他不是随便生成网页在录屏，</span></div>
+<div id="cap-29" class="clip caption-line" data-start="65.900" data-duration="1.730" data-track-index="929"><span>而是先确认尺寸时长、</span></div>
+<div id="cap-30" class="clip caption-line" data-start="67.730" data-duration="0.420" data-track-index="930"><span>素材、</span></div>
+<div id="cap-31" class="clip caption-line" data-start="68.310" data-duration="1.805" data-track-index="931"><span>字幕动画和输出格式。</span></div>
+<div id="cap-32" class="clip caption-line" data-start="70.780" data-duration="1.450" data-track-index="932"><span>第二步联网搜索。</span></div>
+<div id="cap-33" class="clip caption-line" data-start="72.470" data-duration="1.000" data-track-index="933"><span>因为视频要讲，</span></div>
+<div id="cap-34" class="clip caption-line" data-start="73.470" data-duration="3.090" data-track-index="934"><span>Codex 安装 Agent 会先读取官方文档，</span></div>
+<div id="cap-35" class="clip caption-line" data-start="76.780" data-duration="2.420" data-track-index="935"><span>明确当前版本需要展示哪些步骤。</span></div>
+<div id="cap-36" class="clip caption-line" data-start="79.420" data-duration="0.620" data-track-index="936"><span>第三步，</span></div>
+<div id="cap-37" class="clip caption-line" data-start="80.220" data-duration="5.525" data-track-index="937"><span>检查环境 HyperFrames 渲染视频需要 node FFM pab creme 这些依赖。</span></div>
+<div id="cap-38" class="clip caption-line" data-start="86.010" data-duration="1.560" data-track-index="938"><span>如果本地没有装 Agent，</span></div>
+<div id="cap-39" class="clip caption-line" data-start="87.790" data-duration="1.105" data-track-index="939"><span>会继续完善环境。</span></div>
+<div id="cap-40" class="clip caption-line" data-start="89.360" data-duration="0.580" data-track-index="940"><span>第四步，</span></div>
+<div id="cap-41" class="clip caption-line" data-start="90.060" data-duration="1.830" data-track-index="941"><span>初始化项目生成以后，</span></div>
+<div id="cap-42" class="clip caption-line" data-start="92.010" data-duration="1.460" data-track-index="942"><span>你会看到完整的项目目录，</span></div>
+<div id="cap-43" class="clip caption-line" data-start="93.470" data-duration="1.235" data-track-index="943"><span>不会编程也没关系。</span></div>
+<div id="cap-44" class="clip caption-line" data-start="95.020" data-duration="3.085" data-track-index="944"><span>现在你只需要用自然语言描述目标第五步，</span></div>
+<div id="cap-45" class="clip caption-line" data-start="98.410" data-duration="1.025" data-track-index="945"><span>建立视觉风格。</span></div>
+<div id="cap-46" class="clip caption-line" data-start="99.860" data-duration="2.040" data-track-index="946"><span>Agent 会写下字体颜色、</span></div>
+<div id="cap-47" class="clip caption-line" data-start="102.060" data-duration="0.480" data-track-index="947"><span>背景、</span></div>
+<div id="cap-48" class="clip caption-line" data-start="102.780" data-duration="1.895" data-track-index="948"><span>卡片动效和字幕规则，</span></div>
+<div id="cap-49" class="clip caption-line" data-start="105.030" data-duration="2.060" data-track-index="949"><span>让后面的画面统一在同一套系统里。</span></div>
+<div id="cap-50" class="clip caption-line" data-start="107.090" data-duration="0.300" data-track-index="950"><span>所以，</span></div>
+<div id="cap-51" class="clip caption-line" data-start="107.390" data-duration="2.645" data-track-index="951"><span>hyperframe 的价值不只是生成视频，</span></div>
+<div id="cap-52" class="clip caption-line" data-start="110.360" data-duration="1.940" data-track-index="952"><span>而是把视频制作变成可以复用，</span></div>
+<div id="cap-53" class="clip caption-line" data-start="112.420" data-duration="0.580" data-track-index="953"><span>可以检查，</span></div>
+<div id="cap-54" class="clip caption-line" data-start="113.280" data-duration="1.495" data-track-index="954"><span>可以反复修改的工程流程。</span></div>
+<div id="cap-55" class="clip caption-line" data-start="115.560" data-duration="0.905" data-track-index="955"><span>对于侦才来说，</span></div>
+<div id="cap-56" class="clip caption-line" data-start="116.800" data-duration="1.825" data-track-index="956"><span>这比传统剪辑软件更容易理解，</span></div>
+<div id="cap-57" class="clip caption-line" data-start="118.950" data-duration="0.955" data-track-index="957"><span>也更容易稳定复课。</span></div>
     </div>
     <script>
       window.__timelines = window.__timelines || {};
@@ -209,11 +310,31 @@ video { display: block; object-fit: cover; }
         tl.from("#" + id + " .circle-pip", { opacity: 0, scale: 0.70, duration: 0.30, ease: "back.out(1.7)" }, start + 0.42);
         tl.to("#" + id + " .screen-shell", { x: 18, scale: 1.01, duration: panDuration, ease: "none" }, start + 0.90);
       }
-      tl.from("#sample-steps .step-panel", { opacity: 0, y: 34, scale: 0.96, duration: 0.42, ease: "power3.out" }, 4.000);
-      tl.from("#sample-steps .step-kicker", { opacity: 0, x: -18, duration: 0.18, ease: "power2.out" }, 4.270);
-      tl.from("#sample-steps .step-title", { opacity: 0, y: 24, duration: 0.30, ease: "power2.out" }, 4.450);
-      tl.from("#sample-steps .step-item", { opacity: 0, y: 18, stagger: 0.09, duration: 0.22, ease: "power2.out" }, 4.890);
-      window.__timelines["sample-text"] = tl;
+      tl.from("#s002 .step-panel", { opacity: 0, y: 34, scale: 0.96, duration: 0.42, ease: "power3.out" }, 16.590);
+      tl.from("#s002 .step-kicker", { opacity: 0, x: -18, duration: 0.18, ease: "power2.out" }, 16.860);
+      tl.from("#s002 .step-title", { opacity: 0, y: 24, duration: 0.30, ease: "power2.out" }, 17.040);
+      tl.from("#s002 .step-item", { opacity: 0, y: 18, stagger: 0.09, duration: 0.22, ease: "power2.out" }, 17.480);
+      tl.from("#s003 .step-panel", { opacity: 0, y: 34, scale: 0.96, duration: 0.42, ease: "power3.out" }, 33.570);
+      tl.from("#s003 .step-kicker", { opacity: 0, x: -18, duration: 0.18, ease: "power2.out" }, 33.840);
+      tl.from("#s003 .step-title", { opacity: 0, y: 24, duration: 0.30, ease: "power2.out" }, 34.020);
+      tl.from("#s003 .step-item", { opacity: 0, y: 18, stagger: 0.09, duration: 0.22, ease: "power2.out" }, 34.460);
+      tl.from("#s004 .step-panel", { opacity: 0, y: 34, scale: 0.96, duration: 0.42, ease: "power3.out" }, 50.950);
+      tl.from("#s004 .step-kicker", { opacity: 0, x: -18, duration: 0.18, ease: "power2.out" }, 51.220);
+      tl.from("#s004 .step-title", { opacity: 0, y: 24, duration: 0.30, ease: "power2.out" }, 51.400);
+      tl.from("#s004 .step-item", { opacity: 0, y: 18, stagger: 0.09, duration: 0.22, ease: "power2.out" }, 51.840);
+      tl.from("#s005 .step-panel", { opacity: 0, y: 34, scale: 0.96, duration: 0.42, ease: "power3.out" }, 68.310);
+      tl.from("#s005 .step-kicker", { opacity: 0, x: -18, duration: 0.18, ease: "power2.out" }, 68.580);
+      tl.from("#s005 .step-title", { opacity: 0, y: 24, duration: 0.30, ease: "power2.out" }, 68.760);
+      tl.from("#s005 .step-item", { opacity: 0, y: 18, stagger: 0.09, duration: 0.22, ease: "power2.out" }, 69.200);
+      tl.from("#s006 .step-panel", { opacity: 0, y: 34, scale: 0.96, duration: 0.42, ease: "power3.out" }, 86.010);
+      tl.from("#s006 .step-kicker", { opacity: 0, x: -18, duration: 0.18, ease: "power2.out" }, 86.280);
+      tl.from("#s006 .step-title", { opacity: 0, y: 24, duration: 0.30, ease: "power2.out" }, 86.460);
+      tl.from("#s006 .step-item", { opacity: 0, y: 18, stagger: 0.09, duration: 0.22, ease: "power2.out" }, 86.900);
+      tl.from("#s007 .step-panel", { opacity: 0, y: 34, scale: 0.96, duration: 0.42, ease: "power3.out" }, 102.780);
+      tl.from("#s007 .step-kicker", { opacity: 0, x: -18, duration: 0.18, ease: "power2.out" }, 103.050);
+      tl.from("#s007 .step-title", { opacity: 0, y: 24, duration: 0.30, ease: "power2.out" }, 103.230);
+      tl.from("#s007 .step-item", { opacity: 0, y: 18, stagger: 0.09, duration: 0.22, ease: "power2.out" }, 103.670);
+      window.__timelines["test-duix-ltx"] = tl;
     </script>
   </body>
 </html>

@@ -231,6 +231,34 @@ export default function App() {
     setPreviewMode(false);
   }, [name]);
 
+  // 合成预览：轨道可见性提升到 App（👁 隐藏在预览里真生效），由 FourTrackTimeline 与 Canvas 共享。
+  const [hiddenTracks, setHiddenTracks] = useState<Set<string>>(new Set());
+  const toggleTrackHidden = useCallback((key: string) => {
+    setHiddenTracks((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  }, []);
+  useEffect(() => setHiddenTracks(new Set()), [name]); // 换项目复位可见性
+
+  // 合成预览：字幕 cue（带 text+时间）独立于 plan 加载，供预览叠加层按 currentTime 显示当前句。
+  const [cues, setCues] = useState<Cue[]>([]);
+  const captionsSrc = plan?.source.captions ?? null;
+  useEffect(() => {
+    let alive = true;
+    if (!captionsSrc) {
+      setCues([]);
+      return;
+    }
+    getCaptions(captionsSrc)
+      .then((raw) => alive && setCues(parseCaptions(raw)))
+      .catch(() => alive && setCues([]));
+    return () => {
+      alive = false;
+    };
+  }, [captionsSrc, captionsReloadKey]);
+
   // UI-fix #12: a transient notice auto-clears so it doesn't persist across
   // unrelated states. Manual × still works.
   useEffect(() => {
@@ -1217,6 +1245,12 @@ export default function App() {
             videoRef={videoRef}
             onVideoTime={setPlayTime}
             onPlayStateChange={setPlaying}
+            cards={visiblePlan.tracks.card}
+            selectedId={selectedId}
+            cues={cues}
+            hiddenTracks={hiddenTracks}
+            playTime={playTime}
+            playing={playing}
           />
           <SmartStrip plan={visiblePlan} />
         </div>
@@ -1258,6 +1292,8 @@ export default function App() {
         onTrimCard={manifest && busy === null ? onTrimCard : undefined}
         onDropCard={manifest && busy === null ? onInsertCard : undefined}
         onDeleteScene={manifest && busy === null ? onDeleteScene : undefined}
+        hiddenTracks={hiddenTracks}
+        onToggleTrackHidden={toggleTrackHidden}
         highlightSubtitle={highlightSubtitle}
         heightPx={dockHeight}
         playing={playing}

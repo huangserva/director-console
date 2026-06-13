@@ -49,6 +49,7 @@ function fmtTc(seconds: number): string {
   return `00:${mm}:${ss}:${ff}`;
 }
 
+const EMPTY_SET: Set<string> = new Set();
 const PPS_KEY = "pc-timeline-pps";
 const SNAP_KEY = "pc-timeline-snap";
 const SNAP_PX = 7; // 吸附阈值（屏幕像素）
@@ -84,8 +85,11 @@ export function FourTrackTimeline(props: {
   onTogglePlay?: () => void;
   /** 点标尺/轨道 seek + 播放头拖动 scrub。 */
   onSeek?: (sec: number) => void;
+  /** 合成预览：轨道可见性由 App 持有（👁 隐藏在预览里真生效）。 */
+  hiddenTracks?: Set<string>;
+  onToggleTrackHidden?: (key: string) => void;
 }) {
-  const { plan, scenes, selectedId, unboundIds, onSelect, onMoveCard, onTrimCard, onDropCard, highlightSubtitle, heightPx, onDeleteScene, playing, playTime, onTogglePlay, onSeek } = props;
+  const { plan, scenes, selectedId, unboundIds, onSelect, onMoveCard, onTrimCard, onDropCard, highlightSubtitle, heightPx, onDeleteScene, playing, playTime, onTogglePlay, onSeek, hiddenTracks, onToggleTrackHidden } = props;
   const editable = !!onMoveCard;
 
   // 总时长 = 所有轨道 clip 的 max(start+duration)，与 plan.duration 取大。
@@ -101,7 +105,7 @@ export function FourTrackTimeline(props: {
     ) || 1;
 
   const cardTypeById = new Map(plan.tracks.card.map((c) => [c.id, c.type]));
-  const [hidden, setHidden] = useState<Set<string>>(new Set());
+  const hidden = hiddenTracks ?? EMPTY_SET; // 轨道可见性由 App 控制
   const [locked, setLocked] = useState<Set<string>>(new Set());
   const [dropActive, setDropActive] = useState(false);
   const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
@@ -322,7 +326,7 @@ export function FourTrackTimeline(props: {
         <span className="tl-dot" style={{ background: color }} />
         <span className="tl-head-label">{label}</span>
         <span className="tl-toggles">
-          <button type="button" className={isHidden ? "tl-ctrl off" : "tl-ctrl"} onClick={() => toggleSet(hidden, setHidden, key)} title={isHidden ? "显示该轨道" : "隐藏该轨道"} aria-pressed={!isHidden}>
+          <button type="button" className={isHidden ? "tl-ctrl off" : "tl-ctrl"} onClick={() => onToggleTrackHidden?.(key)} title={isHidden ? "显示该轨道" : "隐藏该轨道"} aria-pressed={!isHidden}>
             <Icon name="eye" size={15} />
           </button>
           <button type="button" className={isLocked ? "tl-ctrl active" : "tl-ctrl"} onClick={() => toggleSet(locked, setLocked, key)} title={isLocked ? "解锁该轨道" : "锁定该轨道"} aria-pressed={isLocked}>
