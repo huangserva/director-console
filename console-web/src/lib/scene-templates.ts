@@ -57,27 +57,40 @@ const DEFAULT_PROPS: Record<string, PropsFactory> = {
     label: "屏幕标签",
     media: { screen: MEDIA_PLACEHOLDER, pip: MEDIA_PLACEHOLDER },
   }),
+  // Sample preset：图文讲解卡，左侧 3 张要点卡 + 右侧主讲人窗口。
   SplitTextPresenter: () => ({
     variant: "course",
-    chip: "CHIP",
-    kicker: "KICKER",
-    title: "概念标题",
-    cards: [{ label: "卡片一" }, { label: "卡片二" }],
+    chip: "概念",
+    kicker: "讲解",
+    title: "一图看懂核心概念",
+    cards: [{ label: "输入素材" }, { label: "自动成片" }, { label: "一键导出" }],
     media: { presenter: MEDIA_PLACEHOLDER },
   }),
+  // Sample preset：主讲人特写强调卡。animation.in 让 renderHeroAroll 渲染文案块（rich 才出 copy）。
   HeroAroll: () => ({
     media: { presenter: MEDIA_PLACEHOLDER },
+    chip: "重点",
+    title: "这一点最关键",
+    subline: "记住这句话就够了",
+    animation: { in: "fade-up" },
   }),
+  // Sample preset：证据快剪，三格证据（文字标签像样，视频在媒体绑定区绑）。
+  // Renderer reads item.src/start/duration/label (registry.mjs renderProofMontage)，items 是对象，src 是可绑媒体槽。
   ProofMontage: () => ({
-    // Renderer reads item.src/start/duration/label (registry.mjs renderProofMontage),
-    // so items are objects, not strings. The bindable media slot is items[i].src.
-    media: { items: [{ src: MEDIA_PLACEHOLDER, label: "Proof", start: 0, duration: 3 }] },
+    media: {
+      items: [
+        { src: MEDIA_PLACEHOLDER, label: "真实数据", start: 0, duration: 3 },
+        { src: MEDIA_PLACEHOLDER, label: "用户好评", start: 0, duration: 3 },
+        { src: MEDIA_PLACEHOLDER, label: "权威引用", start: 0, duration: 3 },
+      ],
+    },
   }),
+  // Sample preset：收尾行动号召。
   SummaryCta: () => ({
     media: { presenter: MEDIA_PLACEHOLDER },
-    chip: "CHIP",
-    title: "总结标题",
-    subline: "收尾副标题占位",
+    chip: "马上开始",
+    title: "现在就动手做第一条",
+    subline: "按这套流程，今天就能产出成片",
   }),
 };
 

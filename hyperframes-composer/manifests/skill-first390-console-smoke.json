@@ -1,0 +1,292 @@
+{
+  "compositionId": "skill-first390-console-smoke",
+  "duration": 144.295,
+  "source": {
+    "video": "/Users/huangzongning/development/paseo/creative/director-duix-hyperframes/director-codex-hyperframes-video/first390-template-locked/render/memos-v9-final.mp4"
+  },
+  "output": "projects/skill-first390-console-smoke/index.html",
+  "hyperframesEntry": "projects/skill-first390-console-smoke/index.html",
+  "audio": {
+    "src": "projects/skill-first390-console-smoke/audio/master.wav",
+    "captions": "projects/skill-first390-console-smoke/captions.json"
+  },
+  "scenes": [
+    {
+      "id": "s005",
+      "component": "TitleCard",
+      "scene_type": "title_card",
+      "start": 10.133,
+      "duration": 2.687000000000001,
+      "track": 140,
+      "props": {
+        "cornerLeft": "技能产物",
+        "cornerName": "s005",
+        "kicker": "导入场景",
+        "title": "HyperFrames ti",
+        "subline": "可在控制台继续编辑"
+      }
+    },
+    {
+      "id": "s006",
+      "component": "SplitTextPresenter",
+      "scene_type": "concept_split",
+      "start": 12.82,
+      "duration": 6.079999999999998,
+      "track": 150,
+      "props": {
+        "variant": "course",
+        "chip": "技能产物",
+        "kicker": "结构片段",
+        "title": "Tech presenter",
+        "cards": [
+          {
+            "icon": "1",
+            "label": "已绑定素材"
+          }
+        ],
+        "media": {
+          "presenter": "/Users/huangzongning/development/paseo/creative/director-duix-hyperframes/director-codex-hyperframes-video/first120-template-duix/assets/duix-course-presenter.mp4"
+        }
+      }
+    },
+    {
+      "id": "s007",
+      "component": "SplitTextPresenter",
+      "scene_type": "concept_split",
+      "start": 18.9,
+      "duration": 7.7330000000000005,
+      "track": 160,
+      "props": {
+        "variant": "course",
+        "chip": "技能产物",
+        "kicker": "结构片段",
+        "title": "Question map",
+        "cards": [
+          {
+            "icon": "1",
+            "label": "已绑定素材"
+          }
+        ],
+        "media": {
+          "presenter": "/Users/huangzongning/development/paseo/creative/director-duix-hyperframes/director-codex-hyperframes-video/first120-template-duix/assets/duix-question-presenter.mp4"
+        }
+      }
+    },
+    {
+      "id": "s009",
+      "component": "SplitTextPresenter",
+      "scene_type": "concept_split",
+      "start": 32.433,
+      "duration": 5.786999999999999,
+      "track": 180,
+      "props": {
+        "variant": "course",
+        "chip": "技能产物",
+        "kicker": "结构片段",
+        "title": "Designed for A",
+        "cards": [
+          {
+            "icon": "1",
+            "label": "已绑定素材"
+          }
+        ],
+        "media": {
+          "presenter": "/Users/huangzongning/development/paseo/creative/director-duix-hyperframes/director-codex-hyperframes-video/first120-template-duix/assets/duix-def-open-presenter.mp4"
+        }
+      }
+    },
+    {
+      "id": "s010",
+      "component": "SplitTextPresenter",
+      "scene_type": "concept_split",
+      "start": 38.22,
+      "duration": 7.020000000000003,
+      "track": 190,
+      "props": {
+        "variant": "course",
+        "chip": "技能产物",
+        "kicker": "结构片段",
+        "title": "Agent structur",
+        "cards": [
+          {
+            "icon": "1",
+            "label": "已绑定素材"
+          }
+        ],
+        "media": {
+          "presenter": "/Users/huangzongning/development/paseo/creative/director-duix-hyperframes/director-codex-hyperframes-video/first120-template-duix/assets/duix-def-stack-presenter.mp4"
+        }
+      }
+    },
+    {
+      "id": "s011",
+      "component": "SplitTextPresenter",
+      "scene_type": "concept_split",
+      "start": 45.24,
+      "duration": 6.809999999999995,
+      "track": 200,
+      "props": {
+        "variant": "course",
+        "chip": "技能产物",
+        "kicker": "结构片段",
+        "title": "Web to video",
+        "cards": [
+          {
+            "icon": "1",
+            "label": "已绑定素材"
+          }
+        ],
+        "media": {
+          "presenter": "/Users/huangzongning/development/paseo/creative/director-duix-hyperframes/director-codex-hyperframes-video/first120-template-duix/assets/duix-def-flow-presenter.mp4"
+        }
+      }
+    },
+    {
+      "id": "s012",
+      "component": "SplitTextPresenter",
+      "scene_type": "concept_split",
+      "start": 52.05,
+      "duration": 16.516999999999996,
+      "track": 210,
+      "props": {
+        "variant": "course",
+        "chip": "技能产物",
+        "kicker": "结构片段",
+        "title": "One sentence t",
+        "cards": [
+          {
+            "icon": "1",
+            "label": "已绑定素材"
+          }
+        ],
+        "media": {
+          "presenter": "/Users/huangzongning/development/paseo/creative/director-duix-hyperframes/director-codex-hyperframes-video/first120-template-duix/assets/duix-def-one-pip.mp4"
+        }
+      }
+    },
+    {
+      "id": "s013",
+      "component": "ScreenWithPip",
+      "scene_type": "screen_demo_pip",
+      "start": 68.567,
+      "duration": 16.466000000000008,
+      "track": 220,
+      "props": {
+        "label": "Prompt input",
+        "media": {
+          "screen": "/Users/huangzongning/development/paseo/creative/director-duix-hyperframes/director-codex-hyperframes-video/first120-template-duix/assets/screen-codex-prompt.jpg",
+          "pip": "/Users/huangzongning/development/paseo/creative/director-duix-hyperframes/director-codex-hyperframes-video/first120-template-duix/assets/duix-prompt-pip.mp4"
+        }
+      }
+    },
+    {
+      "id": "s014",
+      "component": "StepCard",
+      "scene_type": "step_card",
+      "start": 85.033,
+      "duration": 5.466999999999999,
+      "track": 230,
+      "props": {
+        "kicker": "s014",
+        "title": "Step 01 produc",
+        "items": [
+          "来自技能时间线",
+          "可继续编辑"
+        ]
+      }
+    },
+    {
+      "id": "s015",
+      "component": "ScreenWithPip",
+      "scene_type": "screen_demo_pip",
+      "start": 90.5,
+      "duration": 7,
+      "track": 240,
+      "props": {
+        "label": "Agent log proo",
+        "media": {
+          "screen": "/Users/huangzongning/development/paseo/creative/director-duix-hyperframes/director-codex-hyperframes-video/first120-template-duix/assets/screen-agent-log.jpg",
+          "pip": "/Users/huangzongning/development/paseo/creative/director-duix-hyperframes/director-codex-hyperframes-video/first120-template-duix/assets/duix-agent-log-pip.mp4"
+        }
+      }
+    },
+    {
+      "id": "s016",
+      "component": "StepCard",
+      "scene_type": "step_card",
+      "start": 97.5,
+      "duration": 5.367000000000004,
+      "track": 250,
+      "props": {
+        "kicker": "s016",
+        "title": "Step 02 web se",
+        "items": [
+          "来自技能时间线",
+          "可继续编辑"
+        ]
+      }
+    },
+    {
+      "id": "s017",
+      "component": "ScreenWithPip",
+      "scene_type": "screen_demo_pip",
+      "start": 102.867,
+      "duration": 6.599999999999994,
+      "track": 260,
+      "props": {
+        "label": "Official docs ",
+        "media": {
+          "screen": "/Users/huangzongning/development/paseo/creative/director-duix-hyperframes/director-codex-hyperframes-video/first120-template-duix/assets/screen-doc-search.jpg",
+          "pip": "/Users/huangzongning/development/paseo/creative/director-duix-hyperframes/director-codex-hyperframes-video/first120-template-duix/assets/duix-doc-search-pip.mp4"
+        }
+      }
+    },
+    {
+      "id": "s018",
+      "component": "StepCard",
+      "scene_type": "step_card",
+      "start": 109.467,
+      "duration": 8.832999999999998,
+      "track": 270,
+      "props": {
+        "kicker": "s018",
+        "title": "Step 03 enviro",
+        "items": [
+          "来自技能时间线",
+          "可继续编辑"
+        ]
+      }
+    },
+    {
+      "id": "s019",
+      "component": "ScreenWithPip",
+      "scene_type": "screen_demo_pip",
+      "start": 118.3,
+      "duration": 7.367000000000004,
+      "track": 280,
+      "props": {
+        "label": "Environment ch",
+        "media": {
+          "screen": "/Users/huangzongning/development/paseo/creative/director-duix-hyperframes/director-codex-hyperframes-video/first120-template-duix/assets/screen-env-check.jpg",
+          "pip": "/Users/huangzongning/development/paseo/creative/director-duix-hyperframes/director-codex-hyperframes-video/first120-template-duix/assets/duix-env-check-pip.mp4"
+        }
+      }
+    },
+    {
+      "id": "s020",
+      "component": "StepCard",
+      "scene_type": "step_card",
+      "start": 125.667,
+      "duration": 8.966000000000008,
+      "track": 290,
+      "props": {
+        "kicker": "s020",
+        "title": "Step 04 init p",
+        "items": [
+          "来自技能时间线",
+          "可继续编辑"
+        ]
+      }
+    }
+  ]
+}

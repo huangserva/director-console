@@ -309,8 +309,9 @@ describe("listMediaSlots / unbound media counting", () => {
 
   it("treats ProofMontage items[i].src as the media slot but not items[i].label", () => {
     const slots = listMediaSlots(makeNewScene("ProofMontage"));
-    expect(slots.map((s) => s.path)).toEqual(["media.items.0.src"]);
-    expect(slots[0].bound).toBe(false);
+    // sample preset 现在是 3 格证据，各一个 src 媒体槽（label 不是媒体槽）。
+    expect(slots.map((s) => s.path)).toEqual(["media.items.0.src", "media.items.1.src", "media.items.2.src"]);
+    expect(slots.every((s) => !s.bound)).toBe(true);
   });
 
   it("countUnboundMedia sums across scenes", () => {

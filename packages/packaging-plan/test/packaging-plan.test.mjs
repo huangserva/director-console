@@ -8,6 +8,7 @@ import {
   applyTemplate,
   cardTypeToCoarse,
   extractTemplate,
+  skillOutputToPackagingPlan,
   manifestToPlan,
   planToManifest,
   validateComponentCard,
@@ -100,6 +101,80 @@ function mediaForCardType(cardType) {
   return {};
 }
 
+function writeSkillOutputFixture(root) {
+  fs.mkdirSync(path.join(root, "data"), { recursive: true });
+  fs.mkdirSync(path.join(root, "assets"), { recursive: true });
+  fs.mkdirSync(path.join(root, "production", "audio"), { recursive: true });
+  fs.writeFileSync(path.join(root, "assets", "source.mp4"), "source-video");
+  fs.writeFileSync(path.join(root, "assets", "screen-codex-prompt.jpg"), "screen");
+  fs.writeFileSync(path.join(root, "assets", "duix-prompt-pip.mp4"), "pip");
+  fs.writeFileSync(path.join(root, "production", "audio", "master.wav"), "audio");
+  fs.writeFileSync(
+    path.join(root, "production", "audio", "captions.json"),
+    JSON.stringify({ captions: [{ start: 0.1, end: 1.2, text: "字幕一" }] }, null, 2),
+  );
+  fs.writeFileSync(
+    path.join(root, "data", "scene-map-390.json"),
+    JSON.stringify(
+      {
+        source: "assets/source.mp4",
+        duration: 6,
+        scenes: [
+          {
+            id: "s001",
+            start: 0,
+            end: 2,
+            component: "TitleCard",
+            scene_type: "title_card",
+            title: "开场",
+            asset_slot: "none",
+          },
+          {
+            id: "s002",
+            start: 2,
+            end: 6,
+            component: "ScreenWithPip",
+            scene_type: "screen_demo_pip",
+            title: "演示",
+            asset_slot: "screen_prompt_plus_duix_pip",
+          },
+        ],
+      },
+      null,
+      2,
+    ),
+  );
+  fs.writeFileSync(
+    path.join(root, "data", "asset-manifest.json"),
+    JSON.stringify(
+      {
+        assets: {
+          screen_prompt_plus_duix_pip: {
+            type: "screen_recording_with_duix_pip",
+            path: "assets/missing.mp4",
+            example_path: "assets/duix-prompt-pip.mp4",
+          },
+        },
+      },
+      null,
+      2,
+    ),
+  );
+  fs.writeFileSync(
+    path.join(root, "data", "audio-manifest.json"),
+    JSON.stringify(
+      {
+        items: {
+          master_audio: { path: "production/audio/master.wav" },
+          caption_timeline: { path: "production/audio/captions.json" },
+        },
+      },
+      null,
+      2,
+    ),
+  );
+}
+
 describe("packaging-plan schemas and mapping", () => {
   test("schema anchors expose the v2 packaging-plan shape", () => {
     const planSchema = readJson(path.join(packageRoot, "schemas", "packaging-plan.schema.json"));
@@ -141,6 +216,39 @@ describe("packaging-plan schemas and mapping", () => {
 });
 
 describe("manifest and packaging-plan projection", () => {
+  test("converts a structured skill output bundle into a console packaging plan", async () => {
+    const fixtureRoot = fs.mkdtempSync(path.join(process.cwd(), "skill-output-"));
+    try {
+      writeSkillOutputFixture(fixtureRoot);
+
+      const { handoff, plan } = await skillOutputToPackagingPlan(fixtureRoot, { projectId: "skill-fixture" });
+
+      assert.equal(handoff.kind, "director-console-project");
+      assert.equal(handoff.source.video, path.join(fixtureRoot, "assets", "source.mp4"));
+      assert.equal(plan.projectId, "skill-fixture");
+      assert.equal(plan.source.audio, path.join(fixtureRoot, "production", "audio", "master.wav"));
+      assert.equal(plan.source.captions, path.join(fixtureRoot, "production", "audio", "captions.json"));
+      assert.equal(plan.tracks.video.length, 1);
+      assert.equal(plan.tracks.audio.length, 1);
+      assert.equal(plan.tracks.subtitle[0].cues[0].text, "字幕一");
+      assert.deepEqual(
+        plan.tracks.card.map((card) => [card.id, card.engine.component, card.engine.scene_type]),
+        [
+          ["s001", "TitleCard", "title_card"],
+          ["s002", "ScreenWithPip", "screen_demo_pip"],
+        ],
+      );
+      assert.deepEqual(plan.tracks.card[1].media, {
+        screen: path.join(fixtureRoot, "assets", "screen-codex-prompt.jpg"),
+        pip: path.join(fixtureRoot, "assets", "duix-prompt-pip.mp4"),
+      });
+      assert.deepEqual(validatePackagingPlan(plan).failures, []);
+      assert.deepEqual(validateManifest(planToManifest(plan), { root: composerRoot, manifestPath: path.join(composerRoot, "manifests", "skill-fixture.json") }), []);
+    } finally {
+      fs.rmSync(fixtureRoot, { recursive: true, force: true });
+    }
+  });
+
   test("demo project packaging plans do not expose English default copy", () => {
     for (const projectName of ["sample-text", "m1-acceptance"]) {
       const plan = readJson(path.join(composerRoot, "projects", projectName, "packaging-plan.json"));

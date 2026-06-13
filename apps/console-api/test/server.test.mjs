@@ -73,6 +73,9 @@ const recaptionProjectDir = path.join(composerRoot, "projects", recaptionProject
 const noAudioProjectName = `recaption-no-audio-${process.pid}`;
 const noAudioManifestPath = path.join(manifestsDir, `${noAudioProjectName}.json`);
 const noAudioProjectDir = path.join(composerRoot, "projects", noAudioProjectName);
+const skillAdapterProjectName = `skill-adapter-${process.pid}`;
+const skillAdapterManifestPath = path.join(manifestsDir, `${skillAdapterProjectName}.json`);
+const skillAdapterProjectDir = path.join(composerRoot, "projects", skillAdapterProjectName);
 
 async function fileExists(target) {
   try {
@@ -144,6 +147,72 @@ function productIntroManifest(overrides = {}) {
     ],
     ...overrides,
   });
+}
+
+async function writeSkillOutputFixture(root) {
+  await fs.mkdir(path.join(root, "data"), { recursive: true });
+  await fs.mkdir(path.join(root, "assets"), { recursive: true });
+  await fs.mkdir(path.join(root, "production", "audio"), { recursive: true });
+  await fs.writeFile(path.join(root, "assets", "source.mp4"), "source-video");
+  await fs.writeFile(path.join(root, "assets", "screen-codex-prompt.jpg"), "screen");
+  await fs.writeFile(path.join(root, "assets", "duix-prompt-pip.mp4"), "pip");
+  await fs.writeFile(path.join(root, "production", "audio", "master.wav"), "audio");
+  await fs.writeFile(
+    path.join(root, "production", "audio", "captions.json"),
+    JSON.stringify({ captions: [{ start: 0.1, end: 1.2, text: "字幕一" }] }, null, 2),
+  );
+  await fs.writeFile(
+    path.join(root, "data", "scene-map-390.json"),
+    JSON.stringify(
+      {
+        source: "assets/source.mp4",
+        duration: 6,
+        scenes: [
+          { id: "s001", start: 0, end: 2, component: "TitleCard", scene_type: "title_card", title: "开场", asset_slot: "none" },
+          {
+            id: "s002",
+            start: 2,
+            end: 6,
+            component: "ScreenWithPip",
+            scene_type: "screen_demo_pip",
+            title: "演示",
+            asset_slot: "screen_prompt_plus_duix_pip",
+          },
+        ],
+      },
+      null,
+      2,
+    ),
+  );
+  await fs.writeFile(
+    path.join(root, "data", "asset-manifest.json"),
+    JSON.stringify(
+      {
+        assets: {
+          screen_prompt_plus_duix_pip: {
+            type: "screen_recording_with_duix_pip",
+            path: "assets/missing.mp4",
+            example_path: "assets/duix-prompt-pip.mp4",
+          },
+        },
+      },
+      null,
+      2,
+    ),
+  );
+  await fs.writeFile(
+    path.join(root, "data", "audio-manifest.json"),
+    JSON.stringify(
+      {
+        items: {
+          master_audio: { path: "production/audio/master.wav" },
+          caption_timeline: { path: "production/audio/captions.json" },
+        },
+      },
+      null,
+      2,
+    ),
+  );
 }
 
 function completeFakeWorkflowRun(name, inputs, recipeId = "digital-human-talking-head") {
@@ -510,6 +579,8 @@ describe("console-api", () => {
     await fs.rm(recaptionProjectDir, { recursive: true, force: true });
     await fs.rm(noAudioManifestPath, { force: true });
     await fs.rm(noAudioProjectDir, { recursive: true, force: true });
+    await fs.rm(skillAdapterManifestPath, { force: true });
+    await fs.rm(skillAdapterProjectDir, { recursive: true, force: true });
     await fs.rm(path.join(composerRoot, `index-${process.pid}.html`), { force: true });
     await fs.rm(testRenderPath, { force: true });
     await fs.writeFile(path.join(composerRoot, "index.html"), originalIndexHtml, "utf8");
@@ -2015,6 +2086,61 @@ describe("console-api", () => {
       screen: `/api/preview/media?path=${encodeURIComponent(fixtureImage)}`,
       pip: `/api/preview/media?path=${encodeURIComponent(digitalHumanLink)}`,
     });
+  });
+
+  test("imports a structured skill output bundle as a console project", async () => {
+    const skillOutputDir = path.join(fixtureRoot, "skill-output");
+    await writeSkillOutputFixture(skillOutputDir);
+
+    const response = await request(baseUrl, "/projects/from-skill-output", {
+      method: "POST",
+      body: JSON.stringify({ skillOutputPath: skillOutputDir, name: skillAdapterProjectName }),
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body.ok, true);
+    assert.equal(response.body.name, skillAdapterProjectName);
+    assert.equal(response.body.manifestName, skillAdapterProjectName);
+    assert.equal(response.body.summary.scenes, 2);
+    assert.equal(response.body.summary.cards, 2);
+    assert.equal(response.body.summary.captions, 1);
+    assert.equal(response.body.summary.mediaBindings.screen, 1);
+    assert.equal(response.body.summary.mediaBindings.pip, 1);
+
+    const savedPlan = JSON.parse(await fs.readFile(path.join(skillAdapterProjectDir, "packaging-plan.json"), "utf8"));
+    const savedManifest = JSON.parse(await fs.readFile(skillAdapterManifestPath, "utf8"));
+    assert.equal(savedPlan.source.video, path.join(skillOutputDir, "assets", "source.mp4"));
+    assert.equal(savedManifest.source.video, path.join(skillOutputDir, "assets", "source.mp4"));
+    assert.equal(savedPlan.tracks.card[1].media.screen, path.join(skillOutputDir, "assets", "screen-codex-prompt.jpg"));
+    assert.equal(savedManifest.scenes[1].props.media.pip, path.join(skillOutputDir, "assets", "duix-prompt-pip.mp4"));
+
+    const loaded = await request(baseUrl, `/projects/${skillAdapterProjectName}/packaging-plan`);
+    assert.equal(loaded.status, 200);
+    assert.equal(loaded.body.plan.tracks.video.length, 1);
+    assert.equal(loaded.body.plan.tracks.audio.length, 1);
+    assert.equal(loaded.body.plan.tracks.subtitle[0].cues[0].text, "字幕一");
+    assert.equal(loaded.body.plan.tracks.card.length, 2);
+    assert.equal(
+      loaded.body.plan.tracks.card[1].mediaUrls.screen,
+      `/api/preview/media?path=${encodeURIComponent(path.join(skillOutputDir, "assets", "screen-codex-prompt.jpg"))}`,
+    );
+  });
+
+  test("rejects skill output directories outside the import allowlist", async () => {
+    const outsideDir = await fs.mkdtemp(path.join(os.tmpdir(), "console-api-skill-outside-"));
+    try {
+      await writeSkillOutputFixture(outsideDir);
+      const response = await request(baseUrl, "/projects/from-skill-output", {
+        method: "POST",
+        body: JSON.stringify({ skillOutputPath: outsideDir, name: `${skillAdapterProjectName}-outside` }),
+      });
+
+      assert.equal(response.status, 403);
+      assert.equal(response.body.ok, false);
+      assert.match(response.body.error, /outside the allowed import roots/);
+    } finally {
+      await fs.rm(outsideDir, { recursive: true, force: true });
+    }
   });
 
   test("rewrites composed preview html media sources to serviceable preview URLs", async () => {

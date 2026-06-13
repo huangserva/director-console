@@ -497,8 +497,8 @@ export default function App() {
     updateScene(selectedScene.id, (s) => ({ ...s, props: applyEdits(s.props ?? {}, { [path]: value }) }));
   };
 
-  // 组件专属表单的字符串数组字段（如 StatsHero browser.icons、StepCard items）增删改：整组替换该点路径的数组。
-  const onListChange = (path: string, items: string[]) => {
+  // 组件专属表单的数组字段（字符串数组如 browser.icons/items，或对象数组如 cards/media.items）增删改：整组替换该点路径。
+  const onListChange = (path: string, items: unknown[]) => {
     if (!selectedScene) return;
     updateScene(selectedScene.id, (s) => ({ ...s, props: setAtPath(s.props ?? {}, path, items) }));
   };

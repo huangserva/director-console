@@ -9,6 +9,7 @@ import {
   extractTemplate,
   manifestToPlan,
   planToManifest,
+  skillOutputToPackagingPlan,
   validatePackagingPlan,
   validateTemplate,
 } from "../../../packages/packaging-plan/src/index.mjs";
@@ -1590,6 +1591,24 @@ export async function defaultRouteBImporter(
   }
 }
 
+async function localizeSkillProjectAudio({ composerRoot, projectName, plan }) {
+  const sourceAudio = plan.source?.audio;
+  if (!sourceAudio || !path.isAbsolute(sourceAudio)) return plan;
+  const ext = path.extname(sourceAudio) || ".wav";
+  const audioRef = `projects/${projectName}/audio/master${ext}`;
+  const audioPath = path.join(composerRoot, audioRef);
+  await fs.mkdir(path.dirname(audioPath), { recursive: true });
+  await fs.copyFile(sourceAudio, audioPath);
+  return {
+    ...plan,
+    source: { ...(plan.source || {}), audio: audioRef },
+    tracks: {
+      ...(plan.tracks || {}),
+      audio: (plan.tracks?.audio || []).map((clip, index) => (index === 0 ? { ...clip, src: audioRef } : clip)),
+    },
+  };
+}
+
 export function createApiServer(options = {}) {
   const composerRoot = options.composerRoot || path.resolve(import.meta.dirname, "../../../hyperframes-composer");
   const logDir = options.logDir || path.resolve(import.meta.dirname, "../logs");
@@ -1791,6 +1810,69 @@ export function createApiServer(options = {}) {
             name,
             project: created.project,
             workflowRun: created.workflowRun,
+          });
+        });
+        return;
+      }
+
+      if (request.method === "POST" && url.pathname === "/projects/from-skill-output") {
+        const body = await readJsonBody(request);
+        const skillOutputPath = body.skillOutputPath || body.path || body.outputPath;
+        const dirCheck = await validateDirectoryPath(skillOutputPath, importRoots);
+        if (!dirCheck.ok) {
+          jsonResponse(response, dirCheck.status, { ok: false, error: dirCheck.error });
+          return;
+        }
+        const name = sanitizeProjectName(body.name || body.projectName || path.basename(dirCheck.realPath));
+        if (!name) {
+          jsonResponse(response, 400, { ok: false, error: "project name is required" });
+          return;
+        }
+        await withProjectLock(name, async () => {
+          const projectDir = projectDirForName(composerRoot, name);
+          const manifestPath = path.join(composerRoot, "manifests", `${name}.json`);
+          if (!body.overwrite && ((await pathExists(path.join(projectDir, "packaging-plan.json"))) || (await pathExists(manifestPath)))) {
+            jsonResponse(response, 409, { ok: false, error: `project "${name}" already exists` });
+            return;
+          }
+          let converted;
+          try {
+            converted = await skillOutputToPackagingPlan(dirCheck.realPath, { projectId: name });
+          } catch (error) {
+            jsonResponse(response, 422, { ok: false, error: error.message || String(error) });
+            return;
+          }
+          converted = {
+            ...converted,
+            plan: await localizeSkillProjectAudio({ composerRoot, projectName: name, plan: converted.plan }),
+          };
+          const result = await savePackagingPlanForProject({ composerRoot, projectName: name, plan: converted.plan });
+          if (!result.ok) {
+            jsonResponse(response, result.status, { ok: false, error: result.error, failures: result.failures });
+            return;
+          }
+          await writeJsonAtomically(path.join(projectDir, "project.json"), {
+            id: name,
+            name,
+            recipeId: "skill-output-handoff",
+            inputs: { skillOutputPath: dirCheck.realPath },
+            sourceCapabilities: ["skill-output-handoff"],
+            assets: converted.handoff.assets,
+            outputs: {
+              manifest: result.path,
+              packagingPlan: result.planPath,
+            },
+            updatedAt: isoNow(),
+          });
+          jsonResponse(response, 200, {
+            ok: true,
+            name,
+            manifestName: name,
+            projectDir,
+            manifestPath: result.path,
+            planPath: result.planPath,
+            handoff: converted.handoff,
+            summary: converted.summary,
           });
         });
         return;

@@ -8,13 +8,20 @@ function readPath(obj: unknown, path: string): unknown {
 }
 
 describe("getComponentDef registry", () => {
-  it("本批做透 StatsHero / TitleCard / StepCard", () => {
-    expect(registeredComponents().sort()).toEqual(["StatsHero", "StepCard", "TitleCard"]);
+  it("已做透 7 个组件（第一批 3 + 第二批 4）", () => {
+    expect(registeredComponents().sort()).toEqual([
+      "HeroAroll",
+      "ProofMontage",
+      "SplitTextPresenter",
+      "StatsHero",
+      "StepCard",
+      "SummaryCta",
+      "TitleCard",
+    ]);
   });
 
   it("未注册组件回退 undefined（走通用表单 + 静态基态）", () => {
     expect(getComponentDef("ScreenWithPip")).toBeUndefined();
-    expect(getComponentDef("HeroAroll")).toBeUndefined();
     expect(getComponentDef(undefined)).toBeUndefined();
     expect(getComponentDef(null)).toBeUndefined();
   });

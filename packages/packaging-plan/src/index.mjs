@@ -454,6 +454,299 @@ function collectConcreteMediaFailures(value, prefix, failures) {
   }
 }
 
+const componentToSkillCardType = {
+  StatsHero: "opening",
+  TitleCard: "caption",
+  SplitTextPresenter: "comparison",
+  ScreenWithPip: "pip",
+  HeroAroll: "mv-rhythm",
+  StepCard: "info-structure",
+  ProofMontage: "data-proof",
+  SummaryCta: "cta",
+};
+
+const skillScreenSlotCandidates = [
+  [/prompt/i, ["assets/screen-codex-prompt.jpg", "../first120-template-duix/assets/screen-codex-prompt.jpg"]],
+  [/agent.*log/i, ["assets/screen-agent-log.jpg", "../first120-template-duix/assets/screen-agent-log.jpg"]],
+  [/doc.*search/i, ["assets/screen-doc-search.jpg", "../first120-template-duix/assets/screen-doc-search.jpg"]],
+  [/env.*check/i, ["assets/screen-env-check.jpg", "../first120-template-duix/assets/screen-env-check.jpg"]],
+];
+
+const skillAudioCandidates = [
+  "production/audio/memos-master-first120.wav",
+  "production/audio/memos-master-v7.wav",
+  "production/audio/memos-master-v5.wav",
+  "production/audio/memos-master-v4.wav",
+  "production/audio/memos-master-v3.wav",
+  "assets/duix-first120-audio.m4a",
+  "assets/source-first120-audio.m4a",
+];
+
+const skillCaptionCandidates = [
+  "production/audio/captions-memos-first120.json",
+  "production/audio/captions-memos-v7.json",
+  "production/audio/captions-memos-v5.json",
+  "production/audio/captions-memos-v4.json",
+  "production/audio/captions-memos-v3.json",
+];
+
+const skillSourceVideoCandidates = [
+  "video-template-analysis/source.mp4",
+  "render/memos-v9-final.mp4",
+  "render/ccedit-390-final.mp4",
+  "render/aether-150-final.mp4",
+  "assets/source-browser-card-263-875.mp4",
+  "assets/source-first10-keyed.mp4",
+];
+
+function readJsonIfExists(filePath) {
+  try {
+    return readJson(filePath);
+  } catch {
+    return null;
+  }
+}
+
+function resolveExistingPath(root, maybeRelative) {
+  if (!maybeRelative || typeof maybeRelative !== "string") return null;
+  const candidate = path.isAbsolute(maybeRelative) ? maybeRelative : path.resolve(root, maybeRelative);
+  try {
+    return fs.statSync(candidate).isFile() ? candidate : null;
+  } catch {
+    return null;
+  }
+}
+
+function firstExisting(root, candidates) {
+  for (const candidate of candidates || []) {
+    const resolved = resolveExistingPath(root, candidate);
+    if (resolved) return resolved;
+  }
+  return null;
+}
+
+function captionsFromPath(captionsPath) {
+  if (!captionsPath) return [];
+  const payload = readJsonIfExists(captionsPath);
+  if (Array.isArray(payload?.captions)) return payload.captions.map(normalizeCaptionCue);
+  if (Array.isArray(payload)) return payload.map(normalizeCaptionCue);
+  return [];
+}
+
+function shortSkillText(value, fallback) {
+  const text = String(value || fallback || "").trim();
+  return [...text].slice(0, 14).join("");
+}
+
+function titleFromSkillScene(scene) {
+  return shortSkillText(scene.title, scene.id);
+}
+
+function resolveSkillAssetPath(root, asset) {
+  return firstExisting(root, [asset?.path, asset?.example_path]);
+}
+
+function resolveSkillScreenPath(root, slot) {
+  for (const [pattern, candidates] of skillScreenSlotCandidates) {
+    if (pattern.test(slot || "")) return firstExisting(root, candidates);
+  }
+  return null;
+}
+
+function skillMediaForScene(root, scene, assetManifest) {
+  const asset = scene.asset_slot && assetManifest?.assets ? assetManifest.assets[scene.asset_slot] : null;
+  const assetPath = resolveSkillAssetPath(root, asset);
+  if (scene.component === "ScreenWithPip") {
+    const screen = resolveSkillScreenPath(root, scene.asset_slot) || assetPath;
+    return screen && assetPath ? { screen, pip: assetPath } : null;
+  }
+  if (scene.component === "ProofMontage") return assetPath ? { items: [{ src: assetPath, label: titleFromSkillScene(scene) }] } : null;
+  if (["StatsHero", "SplitTextPresenter", "HeroAroll", "SummaryCta"].includes(scene.component)) return assetPath ? { presenter: assetPath } : null;
+  return {};
+}
+
+function skillPropsForScene(scene, media) {
+  const title = titleFromSkillScene(scene);
+  if (scene.component === "StatsHero") {
+    return {
+      media,
+      stat: { cornerLeft: "SKILL", label: "片段", number: String(Number(scene.id?.replace(/\D/g, "")) || 1), unit: "", title },
+      browser: { done: "完成", icons: ["AI", "CLI", "MCP"], mediaStart: 0 },
+      titleBeat: { cornerLeft: "SKILL", cornerName: "导入", kicker: "技能产物", title, subline: "已转换为控制台项目" },
+    };
+  }
+  if (scene.component === "ScreenWithPip") return { label: title || "画中画", media };
+  if (scene.component === "SplitTextPresenter") {
+    return {
+      variant: "course",
+      chip: "技能产物",
+      kicker: "结构片段",
+      title,
+      cards: [{ icon: "1", label: "已绑定素材" }],
+      media,
+    };
+  }
+  if (scene.component === "HeroAroll") return { chip: "技能产物", title, subline: "数字人口播片段", media };
+  if (scene.component === "StepCard") return { kicker: scene.id || "步骤", title, items: ["来自技能时间线", "可继续编辑"] };
+  if (scene.component === "ProofMontage") return { media };
+  if (scene.component === "SummaryCta") return { chip: "完成", title: title || "收尾", subline: "可换装后重新渲染", media };
+  return { cornerLeft: "技能产物", cornerName: scene.id || "场景", kicker: "导入场景", title, subline: "可在控制台继续编辑" };
+}
+
+function skillSceneToCard(root, scene, assetManifest, index) {
+  const start = Number(scene.start ?? 0);
+  const end = Number(scene.end ?? start + scene.duration);
+  const duration = Number(scene.duration ?? end - start);
+  // The locked skill template's opening StatsHero rows are internal sub-beats.
+  // Importing each one as a standalone card causes the renderer's own nested
+  // stat/browser/title timeline to overlap. Keep the source video underneath
+  // and import only stable editable overlay cards.
+  if (scene.component === "StatsHero" && duration < 8) return null;
+  // HeroAroll currently owns a nested timed video wrapper in the renderer; keep
+  // it out of generated console projects until the engine side supports it as a
+  // safe editable card.
+  if (scene.component === "HeroAroll") return null;
+  const media = skillMediaForScene(root, scene, assetManifest);
+  if (media === null) return null;
+  if (!(duration > 0)) return null;
+  const props = skillPropsForScene(scene, media);
+  return {
+    id: scene.id || `skill-card-${index + 1}`,
+    type: componentToSkillCardType[scene.component] || reverseMapping.get(`${scene.component}:${scene.scene_type}`) || "caption",
+    engine: compactObject({
+      component: scene.component,
+      scene_type: scene.scene_type,
+      track: 100 + index * 10,
+      props,
+    }),
+    content: extractContent(props),
+    media: clone(media) || {},
+    timeline: { track: "card", start, duration },
+    validation: { status: "unchecked", failures: [] },
+  };
+}
+
+function summarizeSkillPlan(plan, skippedScenes = []) {
+  const mediaBindings = { screen: 0, pip: 0, presenter: 0, proof: 0 };
+  for (const card of plan.tracks.card || []) {
+    if (card.media?.screen) mediaBindings.screen += 1;
+    if (card.media?.pip) mediaBindings.pip += 1;
+    if (card.media?.presenter) mediaBindings.presenter += 1;
+    if (Array.isArray(card.media?.items)) mediaBindings.proof += card.media.items.length;
+  }
+  return {
+    scenes: plan.segments.length,
+    cards: plan.tracks.card.length,
+    skippedScenes: skippedScenes.length,
+    captions: plan.tracks.subtitle[0]?.cues?.length || 0,
+    mediaBindings,
+  };
+}
+
+export async function skillOutputToPackagingPlan(skillOutputDir, options = {}) {
+  const root = path.resolve(skillOutputDir);
+  const sceneMap =
+    readJsonIfExists(path.join(root, "data", "scene-map-390.json")) ||
+    readJsonIfExists(path.join(root, "scene-plan.json")) ||
+    readJsonIfExists(path.join(root, "scene-map.json"));
+  if (!sceneMap || !Array.isArray(sceneMap.scenes) || sceneMap.scenes.length === 0) {
+    throw new Error("skill output must contain data/scene-map-390.json or scene-plan.json with scenes");
+  }
+  const assetManifest = readJsonIfExists(path.join(root, "data", "asset-manifest.json")) || { assets: {} };
+  const audioManifest = readJsonIfExists(path.join(root, "data", "audio-manifest.json")) || { items: {} };
+  const sourceVideo =
+    resolveExistingPath(root, sceneMap.source) ||
+    firstExisting(root, [audioManifest.source_video, audioManifest.items?.source_video?.path, ...skillSourceVideoCandidates]);
+  const audio = firstExisting(root, [
+    audioManifest.items?.master_audio?.path,
+    audioManifest.items?.master_audio?.preview_path,
+    audioManifest.master_audio,
+    ...skillAudioCandidates,
+  ]);
+  const captions = firstExisting(root, [
+    audioManifest.items?.caption_timeline?.path,
+    audioManifest.items?.captions?.path,
+    audioManifest.caption_timeline,
+    ...skillCaptionCandidates,
+  ]);
+  const cues = captionsFromPath(captions);
+  const cards = [];
+  const skippedScenes = [];
+  let cutoffStart = null;
+  for (const [index, scene] of sceneMap.scenes.entries()) {
+    if (cutoffStart !== null && Number(scene.start ?? 0) >= cutoffStart) {
+      skippedScenes.push(scene.id || `scene-${index + 1}`);
+      continue;
+    }
+    const card = skillSceneToCard(root, scene, assetManifest, index);
+    if (card) cards.push(card);
+    else {
+      skippedScenes.push(scene.id || `scene-${index + 1}`);
+      if (["SplitTextPresenter", "ScreenWithPip", "ProofMontage", "SummaryCta"].includes(scene.component)) {
+        cutoffStart = Number(scene.start ?? 0);
+      }
+    }
+  }
+  if (!cards.length) throw new Error("skill output did not contain any importable scenes with resolvable media");
+  const sceneMapDuration = skippedScenes.length ? 0 : Number(sceneMap.duration) || 0;
+  const duration = Math.max(
+    sceneMapDuration,
+    ...cards.map((card) => numericEnd(card.timeline.start, card.timeline.duration)),
+    ...cues.map((cue) => (typeof cue.end === "number" ? cue.end : 0)),
+  );
+  const projectId = options.projectId || path.basename(root);
+  const source = { video: sourceVideo, audio, captions };
+  const plan = {
+    schemaVersion: "2026-06-12",
+    projectId,
+    recipeId: "skill-output-handoff",
+    duration,
+    source,
+    tracks: {
+      video: sourceVideo ? [{ id: "video-main", track: "video", src: sourceVideo, start: 0, duration }] : [],
+      audio: audio ? [{ id: "audio-main", track: "audio", src: audio, start: 0, duration }] : [],
+      subtitle: captions ? [{ id: "subtitle-main", track: "subtitle", src: captions, start: 0, duration, cues }] : [],
+      card: cards,
+    },
+    segments: cards.map((card) => ({
+      id: card.id,
+      role: card.type,
+      kind: card.type,
+      title: card.content.title,
+      start: card.timeline.start,
+      duration: card.timeline.duration,
+      media: clone(card.media),
+      content: clone(card.content),
+    })),
+    templateRef: null,
+    output: options.output ?? null,
+    hyperframesEntry: options.hyperframesEntry ?? null,
+    engine: {
+      skillProjectHandoff: {
+        version: 1,
+        sourceDir: root,
+        skippedScenes,
+      },
+    },
+  };
+  const handoff = {
+    version: 1,
+    kind: "director-console-project",
+    projectName: projectId,
+    source,
+    assets: {
+      digitalHumans: [...new Set(cards.map((card) => card.media?.pip).filter(Boolean))],
+      screens: [...new Set(cards.map((card) => card.media?.screen).filter(Boolean))],
+      presenters: [...new Set(cards.map((card) => card.media?.presenter).filter(Boolean))],
+    },
+    scenePlan: path.join(root, "data", "scene-map-390.json"),
+    manifest: null,
+    packagingPlan: null,
+    summary: summarizeSkillPlan(plan, skippedScenes),
+  };
+  return { handoff, plan, summary: handoff.summary };
+}
+
 export function extractTemplate(plan, options = {}) {
   const styleProfile = { id: options.styleProfileId || "default", styles: {} };
   const motionProfile = { id: options.motionProfileId || "default", motions: {} };

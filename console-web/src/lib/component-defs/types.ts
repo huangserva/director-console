@@ -21,7 +21,12 @@ export interface FormFieldText {
   inputType?: "number";
 }
 
-/** 字符串数组字段（逐条输入 + 增删，如 browser.icons / items）。 */
+/**
+ * 数组字段（逐条输入 + 增删）。两种形态：
+ *  - 字符串数组（如 browser.icons / items）：不设 itemKey，逐条是纯字符串。
+ *  - 对象数组（如 SplitTextPresenter cards=[{label}]、ProofMontage media.items=[{label,src,...}]）：设 itemKey
+ *    指明编辑哪个文字字段（其余键如 src/start 原样保留）；新增用 newItemObj 给完整默认对象。
+ */
 export interface FormFieldList {
   kind: "list";
   path: string;
@@ -29,8 +34,12 @@ export interface FormFieldList {
   hint: string;
   /** 「添加」按钮文案。 */
   addLabel?: string;
-  /** 新增条目的默认值。 */
+  /** 字符串数组新增条目的默认值。 */
   newItem?: string;
+  /** 对象数组：编辑的文字字段键（如 "label"）。设了即按对象数组处理。 */
+  itemKey?: string;
+  /** 对象数组新增条目的完整默认对象（含 src/start 等）；缺省用 { [itemKey]: newItem }。 */
+  newItemObj?: Record<string, unknown>;
 }
 
 export type FormField = FormFieldText | FormFieldList;

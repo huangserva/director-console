@@ -1,0 +1,38 @@
+{
+  "id": "skill-first390-console-smoke",
+  "name": "skill-first390-console-smoke",
+  "recipeId": "skill-output-handoff",
+  "inputs": {
+    "skillOutputPath": "/Users/huangzongning/development/paseo/creative/director-duix-hyperframes/director-codex-hyperframes-video/first390-template-locked"
+  },
+  "sourceCapabilities": [
+    "skill-output-handoff"
+  ],
+  "assets": {
+    "digitalHumans": [
+      "/Users/huangzongning/development/paseo/creative/director-duix-hyperframes/director-codex-hyperframes-video/first120-template-duix/assets/duix-prompt-pip.mp4",
+      "/Users/huangzongning/development/paseo/creative/director-duix-hyperframes/director-codex-hyperframes-video/first120-template-duix/assets/duix-agent-log-pip.mp4",
+      "/Users/huangzongning/development/paseo/creative/director-duix-hyperframes/director-codex-hyperframes-video/first120-template-duix/assets/duix-doc-search-pip.mp4",
+      "/Users/huangzongning/development/paseo/creative/director-duix-hyperframes/director-codex-hyperframes-video/first120-template-duix/assets/duix-env-check-pip.mp4"
+    ],
+    "screens": [
+      "/Users/huangzongning/development/paseo/creative/director-duix-hyperframes/director-codex-hyperframes-video/first120-template-duix/assets/screen-codex-prompt.jpg",
+      "/Users/huangzongning/development/paseo/creative/director-duix-hyperframes/director-codex-hyperframes-video/first120-template-duix/assets/screen-agent-log.jpg",
+      "/Users/huangzongning/development/paseo/creative/director-duix-hyperframes/director-codex-hyperframes-video/first120-template-duix/assets/screen-doc-search.jpg",
+      "/Users/huangzongning/development/paseo/creative/director-duix-hyperframes/director-codex-hyperframes-video/first120-template-duix/assets/screen-env-check.jpg"
+    ],
+    "presenters": [
+      "/Users/huangzongning/development/paseo/creative/director-duix-hyperframes/director-codex-hyperframes-video/first120-template-duix/assets/duix-course-presenter.mp4",
+      "/Users/huangzongning/development/paseo/creative/director-duix-hyperframes/director-codex-hyperframes-video/first120-template-duix/assets/duix-question-presenter.mp4",
+      "/Users/huangzongning/development/paseo/creative/director-duix-hyperframes/director-codex-hyperframes-video/first120-template-duix/assets/duix-def-open-presenter.mp4",
+      "/Users/huangzongning/development/paseo/creative/director-duix-hyperframes/director-codex-hyperframes-video/first120-template-duix/assets/duix-def-stack-presenter.mp4",
+      "/Users/huangzongning/development/paseo/creative/director-duix-hyperframes/director-codex-hyperframes-video/first120-template-duix/assets/duix-def-flow-presenter.mp4",
+      "/Users/huangzongning/development/paseo/creative/director-duix-hyperframes/director-codex-hyperframes-video/first120-template-duix/assets/duix-def-one-pip.mp4"
+    ]
+  },
+  "outputs": {
+    "manifest": "/Users/huangzongning/development/director-console/hyperframes-composer/manifests/skill-first390-console-smoke.json",
+    "packagingPlan": "/Users/huangzongning/development/director-console/hyperframes-composer/projects/skill-first390-console-smoke/packaging-plan.json"
+  },
+  "updatedAt": "2026-06-13T14:49:57.339Z"
+}
