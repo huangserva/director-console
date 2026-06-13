@@ -66,9 +66,12 @@ export function summaryLine(s: ImportSummary): string {
   return `已导入 ${s.name} · ${s.scenes} 场景 · ${s.captions} 字幕 · 时长 ${fmtClock(s.durationSec)} · 1920×1080`;
 }
 
-// ③ 时间线 dock 高度边界：min 够看 4 轨+标尺+轨头；max 不盖住顶栏(留 ~200px 给顶栏+步骤器+工作区)。
-export const DOCK_MIN_PX = 190;
-export const DOCK_DEFAULT_PX = 196;
+// ③ 时间线 dock 高度边界：min 必须装得下 工具栏(tlhead 37) + 标尺(22) + 4×lane(32=128) + 边框余量，
+// 否则 .pc-lanes-scroll 会把底部「卡片轨」裁掉（dispatch 8e13462c：旧 190/196 太紧，min 处 153<155 内容 → 第 4 轨被切）。
+// 实测内容高 ≈ 37+22+128+边框 ≈ 190，给足余量：MIN=220（lanes-scroll≈183>内容155）、DEFAULT=248。
+// max 仍不盖顶栏（留 ~200px 给顶栏+步骤器+工作区）。
+export const DOCK_MIN_PX = 220;
+export const DOCK_DEFAULT_PX = 248;
 export const DOCK_EXPANDED_PX = 420;
 export function dockMaxPx(viewportH: number): number {
   return Math.max(DOCK_MIN_PX + 40, viewportH - 200);
