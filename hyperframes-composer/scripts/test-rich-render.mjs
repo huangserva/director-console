@@ -251,6 +251,62 @@ test("existing manifests without rich fields render without rich markers or inli
   }
 });
 
+test("manifest source.video renders as a full-duration background video below scenes", () => {
+  const manifest = {
+    compositionId: "source-video-background",
+    duration: 12,
+    source: { video: "/tmp/source.mp4" },
+    scenes: [
+      {
+        id: "overlay-title",
+        component: "TitleCard",
+        scene_type: "title_card",
+        start: 3,
+        duration: 2,
+        props: { cornerLeft: "源视频", cornerName: "叠加", kicker: "卡片", title: "包装层", subline: "视频垫底" },
+      },
+    ],
+    captions: [{ start: 7, end: 8.5, text: "字幕也叠在源视频上" }],
+  };
+
+  const html = renderCompositionDocument(manifest);
+  const rootIndex = html.indexOf('id="root"');
+  const videoIndex = html.indexOf('id="source-video-background-layer"');
+  const sceneIndex = html.indexOf('id="overlay-title"');
+  const captionIndex = html.indexOf('id="cap-0"');
+
+  assert.match(html, /id="root"[^>]*data-has-source-video="1"/);
+  assert.match(html, /<video id="source-video-background-layer" class="clip source-video source-video-background" src="\/tmp\/source\.mp4" muted playsinline data-start="0\.000" data-duration="12\.000" data-media-start="0\.000" data-track-index="0"><\/video>/);
+  assert.ok(rootIndex < videoIndex, "source video should be inside root");
+  assert.ok(videoIndex < sceneIndex, "source video should render before card scenes so cards overlay it");
+  assert.ok(videoIndex < captionIndex, "source video should render below captions");
+});
+
+test("source-video compositions make generic card scenes transparent over the background video", () => {
+  const html = renderCompositionDocument({
+    compositionId: "source-video-transparent-scenes",
+    duration: 4,
+    source: { video: "/tmp/source.mp4" },
+    scenes: [
+      {
+        id: "transparent-title",
+        component: "TitleCard",
+        scene_type: "title_card",
+        start: 0,
+        duration: 4,
+        props: { kicker: "卡片", title: "透明叠加" },
+      },
+    ],
+  });
+  const css = fs.readFileSync(path.join(root, "components", "hyperframes-tech-talk.css"), "utf8");
+
+  assert.match(html, /id="source-video-background-layer"/);
+  assert.match(html, /id="transparent-title" class="clip scene title-scene"/);
+  assert.match(css, /#root\[data-has-source-video="1"\] \.scene \{/);
+  assert.match(css, /#root\[data-has-source-video="1"\] \.scene::before/);
+  assert.match(css, /#root\[data-has-source-video="1"\] \.scene::after/);
+});
+
 test("accepted manifests without rich fields match frozen no-drift golden snapshots", () => {
   for (const name of acceptedManifestNames) {
     const manifest = readManifest(name);

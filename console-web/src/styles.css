@@ -1342,6 +1342,7 @@ button.pc-navitem:disabled { opacity: 0.5; cursor: not-allowed; }
 /* 吸附对齐辅助线（拖动/trim 命中目标时显示） */
 .pc-snapline { position: absolute; top: 0; bottom: 0; width: 1px; background: #6cf; box-shadow: 0 0 6px rgba(102, 204, 255, 0.9); pointer-events: none; z-index: 7; }
 
-/* 播放头：可拖动 scrub（顶部抓手扩大命中区，箭头由 .pc-playhead::before 提供） */
-.pc-playhead { z-index: 8; }
-.pc-playhead-grab { position: absolute; top: -2px; left: -7px; width: 16px; height: 16px; cursor: ew-resize; }
+/* 播放头：竖线只作视觉指示，pointer-events:none 不抢轨道/卡片点击（回归修复 ff484a6b）；
+   仅顶部抓手可命中拖动 scrub。箭头由 .pc-playhead::before 提供。 */
+.pc-playhead { z-index: 8; pointer-events: none; }
+.pc-playhead-grab { position: absolute; top: -2px; left: -7px; width: 16px; height: 16px; cursor: ew-resize; pointer-events: auto; }

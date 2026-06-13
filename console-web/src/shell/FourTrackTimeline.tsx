@@ -340,8 +340,16 @@ export function FourTrackTimeline(props: {
   const laneCls = (key: string, extra = "") =>
     ["pc-lane", extra, hidden.has(key) ? "tl-lane-hidden" : "", locked.has(key) ? "tl-lane-locked" : ""].filter(Boolean).join(" ");
 
+  // 回归修复：clip 上的 mousedown 不冒泡到 lane 的 seek（点空白才 seek）。video/audio/subtitle clip
+  // 目前不可单独选中，故只阻止 seek（不做选中）。
   const clip = (c: { id: string; src?: string | null; start: number; duration: number }, cls: string, label: string) => (
-    <div key={c.id} className={`tl-clip ${cls}`} style={{ left: timeToPx(c.start, pps), width: Math.max(timeToPx(c.duration, pps), 2) }} title={c.src ?? label}>
+    <div
+      key={c.id}
+      className={`tl-clip ${cls}`}
+      style={{ left: timeToPx(c.start, pps), width: Math.max(timeToPx(c.duration, pps), 2) }}
+      title={c.src ?? label}
+      onMouseDown={(e) => e.stopPropagation()}
+    >
       {label}
     </div>
   );
@@ -403,6 +411,7 @@ export function FourTrackTimeline(props: {
             </div>
             <div
               className={laneCls("card", `pc-cardlane${dropActive ? " pc-cardlane-over" : ""}`)}
+              onMouseDown={onSeek ? beginScrub : undefined}
               onDragOver={onDropCard ? (e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; setDropActive(true); } : undefined}
               onDragLeave={onDropCard ? () => setDropActive(false) : undefined}
               onDrop={onDropCard ? (e) => { setDropActive(false); onLaneDrop(e); } : undefined}
@@ -422,7 +431,12 @@ export function FourTrackTimeline(props: {
                       className={cls}
                       style={{ left: timeToPx(start, pps), width: Math.max(timeToPx(duration, pps), 6) }}
                       title={`${s.id} · ${Number(start.toFixed(2))}s → +${Number(duration.toFixed(2))}s${unbound ? " · 未绑定素材" : ""}${editable ? " · 拖动移动 / 边缘 trim" : ""}`}
-                      onMouseDown={editable ? (e) => beginCardDrag("move", s, e) : undefined}
+                      // 回归修复：卡片块上的 mousedown 永远 stopPropagation，不冒泡到 lane 的 seek（点卡片=选中，不是 seek）；
+                      // 可编辑时进入拖动判定（beginCardDrag 内部再 4px 阈值区分单击/拖动）。
+                      onMouseDown={(e) => {
+                        e.stopPropagation();
+                        if (editable) beginCardDrag("move", s, e);
+                      }}
                       onClick={() => {
                         if (didDragRef.current) {
                           didDragRef.current = false;
@@ -457,9 +471,9 @@ export function FourTrackTimeline(props: {
             </div>
             {/* 吸附对齐辅助线 */}
             {guidePx != null && <div className="pc-snapline" style={{ left: guidePx }} />}
-            {/* 播放头（可拖动 scrub） */}
-            <div className={playing ? "pc-playhead playing" : "pc-playhead"} style={{ left: playheadPx }} onMouseDown={onSeek ? (e) => { e.stopPropagation(); beginScrub(e); } : undefined}>
-              {onSeek && <span className="pc-playhead-grab" title="拖动播放头" />}
+            {/* 播放头：竖线 pointer-events:none（不抢卡片点击），仅顶部抓手可拖动 scrub。 */}
+            <div className={playing ? "pc-playhead playing" : "pc-playhead"} style={{ left: playheadPx }}>
+              {onSeek && <span className="pc-playhead-grab" title="拖动播放头" onMouseDown={(e) => { e.stopPropagation(); beginScrub(e); }} />}
             </div>
           </div>
         </div>

@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { renderCaption } from "../components/html.mjs";
+import { renderCaption, renderVideo } from "../components/html.mjs";
 import { renderScene } from "../components/registry.mjs";
 
 const cssPath = new URL("../components/hyperframes-tech-talk.css", import.meta.url);
@@ -13,6 +13,18 @@ export function renderCompositionDocument(manifest, { timelineScript = "" } = {}
   const audio = manifest.audio
     ? `<audio id="audio" src="${manifest.audio.src}" data-start="0" data-duration="${duration}" data-track-index="90" data-volume="1"></audio>`
     : "";
+  const sourceVideo = manifest.source?.video
+    ? `\n      ${renderVideo({
+          id: "source-video-background-layer",
+          className: "clip source-video source-video-background",
+          src: manifest.source.video,
+          start: 0,
+          duration,
+          mediaStart: 0,
+          track: 0,
+        })}`
+    : "";
+  const sourceVideoAttr = sourceVideo ? ` data-has-source-video="1"` : "";
 
   return `<!doctype html>
 <html lang="zh-CN">
@@ -26,7 +38,7 @@ ${css}
     </style>
   </head>
   <body>
-    <div id="root" data-composition-id="${manifest.compositionId || "main"}" data-start="0" data-duration="${duration}" data-width="1920" data-height="1080">
+    <div id="root" data-composition-id="${manifest.compositionId || "main"}" data-start="0" data-duration="${duration}" data-width="1920" data-height="1080"${sourceVideoAttr}>${sourceVideo}
       ${audio}
 ${scenes.map(renderScene).join("\n")}
 ${captions.map((caption, index) => renderCaption(caption, index)).join("\n")}
