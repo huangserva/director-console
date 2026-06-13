@@ -12,12 +12,21 @@
   "tracks": {
     "video": [
       {
-        "id": "video-main",
+        "id": "video-main-a",
         "track": "video",
         "src": "/Users/huangzongning/Downloads/first120-template-duix-cosy-master-v2-syncfix-final.mp4",
         "start": 0,
-        "duration": 124.905,
+        "duration": 10,
         "mediaStart": 0,
+        "previewUrl": null
+      },
+      {
+        "id": "video-main-b",
+        "track": "video",
+        "src": "/Users/huangzongning/Downloads/first120-template-duix-cosy-master-v2-syncfix-final.mp4",
+        "start": 10,
+        "duration": 114.905,
+        "mediaStart": 10,
         "previewUrl": null
       }
     ],
@@ -227,7 +236,7 @@
           "failures": []
         },
         "mediaUrls": {
-          "screen": "/api/preview/media?path=%2FUsers%2Fhuangzongning%2Fdevelopment%2Fdirector-console%2Fassets%2Ftest-screen-image.png",
+          "screen": "/api/preview/media?path=%2FUsers%2Fhuangzongning%2FDownloads%2Ffirst120-template-duix-cosy-master-v2-syncfix-final.mp4",
           "pip": "/api/preview/media?path=%2FUsers%2Fhuangzongning%2Fdevelopment%2Fdirector-console%2Fassets%2Fdigital-humans%2Fduix-agent-log-pip.mp4"
         }
       }

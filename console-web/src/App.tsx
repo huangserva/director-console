@@ -63,6 +63,7 @@ import {
   CARD_TYPE_MARKER,
   makeCardScene,
   manifestToPlan,
+  rederivePlanFromManifest,
   type CardType,
   type LibraryFilter,
   type PackagingPlan,
@@ -82,6 +83,7 @@ import {
   makeNewScene,
   MEDIA_PLACEHOLDER,
   moveScene,
+  placeSceneAtStart,
   sceneUnboundMediaCount,
 } from "./lib/scene-templates";
 import { splitClip, timelineEndMax } from "./lib/timeline-edit";
@@ -478,22 +480,9 @@ export default function App() {
   // live plan was loaded we still re-derive on edits (P3 will PUT the plan instead).
   useEffect(() => {
     if (!manifest) return;
-    setPlan((prev) => {
-      const next = manifestToPlan(manifest, { recipeId: prev?.recipeId ?? null, segments: prev?.segments });
-      // 核心编辑 C：source.videoUrl 是 live packaging-plan 提供的播放地址，manifest 派生不含它。
-      // 任意编辑（删除/重排/改时长）都会触发本 effect 重新派生，必须把它带过来，否则视频/播放会丢失。
-      if (prev?.source.videoUrl) next.source.videoUrl = prev.source.videoUrl;
-      // 同理：card.mediaUrls（画中画 screen/pip 可服务 URL，服务端 getPackagingPlan 补）manifest 派生不含，
-      // 按 id 把上一份 plan 的 mediaUrls 带过来，否则编辑后画中画预览的真视频会丢。
-      if (prev) {
-        const prevUrls = new Map(prev.tracks.card.map((c) => [c.id, c.mediaUrls]));
-        for (const c of next.tracks.card) {
-          const mu = prevUrls.get(c.id);
-          if (mu) c.mediaUrls = mu;
-        }
-      }
-      return next;
-    });
+    // 从当前 manifest 重派生，并把 client-only 的 source.videoUrl + 各卡 mediaUrls 带过来
+    // （服务端补的展示字段，manifest 派生不含）。同一函数被 persist() 复用，保证保存与同步同源。
+    setPlan((prev) => rederivePlanFromManifest(manifest, prev));
   }, [manifest]);
 
   const updateScene = (id: string, mutate: (scene: Scene) => Scene) => {
@@ -582,18 +571,31 @@ export default function App() {
     setDirty(true);
   };
 
-  // v2-P4 + P0 自由时间轴：从组件库插入一张卡片，追加到时间线末端（不 reflow）。引擎路径同 M4，
-  // 仍过真实 validateManifest（PUT 时）。落点细化（拖到某时间）由后续 P1 处理；P0 先保证不破坏自由位置。
-  const onInsertCard = (cardType: CardType, afterId?: string | null) => {
+  // v2-P4 + P0 自由时间轴：从组件库插入/拖入一张卡片。引擎路径同 M4，仍过真实 validateManifest（PUT 时）。
+  // S2: 拖拽带落点时间 `start` 时，在该时间点创建（自由摆位，允许 gap/overlap，不 reflow），不再 append 到尾部；
+  // 无落点（库面板点按插入）时沿用 anchor/末端追加。
+  const onInsertCard = (cardType: CardType, opts?: { start?: number; afterId?: string | null }) => {
     if (!manifest) return;
     setError(null);
     setErrorDetails(null);
-    const anchorId = afterId ?? selectedId;
+    const existingIds = manifest.scenes.map((s) => s.id);
+    if (opts?.start != null && Number.isFinite(opts.start)) {
+      const newScene = makeCardScene(cardType, { afterScene: null, existingIds });
+      setManifest((prev) => {
+        if (!prev) return prev;
+        const scenes = placeSceneAtStart(prev.scenes, newScene, opts.start as number);
+        return { ...prev, scenes, duration: Math.max(timelineEndMax([scenes.map(sceneSpan)], 1), prev.duration || 0) };
+      });
+      setSelectedId(newScene.id);
+      setDirty(true);
+      return;
+    }
+    const anchorId = opts?.afterId ?? selectedId;
     const afterScene =
       (anchorId ? manifest.scenes.find((s) => s.id === anchorId) : null) ??
       manifest.scenes[manifest.scenes.length - 1] ??
       null;
-    const newScene = makeCardScene(cardType, { afterScene, existingIds: manifest.scenes.map((s) => s.id) });
+    const newScene = makeCardScene(cardType, { afterScene, existingIds });
     setManifest((prev) => (prev ? appendSceneAtEnd(prev, newScene) : prev));
     setSelectedId(newScene.id);
     setDirty(true);
@@ -748,7 +750,10 @@ export default function App() {
   // manifest file) work either way. 422 surfaces failures via ManifestValidationError.
   const persist = async () => {
     if (!manifest) return;
-    const currentPlan = plan ?? manifestToPlan(manifest);
+    // S1: 始终从当前 manifest 重建保存用 plan（合并 client-only 的 videoUrl/mediaUrls），
+    // 不用可能 stale 的 plan state——否则刚 split/move/trim 写进 manifest 的 source.videoClips /
+    // audio.clips / 卡片时间，会被旧 plan 经 planToManifest 覆盖丢失（立即保存竞态）。
+    const currentPlan = rederivePlanFromManifest(manifest, plan);
     const res = await putPackagingPlan(name, currentPlan);
     if (!res.saved) await saveManifest(name, manifest);
     setDirty(false);

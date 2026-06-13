@@ -210,7 +210,8 @@ export function Canvas(props: {
                 // （inset:0），不再塞进 layout 小方块；选中高亮 + 点选保留。
                 return (
                   <div key={c.id} className={sel ? "pc-overlay-cv selected" : "pc-overlay-cv"} onClick={() => onSelect?.(c.id)}>
-                    <CardVisual card={c} stageW={stageW} mediaUrls={c.mediaUrls as { screen?: string | null; pip?: string | null } | undefined} currentTime={composeT - c.timeline.start} />
+                    {/* 视频轨隐藏（👁）= 预览里所有视频媒体：卡片内 screen/pip 视频、图片 screen、composer 内嵌 video 随主源一起隐藏。 */}
+                    <CardVisual card={c} stageW={stageW} mediaUrls={c.mediaUrls as { screen?: string | null; pip?: string | null } | undefined} currentTime={composeT - c.timeline.start} videoHidden={videoTrackHidden} audioHidden={audioTrackHidden} />
                   </div>
                 );
               })}

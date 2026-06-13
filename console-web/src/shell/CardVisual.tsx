@@ -69,6 +69,10 @@ export interface CardVisualProps {
   mediaUrls?: { screen?: string | null; pip?: string | null } | null;
   /** 合成时间相对本卡起点（composeT - card.start），驱动 screen/pip 视频 currentTime 同步。 */
   currentTime?: number;
+  /** 视频轨隐藏（👁）：卡片内所有视频媒体（screen/pip 视频、图片 screen、composer 内嵌 video）随主源一起隐藏（visibility:hidden，保留挂载）。 */
+  videoHidden?: boolean;
+  /** 音频轨隐藏：卡片内视频静音（预览叠加视频本就 muted，这里保持语义一致）。 */
+  audioHidden?: boolean;
 }
 
 // composer 场景对象（registry.render 需要的形状）：复用 PlanCard.engine 的 component/scene_type/props（即原始 scene props）。
@@ -101,7 +105,7 @@ function useSyncedVideo(time: number | undefined) {
 // - 底层大画面 screen：图片 → <img>（object-fit cover 铺满）；视频 → <video>（随播放头同步）。
 // - 右下角圆形 pip：数字人口播视频，<video> 随播放头同步。
 // 图片/视频按 media.screen 的扩展名判定；都用 card.mediaUrls 的可服务 URL（不直接喂绝对路径）。
-function PipFrame({ card, mediaUrls, currentTime }: { card: PlanCard; mediaUrls?: CardVisualProps["mediaUrls"]; currentTime?: number }) {
+function PipFrame({ card, mediaUrls, currentTime, videoHidden }: { card: PlanCard; mediaUrls?: CardVisualProps["mediaUrls"]; currentTime?: number; videoHidden?: boolean }) {
   const props = (card.engine?.props as Record<string, unknown>) ?? {};
   const media = (props.media as Record<string, unknown> | undefined) ?? {};
   const label = typeof props.label === "string" ? props.label : "";
@@ -110,20 +114,22 @@ function PipFrame({ card, mediaUrls, currentTime }: { card: PlanCard; mediaUrls?
   const screenIsImage = isImageMediaPath(typeof media.screen === "string" ? (media.screen as string) : null);
   const screenRef = useSyncedVideo(currentTime);
   const pipRef = useSyncedVideo(currentTime);
+  // 视频轨隐藏：卡片内的画面媒体（含图片 screen——它也是画面内容）随主源一起 visibility:hidden（保留挂载/同步，跟主源一致）。
+  const hide: CSSProperties | undefined = videoHidden ? { visibility: "hidden" } : undefined;
   return (
     <div className="clip scene screen-proof">
       <div className="screen-label">{label}</div>
       <div className="screen-shell">
         {screenUrl ? (
           screenIsImage ? (
-            <img src={screenUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            <img src={screenUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", ...hide }} />
           ) : (
-            <video ref={screenRef} src={screenUrl} muted playsInline preload="metadata" />
+            <video ref={screenRef} src={screenUrl} muted playsInline preload="metadata" style={hide} />
           )
         ) : null}
       </div>
       <div className="circle-pip">
-        {pipUrl ? <video ref={pipRef} src={pipUrl} muted playsInline preload="metadata" /> : null}
+        {pipUrl ? <video ref={pipRef} src={pipUrl} muted playsInline preload="metadata" style={hide} /> : null}
       </div>
     </div>
   );
@@ -132,7 +138,7 @@ function PipFrame({ card, mediaUrls, currentTime }: { card: PlanCard; mediaUrls?
 // 开场数据卡：composer renderScene 产出真实 HTML（与成片一致）+ 真正的 GSAP 入场/强调动效随播放头同步。
 // timeline paused，currentTime 变化时 seek 到对应秒数——播放/拖播放头即可看到数字弹大、icon-cloud 逐个揭示、
 // browser 框入场等过程态（而非静态基态）。编辑字段→html 重渲染→timeline 在新 DOM 上重建并 seek 回当前时刻。
-function StatsHeroFrame({ card, frameStyle, currentTime }: { card: PlanCard; frameStyle: CSSProperties; currentTime?: number }) {
+function StatsHeroFrame({ card, frameStyle, currentTime, videoHidden }: { card: PlanCard; frameStyle: CSSProperties; currentTime?: number; videoHidden?: boolean }) {
   const frameRef = useRef<HTMLDivElement>(null);
   const tlRef = useRef<gsap.core.Timeline | null>(null);
   const timeRef = useRef(0);
@@ -168,10 +174,10 @@ function StatsHeroFrame({ card, frameStyle, currentTime }: { card: PlanCard; fra
 
   if (html) {
     // biome-ignore lint/security/noDangerouslySetInnerHtml: composer renderScene 产出的可信 HTML（同成片）。
-    return <div ref={frameRef} className="hf-frame" style={frameStyle} dangerouslySetInnerHTML={{ __html: html }} />;
+    return <div ref={frameRef} className="hf-frame" data-video-hidden={videoHidden ? "1" : undefined} style={frameStyle} dangerouslySetInnerHTML={{ __html: html }} />;
   }
   return (
-    <div className="hf-frame" style={frameStyle}>
+    <div className="hf-frame" data-video-hidden={videoHidden ? "1" : undefined} style={frameStyle}>
       <div className="clip scene title-scene">
         <div className="title-block">
           <div className="main-title">{card.content?.title ?? card.id}</div>
@@ -181,20 +187,21 @@ function StatsHeroFrame({ card, frameStyle, currentTime }: { card: PlanCard; fra
   );
 }
 
-export function CardVisual({ card, stageW, mediaUrls, currentTime }: CardVisualProps) {
+export function CardVisual({ card, stageW, mediaUrls, currentTime, videoHidden, audioHidden }: CardVisualProps) {
+  void audioHidden; // 卡片叠加视频本就 muted（仅主源出声）；音频轨隐藏的静音语义在 Canvas 主源侧落实，此处恒静音已满足。
   const scale = stageW > 0 ? stageW / FRAME_W : 0.4;
   const frameStyle: CSSProperties = { width: FRAME_W, height: FRAME_H, transform: `scale(${scale})`, transformOrigin: "top left", position: "absolute", left: 0, top: 0 };
   const isPip = card.engine?.component === "ScreenWithPip";
   const isStatsHero = card.engine?.component === "StatsHero";
 
   if (isStatsHero) {
-    return <StatsHeroFrame card={card} frameStyle={frameStyle} currentTime={currentTime} />;
+    return <StatsHeroFrame card={card} frameStyle={frameStyle} currentTime={currentTime} videoHidden={videoHidden} />;
   }
 
   if (isPip) {
     return (
-      <div className="hf-frame" data-has-source-video="1" style={frameStyle}>
-        <PipFrame card={card} mediaUrls={mediaUrls} currentTime={currentTime} />
+      <div className="hf-frame" data-has-source-video="1" data-video-hidden={videoHidden ? "1" : undefined} style={frameStyle}>
+        <PipFrame card={card} mediaUrls={mediaUrls} currentTime={currentTime} videoHidden={videoHidden} />
       </div>
     );
   }
@@ -207,12 +214,12 @@ export function CardVisual({ card, stageW, mediaUrls, currentTime }: CardVisualP
     html = null;
   }
   if (html) {
-    return <div className="hf-frame" style={frameStyle} dangerouslySetInnerHTML={{ __html: html }} />;
+    return <div className="hf-frame" data-video-hidden={videoHidden ? "1" : undefined} style={frameStyle} dangerouslySetInnerHTML={{ __html: html }} />;
   }
   // 兜底：用 composer 的标题样式呈现卡片标题（仍走同一套 CSS，不丑）。
   const title = card.content?.title ?? card.content?.kicker ?? card.id;
   return (
-    <div className="hf-frame" style={frameStyle}>
+    <div className="hf-frame" data-video-hidden={videoHidden ? "1" : undefined} style={frameStyle}>
       <div className="clip scene title-scene">
         <div className="title-block">
           <div className="title-kicker">{card.content?.kicker ?? ""}</div>

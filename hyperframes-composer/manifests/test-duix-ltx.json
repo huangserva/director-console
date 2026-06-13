@@ -2,7 +2,23 @@
   "compositionId": "test-duix-ltx",
   "duration": 124.905,
   "source": {
-    "video": "/Users/huangzongning/Downloads/first120-template-duix-cosy-master-v2-syncfix-final.mp4"
+    "video": "/Users/huangzongning/Downloads/first120-template-duix-cosy-master-v2-syncfix-final.mp4",
+    "videoClips": [
+      {
+        "id": "video-main-a",
+        "src": "/Users/huangzongning/Downloads/first120-template-duix-cosy-master-v2-syncfix-final.mp4",
+        "start": 0,
+        "duration": 10,
+        "mediaStart": 0
+      },
+      {
+        "id": "video-main-b",
+        "src": "/Users/huangzongning/Downloads/first120-template-duix-cosy-master-v2-syncfix-final.mp4",
+        "start": 10,
+        "duration": 114.905,
+        "mediaStart": 10
+      }
+    ]
   },
   "output": "projects/test-duix-ltx/index.html",
   "hyperframesEntry": "projects/test-duix-ltx/index.html",

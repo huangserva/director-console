@@ -158,3 +158,7 @@
 .hf-frame .caption-line span, .hf-frame .caption span { color: #fff; font-size: 30px; font-style: italic; font-weight: 950; line-height: 1.18; paint-order: stroke fill; text-shadow: 0 3px 0 #070809, 0 0 14px rgba(0,0,0,.8); -webkit-text-stroke: 4px #070809; }
 
 
+
+/* 视频轨隐藏（👁）：卡片内 composer 内嵌的 <video>（如 StatsHero 的 source-video / browser-video-card）
+   随主源一起隐藏，保留挂载不卸载。画中画卡的 screen/pip 视频 + 图片 screen 由 CardVisual 内联 visibility 处理。 */
+.hf-frame[data-video-hidden="1"] video { visibility: hidden; }

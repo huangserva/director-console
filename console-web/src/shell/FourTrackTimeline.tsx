@@ -73,7 +73,7 @@ export function FourTrackTimeline(props: {
   /** P0 trim：左/右边缘改 start+duration / duration（不 reflow）。 */
   onTrimCard?: (id: string, span: { start: number; duration: number }) => void;
   /** v2-P4: drop a library card type onto the card lane → insert at the drop time. */
-  onDropCard?: (cardType: CardType, afterId: string | null) => void;
+  onDropCard?: (cardType: CardType, opts: { start?: number; afterId?: string | null }) => void;
   /** UI-fix #5: pulse-highlight the subtitle lane (字幕识别 nav). */
   highlightSubtitle?: boolean;
   /** ③ 可拉伸 dock 高度（px）。 */
@@ -325,11 +325,12 @@ export function FourTrackTimeline(props: {
     const cardType = e.dataTransfer.getData(CARD_DRAG_MIME) as CardType;
     if (!cardType) return;
     e.preventDefault();
-    const t = timeAtClientX(e.clientX);
-    // 落点时间所在/之前的最后一张卡片作为锚（插入其后）
+    const t = Math.max(0, timeAtClientX(e.clientX));
+    // S2: 把落点时间传给 App，在该时间点创建卡片（自由摆位，不再 append 到尾部）。
+    // anchor 作为回退锚点（落点不可用时按其后追加）。
     const cards = [...plan.tracks.card].sort((a, b) => a.timeline.start - b.timeline.start);
     const anchor = cards.filter((c) => c.timeline.start <= t).pop() ?? cards[cards.length - 1] ?? null;
-    onDropCard(cardType, anchor?.id ?? null);
+    onDropCard(cardType, { start: t, afterId: anchor?.id ?? null });
   };
 
   const head = (key: string, color: string, label: string) => {
