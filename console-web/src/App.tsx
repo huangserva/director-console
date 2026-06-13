@@ -583,7 +583,7 @@ export default function App() {
   // 播放头不在所选片段范围内则提示不执行。
   const onSplitAtPlayhead = useCallback(() => {
     const t = playTime;
-    if (selectedClip && plan) {
+    if (selectedClip && plan && manifest) {
       const arr = plan.tracks[selectedClip.kind];
       const c = arr.find((x) => x.id === selectedClip.id);
       if (!c) return;
@@ -596,9 +596,19 @@ export default function App() {
         setNotice("播放头不在所选片段范围内，无法分割。");
         return;
       }
-      setPlan((prev) => (prev ? { ...prev, tracks: { ...prev.tracks, [selectedClip.kind]: arr.flatMap((x) => (x.id === c.id ? parts : [x])) } } : prev));
+      // 落 manifest（而非仅 plan 内存）：写 source.videoClips / audio.clips 多段，重派生时 manifestToPlan 不合并。
+      const nextClips = arr.flatMap((x) => (x.id === c.id ? parts : [x]));
+      const toManifestClip = (x: (typeof nextClips)[number]) => ({ id: x.id, src: x.src ?? null, start: x.start, duration: x.duration, mediaStart: x.mediaStart ?? 0 });
+      const mClips = nextClips.map(toManifestClip);
+      const m = manifest as Manifest & { source?: Record<string, unknown>; audio?: Record<string, unknown> };
+      const next: Manifest =
+        selectedClip.kind === "video"
+          ? ({ ...m, source: { ...(m.source ?? {}), videoClips: mClips } } as Manifest)
+          : ({ ...m, audio: { ...(m.audio ?? {}), clips: mClips } } as Manifest);
+      setManifest(next);
       setSelectedClip({ kind: selectedClip.kind, id: parts[0].id });
-      setNotice(`已在 ${t.toFixed(2)}s 处分割${selectedClip.kind === "video" ? "视频" : "音频"}片段。`);
+      setDirty(true);
+      setNotice(`已在 ${t.toFixed(2)}s 处分割${selectedClip.kind === "video" ? "视频" : "音频"}片段（已落 manifest）。`);
       return;
     }
     if (selectedScene && manifest) {
@@ -1156,6 +1166,11 @@ export default function App() {
             <div className="pc-kv"><span className="pc-k">时间轴入点</span><span className="pc-vv">{Number(c.start).toFixed(2)}s</span></div>
             {c.mediaStart != null && <div className="pc-kv"><span className="pc-k">源媒体入点</span><span className="pc-vv">{Number(c.mediaStart).toFixed(2)}s</span></div>}
             <div className="pc-note muted">选中片段后按 S 在播放头处分割。</div>
+            <div className="actions">
+              <button className="primary" onClick={() => onSave()} disabled={busy !== null || !dirty}>
+                {busy === "save" ? "保存中…" : dirty ? "保存" : "已保存"}
+              </button>
+            </div>
           </>
         );
       })()
