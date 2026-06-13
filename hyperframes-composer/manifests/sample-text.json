@@ -1,0 +1,60 @@
+{
+  "compositionId": "sample-text",
+  "duration": 12,
+  "output": "projects/sample-text/index.html",
+  "hyperframesEntry": "projects/sample-text/index.html",
+  "scenes": [
+    {
+      "id": "sample-title",
+      "component": "TitleCard",
+      "scene_type": "title_card",
+      "start": 0,
+      "duration": 4,
+      "track": 10,
+      "finePieces": [],
+      "props": {
+        "cornerLeft": "导演",
+        "cornerName": "样例",
+        "kicker": "可编辑方案",
+        "title": "纯文本预览",
+        "subline": "无需外部媒体素材"
+      }
+    },
+    {
+      "id": "sample-steps",
+      "component": "StepCard",
+      "scene_type": "step_card",
+      "start": 4,
+      "duration": 4,
+      "track": 20,
+      "finePieces": [
+        "StepPanel"
+      ],
+      "props": {
+        "kicker": "步骤 01",
+        "title": "编辑属性",
+        "items": [
+          "加载方案",
+          "修改文案",
+          "重新合成"
+        ]
+      }
+    },
+    {
+      "id": "sample-close",
+      "component": "TitleCard",
+      "scene_type": "title_card",
+      "start": 8,
+      "duration": 4,
+      "track": 30,
+      "finePieces": [],
+      "props": {
+        "cornerLeft": "预览",
+        "cornerName": "控制台",
+        "kicker": "网页壳已就绪",
+        "title": "实时网页输出",
+        "subline": "用于 M0 演示"
+      }
+    }
+  ]
+}

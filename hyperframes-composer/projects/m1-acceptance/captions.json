@@ -1,0 +1,560 @@
+{
+  "source_video": "/Users/huangzongning/development/paseo/creative/director-duix-hyperframes/hyperframes-composer/render/memos-v3-composed-final.mp4",
+  "source_audio": "/Users/huangzongning/development/director-console/hyperframes-composer/projects/m1-acceptance/audio/asr.wav",
+  "timing_source": "/var/folders/ff/tqy_blh90y51385kkvm02fs40000gn/T/director-route-b-import-m1-acceptance/funasr.raw.json",
+  "asr_model": "FunASR AutoModel paraformer-zh + fsmn-vad + ct-punc, sentence_timestamp=True",
+  "timestamp_units": "seconds; converted from FunASR sentence_info millisecond start/end divided by 1000",
+  "caption_text_policy": "FunASR sentence timestamps with deterministic term fixes; raw text retained in asr_text",
+  "stats": {
+    "funasr_sentences": 78,
+    "captions": 78
+  },
+  "captions": [
+    {
+      "start": 0.29,
+      "end": 2.97,
+      "text": "现在很多人的工作早就不在一台电脑里了。",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "现在很多人的工作早就不在一台电脑里了。"
+    },
+    {
+      "start": 3.17,
+      "end": 7.71,
+      "text": "这台 mac 上 Codex 在改代码另一台上 Claude Code 在做架构分析，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "这台 mac 上 codex 在改代码另一台上 class code 在做架构分析，"
+    },
+    {
+      "start": 8.05,
+      "end": 11.03,
+      "text": "cursor hermes OpenClaw 各跑各的，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": " cursor hermes open call 各跑各的，"
+    },
+    {
+      "start": 11.11,
+      "end": 12.33,
+      "text": "每个 Agent 都很强，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "每个 agent 都很强，"
+    },
+    {
+      "start": 12.63,
+      "end": 14.67,
+      "text": "但他们天然不互通问题，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "但他们天然不互通问题，"
+    },
+    {
+      "start": 14.67,
+      "end": 15.99,
+      "text": "不是某个 Agent 会忘，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "不是某个 agent 会忘，"
+    },
+    {
+      "start": 16.11,
+      "end": 18.33,
+      "text": "而是这些 Agent 没办法互相学习。",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "而是这些 agent 没办法互相学习。"
+    },
+    {
+      "start": 19.03,
+      "end": 20.01,
+      "text": "举个真实的例子，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "举个真实的例子，"
+    },
+    {
+      "start": 20.09,
+      "end": 22.47,
+      "text": "我让 Claude Code 帮我读一份飞书文档，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "我让 cloud code 帮我读一份飞书文档，"
+    },
+    {
+      "start": 22.55,
+      "end": 23.79,
+      "text": "他拿到链接就去抓，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "他拿到链接就去抓，"
+    },
+    {
+      "start": 23.93,
+      "end": 25.51,
+      "text": "结果直接被弹回登录页。",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "结果直接被弹回登录页。"
+    },
+    {
+      "start": 25.69,
+      "end": 28.09,
+      "text": "飞书的正文被登录态和权限挡着，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "飞书的正文被登录态和权限挡着，"
+    },
+    {
+      "start": 28.15,
+      "end": 28.73,
+      "text": "裸链接，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "裸链接，"
+    },
+    {
+      "start": 28.73,
+      "end": 30.37,
+      "text": "根本读不到他换方法。",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "根本读不到他换方法。"
+    },
+    {
+      "start": 30.67,
+      "end": 33.07,
+      "text": "再是反复好几轮还是空手而归？",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "再是反复好几轮还是空手而归？"
+    },
+    {
+      "start": 34.91,
+      "end": 37.79,
+      "text": "其实这个问题我的另一个 Agent 早就解决过了。",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "其实这个问题我的另一个 agent 早就解决过了。"
+    },
+    {
+      "start": 39.11,
+      "end": 42.83,
+      "text": "Codex 在自己的会话里已经把这份文档完整读出来了。",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": " codex 在自己的绘话里已经把这份文档完整读出来了。"
+    },
+    {
+      "start": 43.33,
+      "end": 44.69,
+      "text": "但 Claude Code 不知道，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "但 cloud code 不知道，"
+    },
+    {
+      "start": 44.73,
+      "end": 47.27,
+      "text": "因为那些验被困在 agCodex 的会话里，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "因为那些验被困在 agcodex 的绘话里，"
+    },
+    {
+      "start": 48.05,
+      "end": 49.95,
+      "text": "Codex 的解法是不抓裸链接，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": " codex 的解法是不抓裸链接，"
+    },
+    {
+      "start": 50.01,
+      "end": 52.05,
+      "text": "用本机 Chrome 的登录态打开页面，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "用本机 chrome 的登录态打开页面，"
+    },
+    {
+      "start": 52.17,
+      "end": 54.03,
+      "text": "直接从页面里把正文抠出来，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "直接从页面里把正文抠出来，"
+    },
+    {
+      "start": 54.15,
+      "end": 56.85,
+      "text": "遇到懒加载就滚动页面分段拿后半部分。",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "遇到懒家在就滚动页面分段拿后半部分。"
+    },
+    {
+      "start": 57.19,
+      "end": 58.29,
+      "text": "这套经验很值钱，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "这套经验很值钱，"
+    },
+    {
+      "start": 58.43,
+      "end": 59.39,
+      "text": "但未必值得做成。",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "但未必值得做成。"
+    },
+    {
+      "start": 59.39,
+      "end": 60.52,
+      "text": "一个正式的技能，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "一个正式的技能，"
+    },
+    {
+      "start": 60.6,
+      "end": 62.045,
+      "text": "也很难靠人复述清楚，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "也很难靠人复述清楚，"
+    },
+    {
+      "start": 62.25,
+      "end": 63.745,
+      "text": "它最适合近长期记忆。",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "它最适合近长期记忆。"
+    },
+    {
+      "start": 64.08,
+      "end": 65.54,
+      "text": "我对 Codex 只说了一句，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "我对 codex 只说了一句，"
+    },
+    {
+      "start": 65.62,
+      "end": 67,
+      "text": "把这次的经验记下来，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "把这次的经验记下来，"
+    },
+    {
+      "start": 67.14,
+      "end": 68.44,
+      "text": "他自己挑起 mmmoo，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "他自己挑起 mmmoo，"
+    },
+    {
+      "start": 68.44,
+      "end": 69.02,
+      "text": "CLI，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": " CLI，"
+    },
+    {
+      "start": 69.04,
+      "end": 70.445,
+      "text": "写成一条结构化记忆。",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "写成一条结构化记忆。"
+    },
+    {
+      "start": 70.77,
+      "end": 71.43,
+      "text": "整个过程，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "整个过程，"
+    },
+    {
+      "start": 71.45,
+      "end": 74.22,
+      "text": "我一条命令都没敲过切回 cot，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "我一条命令都没敲过切回 cot，"
+    },
+    {
+      "start": 74.22,
+      "end": 75.05,
+      "text": "code 在读，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": " code 在读，"
+    },
+    {
+      "start": 75.05,
+      "end": 75.755,
+      "text": "同一份文档。",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "同一份文档。"
+    },
+    {
+      "start": 76.19,
+      "end": 79.71,
+      "text": "这次他第一步先去 mamals 搜了一下 Codex 沉淀的经验，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "这次他第一步先去 mamals 搜了一下 codex 沉淀的经验，"
+    },
+    {
+      "start": 79.71,
+      "end": 81.24,
+      "text": "立刻返回 Chrome，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "立刻返回 chrome，"
+    },
+    {
+      "start": 81.24,
+      "end": 82.04,
+      "text": "登录态提取，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "登录态提取，"
+    },
+    {
+      "start": 82.04,
+      "end": 83.315,
+      "text": "正文滚动加载，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "正文滚动加载，"
+    },
+    {
+      "start": 83.64,
+      "end": 84.875,
+      "text": "照着做一次走通。",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "照着做一次走通。"
+    },
+    {
+      "start": 85.44,
+      "end": 87.135,
+      "text": "我没解释过一句飞书的机制，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "我没解释过一句飞书的机制，"
+    },
+    {
+      "start": 88.03,
+      "end": 90.045,
+      "text": "每个 Agent 其实都有自己的记忆，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "每个 agent 其实都有自己的记忆，"
+    },
+    {
+      "start": 90.31,
+      "end": 92.155,
+      "text": "memals 不需要再全量记一遍，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": " memals 不需要再全量记一遍，"
+    },
+    {
+      "start": 92.41,
+      "end": 93.51,
+      "text": "真正值得进共享。",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "真正值得进共享。"
+    },
+    {
+      "start": 93.51,
+      "end": 94.85,
+      "text": "记忆的不是聊天流水，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "记忆的不是聊天流水，"
+    },
+    {
+      "start": 95.05,
+      "end": 95.97,
+      "text": "而是跨机器，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "而是跨机器，"
+    },
+    {
+      "start": 95.99,
+      "end": 98.615,
+      "text": "跨 Agent 跨时间仍然有价值的东西。",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "跨 agent 跨时间仍然有价值的东西。"
+    },
+    {
+      "start": 98.91,
+      "end": 99.59,
+      "text": "长期偏好、",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "长期偏好、"
+    },
+    {
+      "start": 99.81,
+      "end": 101.53,
+      "text": "重大决定验证过的解法。",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "重大决定验证过的解法。"
+    },
+    {
+      "start": 101.71,
+      "end": 102.43,
+      "text": "排查结论，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "排查结论，"
+    },
+    {
+      "start": 102.53,
+      "end": 104.8,
+      "text": "工作流规则他和技能也不一样，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "工作流规则他和技能也不一样，"
+    },
+    {
+      "start": 104.9,
+      "end": 105.86,
+      "text": "技能适合稳定、",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "技能适合稳定、"
+    },
+    {
+      "start": 105.9,
+      "end": 106.46,
+      "text": "可重复，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "可重复，"
+    },
+    {
+      "start": 106.6,
+      "end": 108.46,
+      "text": "要规范执行的流程记忆，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "要规范执行的流程记忆，"
+    },
+    {
+      "start": 108.46,
+      "end": 109.34,
+      "text": "适合这种轻量，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "适合这种轻量，"
+    },
+    {
+      "start": 109.36,
+      "end": 111.71,
+      "text": "但高价值的经验还没必要产品化，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "但高价值的经验还没必要产品化，"
+    },
+    {
+      "start": 111.85,
+      "end": 114.065,
+      "text": "但下一次遇到能少走很多弯路。",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "但下一次遇到能少走很多弯路。"
+    },
+    {
+      "start": 115.01,
+      "end": 116.51,
+      "text": "多台 mac 怎么连起来？",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "多台 mac 怎么连起来？"
+    },
+    {
+      "start": 116.57,
+      "end": 118.51,
+      "text": "关键不是每台机器都装一个工具，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "关键不是每台机器都装一个工具，"
+    },
+    {
+      "start": 118.71,
+      "end": 122.765,
+      "text": "而是他们用同一套 my mouse 云端配置接入同一个记忆空间。",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "而是他们用同一套 my mouse 云端配置接入同一个记忆空间。"
+    },
+    {
+      "start": 123.07,
+      "end": 126.015,
+      "text": "第一台 mac 上 Codex 把排查结论写进去。",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "第一台 mac 上 codex 把排查结论写进去。"
+    },
+    {
+      "start": 126.34,
+      "end": 128.8,
+      "text": "第二台上 cloud cold 遇到同类问题，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "第二台上 cloud cold 遇到同类问题，"
+    },
+    {
+      "start": 128.82,
+      "end": 132.105,
+      "text": "先搜再做跑自动化的 open cloud 和 hermes，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "先搜再做跑自动化的 open cloud 和 hermes，"
+    },
+    {
+      "start": 132.35,
+      "end": 134.35,
+      "text": "也能读到同一份偏好和规则。",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "也能读到同一份偏好和规则。"
+    },
+    {
+      "start": 134.63,
+      "end": 136.31,
+      "text": "命令行是最轻量的入口，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "命令行是最轻量的入口，"
+    },
+    {
+      "start": 136.51,
+      "end": 138.03,
+      "text": "人能用 Agent 也能用，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "人能用 agent 也能用，"
+    },
+    {
+      "start": 138.21,
+      "end": 138.35,
+      "text": "它，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "它，"
+    },
+    {
+      "start": 138.35,
+      "end": 139.15,
+      "text": "不替代插件，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "不替代插件，"
+    },
+    {
+      "start": 139.21,
+      "end": 140.375,
+      "text": "也不替代 MCP，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "也不替代 MCP，"
+    },
+    {
+      "start": 140.63,
+      "end": 141.97,
+      "text": "只要能调同一套命令行，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "只要能调同一套命令行，"
+    },
+    {
+      "start": 142.09,
+      "end": 143.785,
+      "text": "就接入了同一层长期记忆，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "就接入了同一层长期记忆，"
+    },
+    {
+      "start": 144.45,
+      "end": 147.535,
+      "text": "不要让一个 Agent 解决过的问题困在一台麦克里，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "不要让一个 agent 解决过的问题困在一台麦克里，"
+    },
+    {
+      "start": 147.71,
+      "end": 148.82,
+      "text": "是用 mams cow，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "是用 mams cow，"
+    },
+    {
+      "start": 148.88,
+      "end": 151.225,
+      "text": "把你的 Agent 接到同一层长期记忆上。",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "把你的 agent 接到同一层长期记忆上。"
+    },
+    {
+      "start": 151.46,
+      "end": 153.14,
+      "text": "真正的价值不是 AI 记住了你，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "真正的价值不是 AI 记住了你，"
+    },
+    {
+      "start": 153.14,
+      "end": 155.415,
+      "text": "而而是你的 Agent 开始互相学习。",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "而而是你的 agent 开始互相学习。"
+    }
+  ]
+}

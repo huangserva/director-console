@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.hyperframes-composer/schemas/manifest.schema.json",
+  "title": "HyperFrames Composer Manifest",
+  "type": "object",
+  "required": ["compositionId", "duration", "scenes"],
+  "properties": {
+    "compositionId": { "type": "string" },
+    "duration": { "type": "number", "exclusiveMinimum": 0 },
+    "audio": {
+      "type": "object",
+      "required": ["src"],
+      "properties": {
+        "src": { "type": "string" },
+        "captions": { "type": "string" }
+      }
+    },
+    "output": { "type": "string" },
+    "scenes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "component", "scene_type", "start", "duration", "props"],
+        "properties": {
+          "id": { "type": "string" },
+          "scene": { "type": "string" },
+          "component": { "type": "string" },
+          "scene_type": { "type": "string" },
+          "start": { "type": "number" },
+          "duration": { "type": "number", "exclusiveMinimum": 0 },
+          "track": { "type": "number" },
+          "finePieces": { "type": "array", "items": { "type": "string" } },
+          "parts": { "type": "object" },
+          "props": { "type": "object" }
+        }
+      }
+    }
+  }
+}

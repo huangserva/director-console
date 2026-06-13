@@ -1,0 +1,157 @@
+{
+  "id": "run-acc-a",
+  "projectId": "acc-a",
+  "recipeId": "digital-human-talking-head",
+  "stages": [
+    {
+      "id": "script",
+      "recipeStageId": "script",
+      "type": "script",
+      "name": "Prepare script",
+      "dependsOn": [],
+      "status": "succeeded",
+      "inputs": {},
+      "outputs": {
+        "scriptPath": "/Users/huangzongning/development/director-console/hyperframes-composer/projects/acc-a/script/script.txt",
+        "script": {
+          "language": "zh",
+          "text": "今天我们用 x 做一个清晰的数字人口播。接下来用三个步骤说明价值、流程和结果。最后，把脚本、声音、口型和可编辑画面串成一个可复用工作流。",
+          "chapters": [
+            {
+              "id": "c001",
+              "title": "Hook",
+              "intent": "hook",
+              "text": "今天我们用 x 做一个清晰的数字人口播。接下来用三个步骤说明价值、流",
+              "displayHints": [
+                "x"
+              ],
+              "targetDurationSeconds": 23
+            },
+            {
+              "id": "c002",
+              "title": "Value",
+              "intent": "explain",
+              "text": "程和结果。最后，把脚本、声音、口型和可编辑画面串成一个可复用工作流。",
+              "displayHints": [
+                "流程",
+                "结果"
+              ],
+              "targetDurationSeconds": 23
+            }
+          ],
+          "terms": [
+            {
+              "written": "Claude Code",
+              "spoken": "Claude Code"
+            },
+            {
+              "written": "Director Console",
+              "spoken": "Director Console"
+            }
+          ]
+        }
+      },
+      "errors": [],
+      "updatedAt": "2026-06-12T09:07:12.466Z",
+      "startedAt": "2026-06-12T09:07:12.466Z",
+      "finishedAt": "2026-06-12T09:07:12.466Z"
+    },
+    {
+      "id": "tts",
+      "recipeStageId": "tts",
+      "type": "tts",
+      "name": "Generate speech",
+      "dependsOn": [
+        "script"
+      ],
+      "status": "needs-review",
+      "inputs": {},
+      "outputs": {},
+      "errors": [
+        {
+          "code": "SERVICE_UNAVAILABLE",
+          "message": "CosyVoice3 service is unavailable at http://127.0.0.1:4090; start TTS before running this stage.",
+          "service": "cosyvoice3"
+        }
+      ],
+      "updatedAt": "2026-06-12T09:07:12.470Z",
+      "startedAt": "2026-06-12T09:07:12.466Z"
+    },
+    {
+      "id": "lip-sync",
+      "recipeStageId": "lip-sync",
+      "type": "lip-sync",
+      "name": "Generate lip-synced presenter video",
+      "dependsOn": [
+        "tts"
+      ],
+      "status": "not-started",
+      "inputs": {},
+      "outputs": {},
+      "errors": []
+    },
+    {
+      "id": "asr",
+      "recipeStageId": "asr",
+      "type": "asr",
+      "name": "Generate captions",
+      "dependsOn": [
+        "lip-sync"
+      ],
+      "status": "not-started",
+      "inputs": {},
+      "outputs": {},
+      "errors": []
+    },
+    {
+      "id": "scene-plan",
+      "recipeStageId": "scene-plan",
+      "type": "scene-plan",
+      "name": "Generate scene plan",
+      "dependsOn": [
+        "asr"
+      ],
+      "status": "not-started",
+      "inputs": {},
+      "outputs": {},
+      "errors": []
+    },
+    {
+      "id": "packaging",
+      "recipeStageId": "packaging",
+      "type": "packaging",
+      "name": "Build composer manifest",
+      "dependsOn": [
+        "scene-plan"
+      ],
+      "status": "not-started",
+      "inputs": {},
+      "outputs": {},
+      "errors": []
+    },
+    {
+      "id": "compose",
+      "recipeStageId": "compose",
+      "type": "compose",
+      "name": "Compose preview HTML",
+      "dependsOn": [
+        "packaging"
+      ],
+      "status": "not-started",
+      "inputs": {},
+      "outputs": {},
+      "errors": []
+    }
+  ],
+  "currentStageId": "tts",
+  "checkpoints": [],
+  "errors": [
+    {
+      "stageId": "tts",
+      "code": "SERVICE_UNAVAILABLE",
+      "message": "CosyVoice3 service is unavailable at http://127.0.0.1:4090; start TTS before running this stage."
+    }
+  ],
+  "startedAt": "2026-06-12T09:07:12.465Z",
+  "updatedAt": "2026-06-12T09:07:12.470Z"
+}

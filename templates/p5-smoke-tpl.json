@@ -1,0 +1,130 @@
+{
+  "schemaVersion": "2026-06-12",
+  "id": "p5-smoke-tpl",
+  "name": "p5-smoke-tpl",
+  "description": "P5 UI smoke",
+  "cardRules": [
+    {
+      "cardType": "caption",
+      "role": "card-1",
+      "segmentKind": "card-1",
+      "layoutStrategy": {},
+      "styleRef": "default",
+      "motionRef": "default",
+      "contentRules": {
+        "cornerLeft": {
+          "source": "segment.content.cornerLeft",
+          "required": false
+        },
+        "cornerName": {
+          "source": "segment.content.cornerName",
+          "required": false
+        },
+        "kicker": {
+          "source": "segment.content.kicker",
+          "required": true
+        },
+        "title": {
+          "source": "segment.content.title",
+          "required": true
+        },
+        "subline": {
+          "source": "segment.content.subline",
+          "required": false
+        }
+      },
+      "mediaRequirements": [],
+      "engine": {
+        "component": "TitleCard",
+        "scene_type": "title_card",
+        "finePieces": []
+      },
+      "timing": {
+        "startRatio": 0,
+        "durationRatio": 0.3333333333333333
+      }
+    },
+    {
+      "cardType": "info-structure",
+      "role": "card-2",
+      "segmentKind": "card-2",
+      "layoutStrategy": {},
+      "styleRef": "default",
+      "motionRef": "default",
+      "contentRules": {
+        "kicker": {
+          "source": "segment.content.kicker",
+          "required": true
+        },
+        "title": {
+          "source": "segment.content.title",
+          "required": true
+        },
+        "items": {
+          "source": "segment.content.items",
+          "required": true
+        }
+      },
+      "mediaRequirements": [],
+      "engine": {
+        "component": "StepCard",
+        "scene_type": "step_card",
+        "finePieces": [
+          "StepPanel"
+        ]
+      },
+      "timing": {
+        "startRatio": 0.3333333333333333,
+        "durationRatio": 0.3333333333333333
+      }
+    },
+    {
+      "cardType": "caption",
+      "role": "card-3",
+      "segmentKind": "card-3",
+      "layoutStrategy": {},
+      "styleRef": "default",
+      "motionRef": "default",
+      "contentRules": {
+        "cornerLeft": {
+          "source": "segment.content.cornerLeft",
+          "required": false
+        },
+        "cornerName": {
+          "source": "segment.content.cornerName",
+          "required": false
+        },
+        "kicker": {
+          "source": "segment.content.kicker",
+          "required": true
+        },
+        "title": {
+          "source": "segment.content.title",
+          "required": true
+        },
+        "subline": {
+          "source": "segment.content.subline",
+          "required": false
+        }
+      },
+      "mediaRequirements": [],
+      "engine": {
+        "component": "TitleCard",
+        "scene_type": "title_card",
+        "finePieces": []
+      },
+      "timing": {
+        "startRatio": 0.6666666666666666,
+        "durationRatio": 0.3333333333333333
+      }
+    }
+  ],
+  "styleProfile": {
+    "id": "default",
+    "styles": {}
+  },
+  "motionProfile": {
+    "id": "default",
+    "motions": {}
+  }
+}

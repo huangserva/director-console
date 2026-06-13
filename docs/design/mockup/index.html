@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Director 包装工作台 · v2 设计稿静态复刻</title>
+<!--
+  纯视觉 mockup — 自包含静态 HTML+CSS，浏览器双击即看。
+  不接 React / 不接 API / 无功能；占位假数据照参考图填。
+  靶子图：docs/design/director-packaging-console-ui-reference.png
+  按 1440 宽桌面做（移动端不管）。dispatch 6193716f。
+-->
+<style>
+  :root {
+    --bg:        #0d0f12;   /* 近黑底 */
+    --bg-2:      #121519;   /* 面板底 */
+    --bg-3:      #171b21;   /* 卡片/输入底 */
+    --bg-4:      #1d2229;   /* 高一层 */
+    --line:      #262c35;   /* 分隔线 */
+    --line-2:    #313844;
+    --text:      #e7eaee;
+    --muted:     #8a93a0;
+    --muted-2:   #5d6571;
+    --gold:      #e8b23a;   /* 金高亮 */
+    --gold-dim:  #b88a2a;
+    --blue:      #4f86d6;   /* 视频轨 */
+    --blue-2:    #5a93e0;
+    --green:     #45b07c;   /* 音频轨 */
+    --purple:    #8d6fd1;   /* 卡片轨·演示标注 */
+    --cap:       #3b6ea8;   /* 字幕块 */
+    --radius:    7px;
+  }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; }
+  body {
+    background:var(--bg); color:var(--text);
+    font:13px/1.5 "PingFang SC","Microsoft YaHei",ui-sans-serif,system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .app { width:1440px; height:860px; margin:0 auto; display:flex; flex-direction:column;
+         border:1px solid var(--line); background:var(--bg); overflow:hidden; }
+  .muted { color:var(--muted); }
+  .hex { width:22px; height:22px; display:inline-block; background:var(--gold);
+         clip-path:polygon(25% 5%,75% 5%,100% 50%,75% 95%,25% 95%,0 50%); }
+
+  /* ───────── 1. 顶栏 ───────── */
+  .topbar { height:50px; flex:0 0 50px; display:flex; align-items:center; gap:18px;
+            padding:0 16px; background:linear-gradient(180deg,#15191f,#0f1217);
+            border-bottom:1px solid var(--line); }
+  .brand { display:flex; align-items:center; gap:9px; font-weight:600; font-size:14px; white-space:nowrap; }
+  .brand .v { color:var(--muted-2); font-weight:400; font-size:11px; }
+  .mainnav { display:flex; align-items:center; gap:4px; margin-left:8px; flex:1; }
+  .navitem { padding:6px 11px; border-radius:6px; color:var(--muted); white-space:nowrap; cursor:default; }
+  .navitem.active { background:rgba(232,178,58,.14); color:var(--gold); box-shadow:inset 0 0 0 1px rgba(232,178,58,.35); }
+  .navitem .ic { margin-right:4px; }
+  .proj { display:flex; align-items:center; gap:10px; }
+  .proj .name { color:var(--muted); padding:6px 12px; background:var(--bg-3); border:1px solid var(--line);
+                border-radius:6px; max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .btn { padding:7px 16px; border-radius:6px; cursor:default; font-weight:600; white-space:nowrap; }
+  .btn.ghost { background:transparent; border:1px solid var(--line-2); color:var(--text); }
+  .btn.gold { background:linear-gradient(180deg,#f0bd4a,#dca128); border:1px solid var(--gold-dim); color:#221a07; }
+
+  /* ───────── 工作区 ───────── */
+  .workspace { flex:1; display:flex; min-height:0; }
+
+  /* 左竖排 6 tab */
+  .leftrail { width:62px; flex:0 0 62px; background:var(--bg-2); border-right:1px solid var(--line);
+              display:flex; flex-direction:column; align-items:center; padding-top:10px; gap:4px; }
+  .railtab { width:46px; height:50px; border-radius:8px; display:flex; flex-direction:column;
+             align-items:center; justify-content:center; gap:3px; color:var(--muted-2); cursor:default; font-size:10px; }
+  .railtab .ic { font-size:17px; }
+  .railtab.active { background:rgba(232,178,58,.13); color:var(--gold); box-shadow:inset 0 0 0 1px rgba(232,178,58,.3); }
+
+  /* 左面板：组件库 */
+  .leftpanel { width:286px; flex:0 0 286px; background:var(--bg-2); border-right:1px solid var(--line);
+               display:flex; flex-direction:column; min-height:0; }
+  .panelhead { padding:13px 14px 9px; font-weight:600; font-size:13px; }
+  .search { margin:0 14px 12px; }
+  .search input { width:100%; padding:8px 11px; background:var(--bg-3); border:1px solid var(--line);
+                  border-radius:6px; color:var(--text); font-size:12px; }
+  .search input::placeholder { color:var(--muted-2); }
+  .sectlabel { padding:4px 14px; font-size:11px; color:var(--muted); display:flex; justify-content:space-between; }
+  .chips { display:flex; gap:6px; overflow-x:auto; padding:6px 14px 12px; }
+  .chips::-webkit-scrollbar { height:5px; } .chips::-webkit-scrollbar-thumb { background:var(--line-2); border-radius:3px; }
+  .chip { padding:5px 12px; border-radius:999px; background:var(--bg-3); border:1px solid var(--line);
+          color:var(--muted); white-space:nowrap; cursor:default; font-size:12px; }
+  .chip.active { background:rgba(232,178,58,.16); color:var(--gold); border-color:rgba(232,178,58,.4); }
+  .cardgrid { display:grid; grid-template-columns:1fr 1fr; gap:9px; padding:8px 14px 16px; overflow-y:auto; }
+  .compcard { background:var(--bg-3); border:1px solid var(--line); border-radius:8px; padding:10px 9px;
+              cursor:grab; transition:border-color .1s; }
+  .compcard:hover { border-color:var(--gold-dim); }
+  .compcard .cic { width:26px; height:26px; border-radius:6px; background:var(--bg-4); display:flex;
+                   align-items:center; justify-content:center; font-size:14px; margin-bottom:7px; color:var(--gold); }
+  .compcard .ct { font-size:12px; font-weight:600; }
+  .compcard .cs { font-size:10.5px; color:var(--muted-2); margin-top:2px; line-height:1.35; }
+
+  /* 中央列 */
+  .center { flex:1; display:flex; flex-direction:column; min-width:0; background:#0a0c0f; }
+  .canvastool { height:42px; flex:0 0 42px; display:flex; align-items:center; gap:6px; padding:0 14px;
+                border-bottom:1px solid var(--line); background:var(--bg-2); }
+  .tool { width:30px; height:28px; border-radius:6px; display:flex; align-items:center; justify-content:center;
+          color:var(--muted); background:var(--bg-3); border:1px solid var(--line); cursor:default; font-size:14px; }
+  .tool.active { color:var(--gold); border-color:rgba(232,178,58,.4); background:rgba(232,178,58,.12); }
+  .fit { padding:5px 10px; color:var(--muted); font-size:12px; }
+  .spacer { flex:1; }
+  .toggle { padding:5px 11px; border-radius:6px; color:var(--muted); background:var(--bg-3);
+            border:1px solid var(--line); font-size:12px; cursor:default; }
+  .toggle.on { color:var(--gold); border-color:rgba(232,178,58,.4); background:rgba(232,178,58,.1); }
+
+  .canvas { flex:1; position:relative; display:flex; align-items:center; justify-content:center;
+            background:
+              radial-gradient(circle at 50% 40%,#13171d 0%,#0a0c0f 70%); overflow:hidden; }
+  .stage { width:760px; height:428px; position:relative;
+           background:linear-gradient(160deg,#161b22,#0e1217);
+           border:1px solid var(--line); border-radius:6px; box-shadow:0 18px 60px rgba(0,0,0,.5); }
+  .safearea { position:absolute; inset:26px; border:1px dashed rgba(255,255,255,.07); border-radius:4px; }
+  /* presenter 剪影 */
+  .presenter { position:absolute; right:90px; bottom:0; width:190px; height:300px; }
+  .presenter .head { position:absolute; left:50%; top:0; transform:translateX(-50%);
+                     width:96px; height:96px; border-radius:50%; background:#2b323c; }
+  .presenter .body { position:absolute; left:50%; bottom:0; transform:translateX(-50%);
+                     width:190px; height:215px; border-radius:90px 90px 0 0; background:#2b323c; }
+  /* 选中卡片 */
+  .selcard { position:absolute; left:120px; top:120px; width:330px; padding:22px 24px;
+             background:linear-gradient(165deg,rgba(22,27,34,.94),rgba(14,18,23,.96));
+             border:1px solid rgba(232,178,58,.5); border-radius:10px; box-shadow:0 10px 36px rgba(0,0,0,.5); }
+  .selcard .tag { display:inline-block; padding:3px 10px; border-radius:5px; font-size:11px; font-weight:600;
+                  background:rgba(232,178,58,.18); color:var(--gold); }
+  .selcard h3 { margin:12px 0 9px; font-size:21px; line-height:1.3; }
+  .selcard p { margin:0; font-size:12.5px; color:var(--muted); line-height:1.6; }
+  .handle { position:absolute; width:11px; height:11px; background:var(--gold); border:2px solid #1a130a; border-radius:2px; }
+  .handle.tl{left:-6px;top:-6px;} .handle.tr{right:-6px;top:-6px;}
+  .handle.bl{left:-6px;bottom:-6px;} .handle.br{right:-6px;bottom:-6px;}
+  /* 三条引导线（图里卡片左上的金/绿/黄短线） */
+  .guides { position:absolute; left:120px; top:90px; display:flex; flex-direction:column; gap:5px; }
+  .guides i { display:block; height:3px; border-radius:2px; }
+  .guides i:nth-child(1){ width:120px; background:var(--gold); }
+  .guides i:nth-child(2){ width:90px; background:var(--green); }
+  .guides i:nth-child(3){ width:150px; background:#d8c24a; }
+  .canvashint { position:absolute; left:0; right:0; bottom:30px; text-align:center; color:var(--muted-2); font-size:13px; }
+
+  /* 智能方案条 */
+  .smartstrip { flex:0 0 86px; height:86px; display:flex; align-items:center; gap:10px; padding:0 14px;
+                background:var(--bg-2); border-top:1px solid var(--line); }
+  .segs { display:flex; gap:8px; flex:1; overflow-x:auto; }
+  .seg { min-width:128px; padding:9px 12px; border-radius:8px; background:var(--bg-3); border:1px solid var(--line); }
+  .seg .st { font-size:12px; font-weight:600; }
+  .seg .sr { font-size:11px; color:var(--muted-2); margin-top:3px; }
+  .seg.active { border-color:rgba(232,178,58,.45); background:rgba(232,178,58,.08); }
+  .smartsum { width:188px; flex:0 0 188px; padding-left:14px; border-left:1px solid var(--line); }
+  .smartsum .h { color:var(--gold); font-weight:600; font-size:12px; margin-bottom:5px; }
+  .smartsum .l { color:var(--muted); font-size:11.5px; line-height:1.7; }
+
+  /* 右 Inspector */
+  .inspector { width:300px; flex:0 0 300px; background:var(--bg-2); border-left:1px solid var(--line);
+               display:flex; flex-direction:column; min-height:0; }
+  .insptabs { display:flex; border-bottom:1px solid var(--line); }
+  .insptab { flex:1; text-align:center; padding:11px 0; color:var(--muted); cursor:default; font-size:12.5px; }
+  .insptab.active { color:var(--gold); box-shadow:inset 0 -2px 0 var(--gold); }
+  .inspbody { overflow-y:auto; padding:4px 0 18px; }
+  .inspsect { padding:13px 16px; border-bottom:1px solid var(--line); }
+  .inspsect h4 { margin:0 0 10px; font-size:11px; color:var(--muted); letter-spacing:.04em; text-transform:uppercase; }
+  .kv { display:flex; justify-content:space-between; font-size:12px; padding:4px 0; }
+  .kv .k { color:var(--muted); } .kv .vv { color:var(--text); }
+  .ipt { width:100%; padding:7px 9px; background:var(--bg-3); border:1px solid var(--line); border-radius:6px;
+         color:var(--text); font-size:12px; margin-top:5px; }
+  textarea.ipt { resize:none; height:54px; line-height:1.5; }
+  .field { margin-bottom:9px; }
+  .field > label { font-size:11px; color:var(--muted); }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .pillsel { display:inline-flex; align-items:center; gap:6px; padding:6px 10px; background:var(--bg-3);
+             border:1px solid var(--line); border-radius:6px; font-size:12px; color:var(--text); }
+  .num { display:flex; flex-direction:column; gap:3px; }
+  .num span { font-size:11px; color:var(--muted); } .num b { font-weight:600; }
+
+  /* ───────── 底部四轨时间线 ───────── */
+  .timeline { flex:0 0 196px; height:196px; background:var(--bg-2); border-top:1px solid var(--line);
+              display:flex; flex-direction:column; }
+  .tlhead { height:36px; flex:0 0 36px; display:flex; align-items:center; gap:14px; padding:0 14px;
+            border-bottom:1px solid var(--line); }
+  .tc { font-family:ui-monospace,Menlo,monospace; color:var(--gold); font-size:13px; }
+  .transport { display:flex; gap:8px; color:var(--muted); font-size:14px; }
+  .tlhead .right { margin-left:auto; color:var(--muted-2); font-size:11.5px; display:flex; gap:14px; }
+  .tlbody { flex:1; display:flex; min-height:0; }
+  .trackheads { width:150px; flex:0 0 150px; border-right:1px solid var(--line); }
+  .trackhead { height:32px; display:flex; align-items:center; gap:8px; padding:0 12px; border-bottom:1px solid var(--line); font-size:12px; }
+  .trackhead .dot { width:8px; height:8px; border-radius:2px; }
+  .trackhead .toggles { margin-left:auto; color:var(--muted-2); display:flex; gap:7px; font-size:11px; }
+  .lanes { flex:1; position:relative; overflow:hidden; }
+  .ruler { height:22px; border-bottom:1px solid var(--line); position:relative; }
+  .ruler .tick { position:absolute; top:0; bottom:0; border-left:1px solid var(--line); padding-left:4px;
+                 font-size:10px; color:var(--muted-2); }
+  .lane { height:32px; border-bottom:1px solid var(--line); position:relative; }
+  .clip { position:absolute; top:5px; height:22px; border-radius:4px; font-size:10.5px; line-height:22px;
+          padding:0 8px; overflow:hidden; white-space:nowrap; color:#0c0e11; font-weight:600; }
+  .clip.video { background:linear-gradient(180deg,#5a93e0,#3f74c0); color:#06101e; }
+  .clip.audio { background:linear-gradient(180deg,#4fbd87,#36996a); color:#04130c; }
+  .clip.cap   { background:rgba(59,110,168,.22); border:1px solid var(--cap); color:#9cc3ef; font-weight:500; }
+  .clip.gold  { background:linear-gradient(180deg,#f0bd4a,#d49f2a); }
+  .clip.purple{ background:linear-gradient(180deg,#9b7fda,#7a5fc4); color:#0d0717; }
+  .clip.dim   { background:var(--bg-4); color:var(--muted); border:1px solid var(--line-2); font-weight:500; }
+  .playhead { position:absolute; top:0; bottom:0; width:2px; background:var(--gold); box-shadow:0 0 8px rgba(232,178,58,.8); }
+  .playhead::before { content:""; position:absolute; top:-1px; left:-4px; border:5px solid transparent; border-top-color:var(--gold); }
+  .badge { display:inline-block; margin-left:4px; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- 1. 顶栏 -->
+  <header class="topbar">
+    <div class="brand"><span class="hex"></span> Director 包装工作台 <span class="v">v2</span></div>
+    <nav class="mainnav">
+      <span class="navitem"><span class="ic">⬇</span>导入素材</span>
+      <span class="navitem"><span class="ic">📝</span>字幕识别</span>
+      <span class="navitem"><span class="ic">🔍</span>分析视频</span>
+      <span class="navitem"><span class="ic">🎨</span>风格包</span>
+      <span class="navitem active"><span class="ic">✦</span>智能包装</span>
+      <span class="navitem"><span class="ic">✓</span>校验</span>
+      <span class="navitem"><span class="ic">⤴</span>导出设置</span>
+    </nav>
+    <div class="proj">
+      <span class="name">通用二次包装项目</span>
+      <span class="btn ghost">预览</span>
+      <span class="btn gold">渲染</span>
+    </div>
+  </header>
+
+  <!-- 工作区 -->
+  <div class="workspace">
+
+    <!-- 左竖排 6 tab -->
+    <div class="leftrail">
+      <div class="railtab"><span class="ic">📁</span>项目</div>
+      <div class="railtab"><span class="ic">🎞</span>素材</div>
+      <div class="railtab"><span class="ic">🎬</span>场景</div>
+      <div class="railtab active"><span class="ic">▦</span>组件库</div>
+      <div class="railtab"><span class="ic">🎨</span>风格库</div>
+      <div class="railtab"><span class="ic">📋</span>方案</div>
+    </div>
+
+    <!-- 左面板：组件库 -->
+    <div class="leftpanel">
+      <div class="panelhead">组件库</div>
+      <div class="search"><input placeholder="搜索包装组件" /></div>
+      <div class="sectlabel"><span>组件分类 · 12 类</span></div>
+      <div class="chips">
+        <span class="chip active">开场</span>
+        <span class="chip">字幕</span>
+        <span class="chip">产品展示</span>
+        <span class="chip">讲解演示</span>
+        <span class="chip">对比</span>
+        <span class="chip">画中画</span>
+        <span class="chip">数据证明</span>
+        <span class="chip">信息结构</span>
+        <span class="chip">MV节奏</span>
+        <span class="chip">转场</span>
+        <span class="chip">品牌元素</span>
+        <span class="chip">CTA</span>
+      </div>
+      <div class="sectlabel"><span>推荐卡片</span><span class="muted">可拖入时间线</span></div>
+      <div class="cardgrid">
+        <div class="compcard"><div class="cic">★</div><div class="ct">产品亮点卡</div><div class="cs">卖点 / 功能 / 版本更新</div></div>
+        <div class="compcard"><div class="cic">▤</div><div class="ct">章节标题卡</div><div class="cs">开场 / 转段 / 模块分隔</div></div>
+        <div class="compcard"><div class="cic">✎</div><div class="ct">关键词字幕</div><div class="cs">逐句字幕 / 重点词强调</div></div>
+        <div class="compcard"><div class="cic">⤡</div><div class="ct">演示标注卡</div><div class="cs">截图 / 箭头 / 圈选 / 高亮</div></div>
+        <div class="compcard"><div class="cic">▥</div><div class="ct">左右对比卡</div><div class="cs">方案 / 竞品 / 前后效果</div></div>
+        <div class="compcard"><div class="cic">◳</div><div class="ct">画中画卡</div><div class="cs">人像 / 屏幕 / 反应小窗</div></div>
+        <div class="compcard"><div class="cic">📊</div><div class="ct">数据证明卡</div><div class="cs">数字 / 引用 / 评价 / 证据</div></div>
+        <div class="compcard"><div class="cic">♪</div><div class="ct">节奏歌词卡</div><div class="cs">MV / 歌词 / 波形 / 节拍</div></div>
+      </div>
+    </div>
+
+    <!-- 中央列 -->
+    <div class="center">
+      <div class="canvastool">
+        <span class="tool active" title="光标">✦</span>
+        <span class="tool" title="抓手">✋</span>
+        <span class="tool" title="缩放">🔍</span>
+        <span class="fit">适配 46%</span>
+        <span class="spacer"></span>
+        <span class="toggle on">16:9 横屏</span>
+        <span class="toggle">安全区</span>
+        <span class="toggle">网格</span>
+        <span class="toggle on">吸附</span>
+      </div>
+
+      <div class="canvas">
+        <div class="stage">
+          <div class="safearea"></div>
+          <div class="presenter"><div class="body"></div><div class="head"></div></div>
+          <div class="guides"><i></i><i></i><i></i></div>
+          <div class="selcard">
+            <span class="tag">核心功能</span>
+            <h3>自动识别画面重点</h3>
+            <p>系统会自动分析画面，捕捉关键信息并在合适的时间点叠加产品亮点与演示标注，无需手动逐帧标记。</p>
+            <span class="handle tl"></span><span class="handle tr"></span>
+            <span class="handle bl"></span><span class="handle br"></span>
+          </div>
+          <div class="canvashint">这一段适合加入产品亮点和演示标注</div>
+        </div>
+      </div>
+
+      <!-- 智能方案条 -->
+      <div class="smartstrip">
+        <div class="segs">
+          <div class="seg active"><div class="st">开场钩子</div><div class="sr">00:00 – 00:05</div></div>
+          <div class="seg"><div class="st">问题说明</div><div class="sr">00:05 – 00:12</div></div>
+          <div class="seg"><div class="st">功能演示</div><div class="sr">00:12 – 00:24</div></div>
+          <div class="seg"><div class="st">对比证明</div><div class="sr">00:24 – 00:38</div></div>
+          <div class="seg"><div class="st">收尾引导</div><div class="sr">00:38 – 00:45</div></div>
+        </div>
+        <div class="smartsum">
+          <div class="h">✦ 智能方案</div>
+          <div class="l">识别到 5 个片段<br/>推荐 8 张卡片<br/>发现 2 个校验项</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 右 Inspector -->
+    <div class="inspector">
+      <div class="insptabs">
+        <div class="insptab active">属性</div>
+        <div class="insptab">动画</div>
+        <div class="insptab">校验</div>
+        <div class="insptab">历史</div>
+      </div>
+      <div class="inspbody">
+        <div class="inspsect">
+          <h4>组件信息</h4>
+          <div class="kv"><span class="k">名称</span><span class="vv">产品亮点卡</span></div>
+          <div class="kv"><span class="k">类型</span><span class="vv">卡片容器</span></div>
+          <div class="kv"><span class="k">用途</span><span class="vv">产品展示 · 讲解演示</span></div>
+        </div>
+        <div class="inspsect">
+          <h4>内容</h4>
+          <div class="field"><label>标题</label><input class="ipt" value="自动识别画面重点" /></div>
+          <div class="field"><label>描述</label><textarea class="ipt">系统会自动分析画面，捕捉关键信息并在合适的时间点叠加产品亮点与演示标注。</textarea></div>
+        </div>
+        <div class="inspsect">
+          <h4>媒体</h4>
+          <div class="field"><label>绑定素材</label><div class="pillsel">🎞 当前视频帧 ▾</div></div>
+          <div class="field"><label>跟随对象</label><div class="pillsel">🎯 画面主体 ▾</div></div>
+        </div>
+        <div class="inspsect">
+          <h4>布局</h4>
+          <div class="grid2">
+            <div class="field"><label>X</label><input class="ipt" value="520" /></div>
+            <div class="field"><label>Y</label><input class="ipt" value="220" /></div>
+            <div class="field"><label>宽</label><input class="ipt" value="356" /></div>
+            <div class="field"><label>高</label><input class="ipt" value="184" /></div>
+          </div>
+          <div class="kv"><span class="k">安全区锁定</span><span class="vv" style="color:var(--gold)">开启 ●</span></div>
+        </div>
+        <div class="inspsect">
+          <h4>字体</h4>
+          <div class="grid2">
+            <div class="field"><label>标题字号</label><input class="ipt" value="32" /></div>
+            <div class="field"><label>正文字号</label><input class="ipt" value="16" /></div>
+          </div>
+          <div class="field"><label>字重</label><div class="pillsel">加粗 ▾</div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 底部四轨时间线 -->
+  <div class="timeline">
+    <div class="tlhead">
+      <span class="tc">00:00:12:14</span>
+      <span class="transport">⏮ ▶ ⏭</span>
+      <span class="muted" style="font-size:11.5px">吸附 · 渲染区间</span>
+      <span class="right"><span>四类轨道：视频 / 音频 / 字幕 / 卡片</span></span>
+    </div>
+    <div class="tlbody">
+      <div class="trackheads">
+        <div class="trackhead"><span class="dot" style="background:var(--blue)"></span>视频轨道<span class="toggles">👁 🔒</span></div>
+        <div class="trackhead"><span class="dot" style="background:var(--green)"></span>音频轨道<span class="toggles">👁 🔒</span></div>
+        <div class="trackhead"><span class="dot" style="background:var(--cap)"></span>字幕轨道<span class="toggles">👁 🔒</span></div>
+        <div class="trackhead"><span class="dot" style="background:var(--gold)"></span>卡片轨道<span class="toggles">👁 🔒</span></div>
+      </div>
+      <div class="lanes">
+        <div class="ruler">
+          <span class="tick" style="left:0%">00:00</span>
+          <span class="tick" style="left:18%">00:08</span>
+          <span class="tick" style="left:36%">00:16</span>
+          <span class="tick" style="left:54%">00:24</span>
+          <span class="tick" style="left:72%">00:32</span>
+          <span class="tick" style="left:90%">00:40</span>
+        </div>
+        <!-- 视频轨 -->
+        <div class="lane"><div class="clip video" style="left:0.5%; width:98.5%">主视频素材.mp4</div></div>
+        <!-- 音频轨 -->
+        <div class="lane"><div class="clip audio" style="left:0.5%; width:98.5%">原始音频.wav</div></div>
+        <!-- 字幕轨 -->
+        <div class="lane">
+          <div class="clip cap" style="left:1%; width:16%">字幕01</div>
+          <div class="clip cap" style="left:19%; width:20%">字幕02</div>
+          <div class="clip cap" style="left:41%; width:18%">字幕03</div>
+        </div>
+        <!-- 卡片轨 -->
+        <div class="lane">
+          <div class="clip dim" style="left:0.5%; width:13%">开场标题卡</div>
+          <div class="clip gold" style="left:15%; width:22%">产品亮点卡</div>
+          <div class="clip purple" style="left:39%; width:24%">演示标注卡</div>
+          <div class="clip gold" style="left:84%; width:15%">收尾引导卡</div>
+        </div>
+        <!-- 播放头 ~12s -->
+        <div class="playhead" style="left:27%"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

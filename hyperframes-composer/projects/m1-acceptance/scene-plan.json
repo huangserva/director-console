@@ -1,0 +1,233 @@
+{
+  "version": 1,
+  "strategy": "text-only-catalog-components",
+  "source": {
+    "language": "zh",
+    "segments": 78,
+    "timeline": {
+      "start": 0.29,
+      "end": 155.415,
+      "duration": 155.125
+    }
+  },
+  "scenes": [
+    {
+      "id": "s001",
+      "start": 0.29,
+      "end": 15.99,
+      "duration": 15.7,
+      "intent": "opening_summary",
+      "componentCandidates": [
+        "TitleCard"
+      ],
+      "segments": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "summary": "现在很多人的工作早就不在",
+      "text": "现在很多人的工作早就不在一台电脑里了。这台 mac 上 Codex 在改代码另一台上 Claude Code 在做架构分析，cursor hermes OpenClaw 各跑各的，每个 Agent 都很强，但他们天然不互通问题，不是某个 Agent 会忘，"
+    },
+    {
+      "id": "s002",
+      "start": 16.11,
+      "end": 33.07,
+      "duration": 16.96,
+      "intent": "transcript_step",
+      "componentCandidates": [
+        "StepCard"
+      ],
+      "segments": [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14
+      ],
+      "summary": "而是这些 Agent 没办法互",
+      "text": "而是这些 Agent 没办法互相学习。举个真实的例子，我让 Claude Code 帮我读一份飞书文档，他拿到链接就去抓，结果直接被弹回登录页。飞书的正文被登录态和权限挡着，裸链接，根本读不到他换方法。再是反复好几轮还是空手而归？"
+    },
+    {
+      "id": "s003",
+      "start": 34.91,
+      "end": 52.05,
+      "duration": 17.14,
+      "intent": "transcript_step",
+      "componentCandidates": [
+        "StepCard"
+      ],
+      "segments": [
+        15,
+        16,
+        17,
+        18,
+        19,
+        20
+      ],
+      "summary": "其实这个问题我的另一个 A",
+      "text": "其实这个问题我的另一个 Agent 早就解决过了。Codex 在自己的会话里已经把这份文档完整读出来了。但 Claude Code 不知道，因为那些验被困在 agCodex 的会话里，Codex 的解法是不抓裸链接，用本机 Chrome 的登录态打开页面，"
+    },
+    {
+      "id": "s004",
+      "start": 52.17,
+      "end": 69.02,
+      "duration": 16.85,
+      "intent": "transcript_step",
+      "componentCandidates": [
+        "StepCard"
+      ],
+      "segments": [
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31
+      ],
+      "summary": "直接从页面里把正文抠出来",
+      "text": "直接从页面里把正文抠出来，遇到懒加载就滚动页面分段拿后半部分。这套经验很值钱，但未必值得做成。一个正式的技能，也很难靠人复述清楚，它最适合近长期记忆。我对 Codex 只说了一句，把这次的经验记下来，他自己挑起 mmmoo，CLI，"
+    },
+    {
+      "id": "s005",
+      "start": 69.04,
+      "end": 84.875,
+      "duration": 15.835,
+      "intent": "transcript_step",
+      "componentCandidates": [
+        "StepCard"
+      ],
+      "segments": [
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41
+      ],
+      "summary": "写成一条结构化记忆",
+      "text": "写成一条结构化记忆。整个过程，我一条命令都没敲过切回 cot，code 在读，同一份文档。这次他第一步先去 mamals 搜了一下 Codex 沉淀的经验，立刻返回 Chrome，登录态提取，正文滚动加载，照着做一次走通。"
+    },
+    {
+      "id": "s006",
+      "start": 85.44,
+      "end": 102.43,
+      "duration": 16.99,
+      "intent": "transcript_step",
+      "componentCandidates": [
+        "StepCard"
+      ],
+      "segments": [
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51
+      ],
+      "summary": "我没解释过一句飞书的机制",
+      "text": "我没解释过一句飞书的机制，每个 Agent 其实都有自己的记忆，memals 不需要再全量记一遍，真正值得进共享。记忆的不是聊天流水，而是跨机器，跨 Agent 跨时间仍然有价值的东西。长期偏好、重大决定验证过的解法。排查结论，"
+    },
+    {
+      "id": "s007",
+      "start": 102.53,
+      "end": 118.51,
+      "duration": 15.98,
+      "intent": "transcript_step",
+      "componentCandidates": [
+        "StepCard"
+      ],
+      "segments": [
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60
+      ],
+      "summary": "工作流规则他和技能也不一",
+      "text": "工作流规则他和技能也不一样，技能适合稳定、可重复，要规范执行的流程记忆，适合这种轻量，但高价值的经验还没必要产品化，但下一次遇到能少走很多弯路。多台 mac 怎么连起来？关键不是每台机器都装一个工具，"
+    },
+    {
+      "id": "s008",
+      "start": 118.71,
+      "end": 136.31,
+      "duration": 17.6,
+      "intent": "transcript_step",
+      "componentCandidates": [
+        "StepCard"
+      ],
+      "segments": [
+        61,
+        62,
+        63,
+        64,
+        65,
+        66
+      ],
+      "summary": "而是他们用同一套 my mous",
+      "text": "而是他们用同一套 my mouse 云端配置接入同一个记忆空间。第一台 mac 上 Codex 把排查结论写进去。第二台上 cloud cold 遇到同类问题，先搜再做跑自动化的 open cloud 和 hermes，也能读到同一份偏好和规则。命令行是最轻量的入口，"
+    },
+    {
+      "id": "s009",
+      "start": 136.51,
+      "end": 153.14,
+      "duration": 16.63,
+      "intent": "transcript_step",
+      "componentCandidates": [
+        "StepCard"
+      ],
+      "segments": [
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76
+      ],
+      "summary": "人能用 Agent 也能用",
+      "text": "人能用 Agent 也能用，它，不替代插件，也不替代 MCP，只要能调同一套命令行，就接入了同一层长期记忆，不要让一个 Agent 解决过的问题困在一台麦克里，是用 mams cow，把你的 Agent 接到同一层长期记忆上。真正的价值不是 AI 记住了你，"
+    },
+    {
+      "id": "s010",
+      "start": 153.14,
+      "end": 155.415,
+      "duration": 2.275,
+      "intent": "transcript_step",
+      "componentCandidates": [
+        "StepCard"
+      ],
+      "segments": [
+        77
+      ],
+      "summary": "而而是你的 Agent 开始互",
+      "text": "而而是你的 Agent 开始互相学习。"
+    }
+  ]
+}

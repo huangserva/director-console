@@ -1,0 +1,35 @@
+{
+  "id": "test-duix-ltx",
+  "name": "test-duix-ltx",
+  "recipeId": "existing-narrated-video",
+  "workflowRunId": "run-test-duix-ltx",
+  "sourceCapabilities": [],
+  "assets": [],
+  "stageState": {
+    "probe": {
+      "status": "succeeded"
+    },
+    "asr": {
+      "status": "succeeded"
+    },
+    "transcript": {
+      "status": "succeeded"
+    },
+    "scene-plan": {
+      "status": "succeeded"
+    },
+    "packaging": {
+      "status": "succeeded"
+    },
+    "compose": {
+      "status": "succeeded"
+    }
+  },
+  "outputs": {},
+  "inputs": {
+    "videoPath": "/Users/huangzongning/Downloads/first120-template-duix-cosy-master-v2-syncfix-final.mp4",
+    "manifestName": "test-duix-ltx"
+  },
+  "createdAt": "2026-06-13T02:06:55.366Z",
+  "updatedAt": "2026-06-13T02:06:55.366Z"
+}

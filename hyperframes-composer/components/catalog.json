@@ -1,0 +1,274 @@
+{
+  "version": "2026-06-10",
+  "purpose": "Accepted component vocabulary for HyperFrames video composition. Manifests may order and fill these components, but may not invent new layout structures at render time.",
+  "sources": [
+    {
+      "id": "first120",
+      "path": "../director-codex-hyperframes-video/first120-template-duix/index.html",
+      "role": "gold DOM/CSS/timeline source"
+    },
+    {
+      "id": "first120-design",
+      "path": "../director-codex-hyperframes-video/first120-template-duix/DESIGN.md",
+      "role": "accepted visual language"
+    },
+    {
+      "id": "first390-lock",
+      "path": "../director-codex-hyperframes-video/first390-template-locked/template.lock.json",
+      "role": "scene type to component contract"
+    },
+    {
+      "id": "memos-v3",
+      "path": "../director-codex-hyperframes-video/first390-template-locked/index-memos-v3.html",
+      "role": "current accepted seven-scene production target"
+    }
+  ],
+  "coarseSceneComponents": [
+    {
+      "id": "StatsHero",
+      "layer": "coarse-scene",
+      "sceneTypes": ["hook_stat"],
+      "purpose": "Opening statistic/browser impact sequence, with presenter kept visible through source-video, stat punch, browser frame, return, and title beats.",
+      "sourceRefs": [
+        "first120:index.html#v-opening/#s-stat/#s-browser/#v-return lines 2034-2089",
+        "first390:index-memos-v3.html#s001-*"
+      ],
+      "requiredProps": ["media.presenter", "stat.label", "stat.number", "stat.unit", "stat.title", "titleBeat.title"],
+      "controlledFinePieces": ["OpeningSourceVideo", "OpeningStatPunch", "OpeningBrowserFrame"]
+    },
+    {
+      "id": "TitleCard",
+      "layer": "coarse-scene",
+      "sceneTypes": ["title_card"],
+      "purpose": "Dark honeycomb title transition with kicker, main title, subline, and gold/blue underline stack.",
+      "sourceRefs": ["first120:index.html#s-title lines 2091-2100", "first390:index.html data-component=TitleCard"],
+      "requiredProps": ["cornerLeft", "cornerName", "kicker", "title", "subline"]
+    },
+    {
+      "id": "SplitTextPresenter",
+      "layer": "coarse-scene",
+      "sceneTypes": ["concept_split"],
+      "purpose": "Left information panel plus right presenter window. Supports course split panels and definition panel sequences without replacing presenter with circular PIP.",
+      "sourceRefs": [
+        "first120:index.html#s-course lines 2102-2131",
+        "first120:index.html#s-definition lines 2158-2223",
+        "first390:index-memos-v3.html#s005-definition/#s006-course"
+      ],
+      "requiredProps": ["variant"],
+      "controlledFinePieces": ["CourseSplitPanel", "QuestionMapPanel", "DefinitionPanel", "DefinitionFlowOverlay", "DefinitionCreatePanel", "DefinitionOneSentencePanel"]
+    },
+    {
+      "id": "ScreenWithPip",
+      "layer": "coarse-scene",
+      "sceneTypes": ["screen_demo_pip"],
+      "purpose": "Foreground screen recording or proof surface with one moving circular presenter/helper PIP.",
+      "sourceRefs": [
+        "first120:index.html#s-prompt/#s-agent-log/#s-doc-search/#s-env-check",
+        "first390:index-memos-v3.html#s002-screen/#s003-screen/#s004-screen"
+      ],
+      "requiredProps": ["label", "media.screen", "media.pip"],
+      "controlledFinePieces": ["ScreenShell", "CircularPip", "ScanLine"]
+    },
+    {
+      "id": "HeroAroll",
+      "layer": "coarse-scene",
+      "sceneTypes": ["aroll_emphasis"],
+      "purpose": "Full-bleed moving presenter emphasis with muted DUIX video and final audio from the master track.",
+      "sourceRefs": ["first120:index.html#v-cta-aroll line 2156", "first390:template.lock.json component_contracts.HeroAroll"],
+      "requiredProps": ["media.presenter"]
+    },
+    {
+      "id": "StepCard",
+      "layer": "coarse-scene",
+      "sceneTypes": ["step_card"],
+      "purpose": "Short centered instructional marker card with kicker, large title, and three compact items.",
+      "sourceRefs": ["first120:index.html#s-step1/#s-step2/#s-step3", "first390:index-memos-v3.html#s003-step/#s004-step"],
+      "requiredProps": ["kicker", "title", "items"],
+      "controlledFinePieces": ["StepPanel"]
+    },
+    {
+      "id": "ProofMontage",
+      "layer": "coarse-scene",
+      "sceneTypes": ["proof_montage"],
+      "purpose": "Fast proof/result cuts from real screen or result video. No static placeholder grids.",
+      "sourceRefs": ["first390:template.lock.json component_contracts.ProofMontage", "first390:index.html data-component=ProofMontage"],
+      "requiredProps": ["media.items"]
+    },
+    {
+      "id": "SummaryCta",
+      "layer": "coarse-scene",
+      "sceneTypes": ["summary_cta"],
+      "purpose": "Final clean A-roll or split summary CTA. Presenter face must remain clear; text stays minimal and off-face.",
+      "sourceRefs": ["first390:index-memos-v3.html#s007-aroll", "first390:template.lock.json component_contracts.SummaryCta"],
+      "requiredProps": ["media.presenter", "chip", "title", "subline"],
+      "controlledFinePieces": ["CleanArollOverlay"]
+    }
+  ],
+  "controlledFinePieces": [
+    {
+      "id": "OpeningSourceVideo",
+      "layer": "controlled-fine-piece",
+      "parentComponents": ["StatsHero"],
+      "lockedClasses": ["source-video"],
+      "sourceRefs": ["first120:index.html#v-opening/#v-return", "first390:index-memos-v3.html#v-s001-opening/#v-s001-return"]
+    },
+    {
+      "id": "OpeningStatPunch",
+      "layer": "controlled-fine-piece",
+      "parentComponents": ["StatsHero"],
+      "lockedClasses": ["stat-pack", "stat-shell", "stat-label", "stat-number", "stat-unit", "stat-title", "mini-poster", "stat-tools"],
+      "sourceRefs": ["first120:index.html#s-stat lines 2036-2062", "first390:index-memos-v3.html#s001-stat"]
+    },
+    {
+      "id": "OpeningBrowserFrame",
+      "layer": "controlled-fine-piece",
+      "parentComponents": ["StatsHero"],
+      "lockedClasses": ["browser-stage", "traffic", "done-pill", "browser-video-card", "icon-cloud", "red-proof"],
+      "sourceRefs": ["first120:index.html#s-browser lines 2064-2089", "first390:index-memos-v3.html#s001-browser"]
+    },
+    {
+      "id": "CourseSplitPanel",
+      "layer": "controlled-fine-piece",
+      "parentComponents": ["SplitTextPresenter"],
+      "lockedClasses": ["course-layout", "course-chip", "course-heading", "course-cards", "course-card", "course-line", "course-presenter"],
+      "sourceRefs": ["first120:index.html#s-course lines 2102-2131", "first390:index-memos-v3.html#s006-course"]
+    },
+    {
+      "id": "QuestionMapPanel",
+      "layer": "controlled-fine-piece",
+      "parentComponents": ["SplitTextPresenter"],
+      "lockedClasses": ["question-panel", "question-chip", "question-title", "question-rule", "question-map", "q-node", "q-core"],
+      "sourceRefs": ["first120:index.html#s-question lines 2133-2154"]
+    },
+    {
+      "id": "DefinitionPanel",
+      "layer": "controlled-fine-piece",
+      "parentComponents": ["SplitTextPresenter"],
+      "lockedClasses": ["def-panel", "def-frame", "def-kicker", "def-title", "def-sub", "def-stack-row", "def-code", "def-callout", "def-presenter"],
+      "sourceRefs": ["first120:index.html#s-definition .def-open/.def-stack", "first390:index-memos-v3.html#s005-definition"]
+    },
+    {
+      "id": "DefinitionFlowOverlay",
+      "layer": "controlled-fine-piece",
+      "parentComponents": ["SplitTextPresenter"],
+      "lockedClasses": ["def-flow", "def-flow-node", "def-flow-line"],
+      "sourceRefs": ["first120:index.html#s-definition .def-flow"]
+    },
+    {
+      "id": "DefinitionCreatePanel",
+      "layer": "controlled-fine-piece",
+      "parentComponents": ["SplitTextPresenter"],
+      "lockedClasses": ["def-create", "def-create-title", "def-pill"],
+      "sourceRefs": ["first120:index.html#s-definition .def-create"]
+    },
+    {
+      "id": "DefinitionOneSentencePanel",
+      "layer": "controlled-fine-piece",
+      "parentComponents": ["SplitTextPresenter", "ScreenWithPip"],
+      "lockedClasses": ["def-one", "goal-pill", "def-one-title", "def-one-sub", "def-action", "def-pip"],
+      "sourceRefs": ["first120:index.html#s-definition .def-one"]
+    },
+    {
+      "id": "ScreenShell",
+      "layer": "controlled-fine-piece",
+      "parentComponents": ["ScreenWithPip"],
+      "lockedClasses": ["screen-label", "screen-shell"],
+      "sourceRefs": ["first120:index.html#s-prompt/#s-agent-log/#s-doc-search/#s-env-check", "first390:index-memos-v3.html#s002-screen/#s003-screen/#s004-screen"]
+    },
+    {
+      "id": "CircularPip",
+      "layer": "controlled-fine-piece",
+      "parentComponents": ["ScreenWithPip"],
+      "lockedClasses": ["circle-pip"],
+      "sourceRefs": ["first120:index.html .circle-pip", "first390:index-memos-v3.html .circle-pip"]
+    },
+    {
+      "id": "StepPanel",
+      "layer": "controlled-fine-piece",
+      "parentComponents": ["StepCard"],
+      "lockedClasses": ["step-wrap", "step-panel", "step-kicker", "step-title", "step-list", "step-item"],
+      "sourceRefs": ["first120:index.html#s-step1/#s-step2/#s-step3", "first390:index-memos-v3.html#s003-step/#s004-step"]
+    },
+    {
+      "id": "ScanLine",
+      "layer": "controlled-fine-piece",
+      "parentComponents": ["ScreenWithPip"],
+      "lockedClasses": ["scan-local", "scan-line", "wipe-field"],
+      "sourceRefs": ["first120:index.html#scan-*", "first390:index-memos-v3.html#scan-s002/#scan-s003/#scan-s004"]
+    },
+    {
+      "id": "CleanArollOverlay",
+      "layer": "controlled-fine-piece",
+      "parentComponents": ["SummaryCta", "HeroAroll"],
+      "lockedClasses": ["clean-aroll", "clean-aroll-video", "clean-aroll-vignette", "clean-aroll-copy", "clean-chip", "clean-title", "clean-sub"],
+      "sourceRefs": ["first390:index-memos-v3.html#s007-aroll"]
+    },
+    {
+      "id": "CaptionLine",
+      "layer": "controlled-fine-piece",
+      "parentComponents": ["global"],
+      "lockedClasses": ["caption", "caption-line"],
+      "sourceRefs": ["first120:index.html#cap*", "first390:index-memos-v3.html#cap-*"]
+    }
+  ],
+  "memosV3SceneMap": [
+    {
+      "scene": "s001",
+      "duration": 18.48,
+      "coarseComponent": "StatsHero",
+      "finePieces": ["OpeningSourceVideo", "OpeningStatPunch", "OpeningBrowserFrame", "TitleCard"],
+      "sourceIds": ["v-s001-opening", "s001-stat", "s001-browser", "v-s001-return", "s001-title"]
+    },
+    {
+      "scene": "s002",
+      "duration": 28.48,
+      "coarseComponent": "ScreenWithPip",
+      "finePieces": ["ScreenShell", "CircularPip", "ScanLine"],
+      "sourceIds": ["s002-screen", "scan-s002"]
+    },
+    {
+      "scene": "s003",
+      "duration": 25.16,
+      "coarseComponent": "ScreenWithPip",
+      "finePieces": ["StepPanel", "ScreenShell", "CircularPip", "ScanLine"],
+      "sourceIds": ["s003-step", "s003-screen", "scan-s003"]
+    },
+    {
+      "scene": "s004",
+      "duration": 14,
+      "coarseComponent": "ScreenWithPip",
+      "finePieces": ["StepPanel", "ScreenShell", "CircularPip", "ScanLine"],
+      "sourceIds": ["s004-step", "s004-screen", "scan-s004"]
+    },
+    {
+      "scene": "s005",
+      "duration": 26.48,
+      "coarseComponent": "SplitTextPresenter",
+      "finePieces": ["DefinitionPanel", "DefinitionFlowOverlay"],
+      "sourceIds": ["s005-definition"]
+    },
+    {
+      "scene": "s006",
+      "duration": 29.32,
+      "coarseComponent": "SplitTextPresenter",
+      "finePieces": ["CourseSplitPanel"],
+      "sourceIds": ["s006-course"]
+    },
+    {
+      "scene": "s007",
+      "duration": 11.28,
+      "coarseComponent": "SummaryCta",
+      "finePieces": ["CleanArollOverlay"],
+      "sourceIds": ["v-s007-aroll-video", "s007-aroll"]
+    }
+  ],
+  "antiDriftRules": [
+    "Manifests may only reference ids in coarseSceneComponents or controlledFinePieces.",
+    "scene_type must map to the locked coarse component in template.lock.json.",
+    "Fine pieces may only appear under their declared parent component.",
+    "Opening and ending presenter scenes must keep the face visible; no opaque central card may cover the face.",
+    "ScreenWithPip allows exactly one circular PIP helper and no decorative second empty circle.",
+    "SplitTextPresenter must use accepted split variables and right presenter frame; it must not use a circular PIP as the main presenter.",
+    "Visible text must stay inside first120 budget: short chip, one-line English kicker, one-line Chinese title, one-line subline, compact card labels."
+  ]
+}

@@ -1,0 +1,11 @@
+.DS_Store
+.env
+.env.local
+node_modules/
+assets/external-first390
+render/*.mp4
+render/*.mov
+audit/*.jpg
+audit/*.png
+tmp/
+*.log

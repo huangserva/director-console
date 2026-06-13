@@ -1,0 +1,208 @@
+{
+  "compositionId": "main",
+  "duration": 155.6,
+  "output": "index.html",
+  "hyperframesEntry": "index.html",
+  "auditCopy": "audit/index-memos-v3-composed.html",
+  "audio": {
+    "src": "assets/external-first390/production/audio/memos-master-v3.wav",
+    "captions": "assets/external-first390/production/audio/captions-memos-v3.json"
+  },
+  "scenes": [
+    {
+      "id": "s001",
+      "component": "StatsHero",
+      "scene_type": "hook_stat",
+      "start": 0,
+      "duration": 18.48,
+      "track": 1,
+      "finePieces": ["OpeningSourceVideo", "OpeningStatPunch", "OpeningBrowserFrame"],
+      "parts": {
+        "stat": { "start": 0.705, "duration": 2.163 },
+        "browser": { "start": 2.539, "duration": 5.909 },
+        "return": { "start": 8.448, "duration": 10.032 },
+        "title": { "start": 9.781, "duration": 2.597 }
+      },
+      "props": {
+        "media": { "presenter": "assets/external-first390/production/duix-results/hf390_duix_intro_aroll_v3-r.mp4" },
+        "stat": { "cornerLeft": "MemOS 命令行", "label": "智能体记忆", "number": "7", "unit": "场", "title": "共享记忆实战" },
+        "browser": { "done": "记忆", "icons": ["AI", "CC", "CLI", "MCP", "↻", "AI", "记忆", "⌘", "✓", "AI"], "mediaStart": 2.539 },
+        "titleBeat": { "cornerLeft": "共享记忆", "cornerName": "MemOS CLI", "kicker": "智能体记忆层", "title": "MemOS CLI", "subline": "多机 / 多智能体 / 同一层经验" }
+      }
+    },
+    {
+      "id": "s002-screen",
+      "scene": "s002",
+      "component": "ScreenWithPip",
+      "scene_type": "screen_demo_pip",
+      "start": 18.88,
+      "duration": 28.48,
+      "track": 20,
+      "finePieces": ["ScreenShell", "CircularPip", "ScanLine"],
+      "props": {
+        "label": "飞书被登录挡住",
+        "mediaStart": 0,
+        "panDuration": 24.32,
+        "scan": { "id": "scan-s002", "start": 18.48, "duration": 0.595, "track": 21 },
+        "media": {
+          "screen": "assets/external-first390/assets/screen-fitted/s002.mp4",
+          "pip": "assets/external-first390/production/duix-results/hf390_screen_cc_feishu_fail_plus_duix_pip_v3-r.mp4"
+        }
+      }
+    },
+    {
+      "id": "s003-step",
+      "scene": "s003",
+      "component": "StepCard",
+      "scene_type": "step_card",
+      "start": 47.76,
+      "duration": 4.199,
+      "track": 24,
+      "finePieces": ["StepPanel"],
+      "props": { "kicker": "步骤 01", "title": "把解法写成记忆", "items": ["浏览器登录态", "正文提取", "滚动加载"] }
+    },
+    {
+      "id": "s003-screen",
+      "scene": "s003",
+      "component": "ScreenWithPip",
+      "scene_type": "screen_demo_pip",
+      "start": 51.959,
+      "duration": 20.961,
+      "track": 26,
+      "finePieces": ["ScreenShell", "CircularPip", "ScanLine"],
+      "props": {
+        "label": "Codex 写入记忆",
+        "mediaStart": 4.199,
+        "panDuration": 17.296,
+        "scan": { "id": "scan-s003", "start": 51.787, "duration": 0.328, "track": 27 },
+        "media": {
+          "screen": "assets/external-first390/assets/screen-fitted/s003.mp4",
+          "pip": "assets/external-first390/production/duix-results/hf390_screen_codex_memos_add_plus_duix_pip_v3-r.mp4"
+        }
+      }
+    },
+    {
+      "id": "s004-step",
+      "scene": "s004",
+      "component": "StepCard",
+      "scene_type": "step_card",
+      "start": 73.32,
+      "duration": 4.629,
+      "track": 28,
+      "finePieces": ["StepPanel"],
+      "props": { "kicker": "步骤 02", "title": "先搜记忆再执行", "items": ["先查 MemOS", "读到经验", "一次走通"] }
+    },
+    {
+      "id": "s004-screen",
+      "scene": "s004",
+      "component": "ScreenWithPip",
+      "scene_type": "screen_demo_pip",
+      "start": 77.949,
+      "duration": 9.371,
+      "track": 30,
+      "finePieces": ["ScreenShell", "CircularPip", "ScanLine"],
+      "props": {
+        "label": "Claude 搜到经验",
+        "mediaStart": 4.629,
+        "panDuration": 6.371,
+        "scan": { "id": "scan-s004", "start": 77.76, "duration": 0.362, "track": 31 },
+        "media": {
+          "screen": "assets/external-first390/assets/screen-fitted/s004.mp4",
+          "pip": "assets/external-first390/production/duix-results/hf390_screen_cc_memos_search_plus_duix_pip_v3-r.mp4"
+        }
+      }
+    },
+    {
+      "id": "s005-definition",
+      "scene": "s005",
+      "component": "SplitTextPresenter",
+      "scene_type": "concept_split",
+      "start": 87.72,
+      "duration": 26.48,
+      "track": 30,
+      "finePieces": ["DefinitionPanel", "DefinitionFlowOverlay"],
+      "props": {
+        "variant": "definition",
+        "cornerName": "MemOS CLI",
+        "panels": [
+          {
+            "kind": "def-open",
+            "kicker": "记忆层",
+            "gold": "记住",
+            "title": "只存高价值经验",
+            "subline": "偏好、决策、解法、规则",
+            "cards": [{ "icon": "✓", "label": "验证解法" }, { "icon": "◎", "label": "工作规则" }],
+            "start": 87.763,
+            "duration": 8.082,
+            "mediaStart": 0,
+            "videoId": "v-s005-def-open-presenter",
+            "media": { "presenter": "assets/external-first390/production/duix-results/hf390_duix_memory_rules_presenter_v3-r.mp4" }
+          },
+          {
+            "kind": "def-stack",
+            "kicker": "记忆 ≠ 技能",
+            "gold": "对比",
+            "title": "记忆不是技能",
+            "subline": "技能要稳定执行，记忆保留经验",
+            "cards": [{ "icon": "JS", "label": "稳定流程" }, { "icon": "AI", "label": "轻量经验" }],
+            "start": 96.038,
+            "duration": 8.082,
+            "mediaStart": 8.082,
+            "videoId": "v-s005-def-stack-presenter",
+            "media": { "presenter": "assets/external-first390/production/duix-results/hf390_duix_memory_rules_presenter_v3-r.mp4" }
+          },
+          {
+            "kind": "def-flow",
+            "kicker": "下次",
+            "gold": "复用",
+            "title": "下次少走弯路",
+            "subline": "另一个智能体能直接搜到",
+            "cards": [{ "icon": "写", "label": "写入" }, { "icon": "用", "label": "复用" }],
+            "flow": ["写入", "MemOS", "复用"],
+            "start": 104.312,
+            "duration": 9.888,
+            "mediaStart": 16.164,
+            "holdLast": true,
+            "videoId": "v-s005-def-flow-presenter",
+            "media": { "presenter": "assets/external-first390/production/duix-results/hf390_duix_memory_rules_presenter_v3-r.mp4" }
+          }
+        ]
+      }
+    },
+    {
+      "id": "s006-course",
+      "scene": "s006",
+      "component": "SplitTextPresenter",
+      "scene_type": "concept_split",
+      "start": 114.6,
+      "duration": 29.32,
+      "track": 40,
+      "finePieces": ["CourseSplitPanel"],
+      "props": {
+        "variant": "course",
+        "cornerName": "MemOS CLI",
+        "chip": "多机协作",
+        "kicker": "统一记忆空间",
+        "title": "多机同层记忆",
+        "cards": [{ "icon": "AI", "label": "Codex 写入" }, { "icon": "CC", "label": "Claude 搜索", "blue": true }, { "icon": "CLI", "label": "人也能用", "blue": true }],
+        "media": { "presenter": "assets/external-first390/production/duix-results/hf390_duix_multimac_presenter_v3-r.mp4" }
+      }
+    },
+    {
+      "id": "s007-aroll",
+      "scene": "s007",
+      "component": "SummaryCta",
+      "scene_type": "summary_cta",
+      "start": 144.32,
+      "duration": 11.28,
+      "track": 50,
+      "finePieces": ["CleanArollOverlay"],
+      "props": {
+        "chip": "试用 MemOS CLI",
+        "title": "让智能体互学",
+        "subline": "同一层长期记忆",
+        "media": { "presenter": "assets/external-first390/production/duix-results/hf390_duix_final_cta_v3-r.mp4" }
+      }
+    }
+  ]
+}

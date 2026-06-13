@@ -1,0 +1,43 @@
+{
+  "id": "acc-p",
+  "name": "acc-p",
+  "recipeId": "digital-human-product-introduction",
+  "workflowRunId": "run-acc-p",
+  "sourceCapabilities": [],
+  "assets": [],
+  "stageState": {
+    "product-script": {
+      "status": "succeeded"
+    },
+    "tts": {
+      "status": "needs-review"
+    },
+    "lip-sync": {
+      "status": "not-started"
+    },
+    "asr": {
+      "status": "not-started"
+    },
+    "scene-plan": {
+      "status": "not-started"
+    },
+    "packaging": {
+      "status": "not-started"
+    },
+    "compose": {
+      "status": "not-started"
+    }
+  },
+  "outputs": {},
+  "inputs": {
+    "sourceVideoPath": "/Users/huangzongning/development/paseo/creative/director-duix-hyperframes/director-codex-hyperframes-video/first390-template-locked/production/duix-jobs/hf390_duix_multimac_presenter_v7/source.mp4",
+    "productName": "P",
+    "productDescription": "D",
+    "sellingPoints": [
+      "s"
+    ],
+    "productMedia": []
+  },
+  "createdAt": "2026-06-12T09:07:12.483Z",
+  "updatedAt": "2026-06-12T09:07:12.483Z"
+}

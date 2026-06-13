@@ -1,0 +1,559 @@
+{
+  "source_video": "/Users/huangzongning/development/paseo/creative/director-duix-hyperframes/hyperframes-composer/render/memos-v3-composed-final.mp4",
+  "source_captions": "/Users/huangzongning/development/director-console/hyperframes-composer/projects/m1-acceptance/captions.json",
+  "language": "zh",
+  "text": "现在很多人的工作早就不在一台电脑里了。这台 mac 上 Codex 在改代码另一台上 Claude Code 在做架构分析，cursor hermes OpenClaw 各跑各的，每个 Agent 都很强，但他们天然不互通问题，不是某个 Agent 会忘，而是这些 Agent 没办法互相学习。举个真实的例子，我让 Claude Code 帮我读一份飞书文档，他拿到链接就去抓，结果直接被弹回登录页。飞书的正文被登录态和权限挡着，裸链接，根本读不到他换方法。再是反复好几轮还是空手而归？其实这个问题我的另一个 Agent 早就解决过了。Codex 在自己的会话里已经把这份文档完整读出来了。但 Claude Code 不知道，因为那些验被困在 agCodex 的会话里，Codex 的解法是不抓裸链接，用本机 Chrome 的登录态打开页面，直接从页面里把正文抠出来，遇到懒加载就滚动页面分段拿后半部分。这套经验很值钱，但未必值得做成。一个正式的技能，也很难靠人复述清楚，它最适合近长期记忆。我对 Codex 只说了一句，把这次的经验记下来，他自己挑起 mmmoo，CLI，写成一条结构化记忆。整个过程，我一条命令都没敲过切回 cot，code 在读，同一份文档。这次他第一步先去 mamals 搜了一下 Codex 沉淀的经验，立刻返回 Chrome，登录态提取，正文滚动加载，照着做一次走通。我没解释过一句飞书的机制，每个 Agent 其实都有自己的记忆，memals 不需要再全量记一遍，真正值得进共享。记忆的不是聊天流水，而是跨机器，跨 Agent 跨时间仍然有价值的东西。长期偏好、重大决定验证过的解法。排查结论，工作流规则他和技能也不一样，技能适合稳定、可重复，要规范执行的流程记忆，适合这种轻量，但高价值的经验还没必要产品化，但下一次遇到能少走很多弯路。多台 mac 怎么连起来？关键不是每台机器都装一个工具，而是他们用同一套 my mouse 云端配置接入同一个记忆空间。第一台 mac 上 Codex 把排查结论写进去。第二台上 cloud cold 遇到同类问题，先搜再做跑自动化的 open cloud 和 hermes，也能读到同一份偏好和规则。命令行是最轻量的入口，人能用 Agent 也能用，它，不替代插件，也不替代 MCP，只要能调同一套命令行，就接入了同一层长期记忆，不要让一个 Agent 解决过的问题困在一台麦克里，是用 mams cow，把你的 Agent 接到同一层长期记忆上。真正的价值不是 AI 记住了你，而而是你的 Agent 开始互相学习。",
+  "segments": [
+    {
+      "index": 0,
+      "start": 0.29,
+      "end": 2.97,
+      "text": "现在很多人的工作早就不在一台电脑里了。",
+      "asr_text": "现在很多人的工作早就不在一台电脑里了。"
+    },
+    {
+      "index": 1,
+      "start": 3.17,
+      "end": 7.71,
+      "text": "这台 mac 上 Codex 在改代码另一台上 Claude Code 在做架构分析，",
+      "asr_text": "这台 mac 上 codex 在改代码另一台上 class code 在做架构分析，"
+    },
+    {
+      "index": 2,
+      "start": 8.05,
+      "end": 11.03,
+      "text": "cursor hermes OpenClaw 各跑各的，",
+      "asr_text": " cursor hermes open call 各跑各的，"
+    },
+    {
+      "index": 3,
+      "start": 11.11,
+      "end": 12.33,
+      "text": "每个 Agent 都很强，",
+      "asr_text": "每个 agent 都很强，"
+    },
+    {
+      "index": 4,
+      "start": 12.63,
+      "end": 14.67,
+      "text": "但他们天然不互通问题，",
+      "asr_text": "但他们天然不互通问题，"
+    },
+    {
+      "index": 5,
+      "start": 14.67,
+      "end": 15.99,
+      "text": "不是某个 Agent 会忘，",
+      "asr_text": "不是某个 agent 会忘，"
+    },
+    {
+      "index": 6,
+      "start": 16.11,
+      "end": 18.33,
+      "text": "而是这些 Agent 没办法互相学习。",
+      "asr_text": "而是这些 agent 没办法互相学习。"
+    },
+    {
+      "index": 7,
+      "start": 19.03,
+      "end": 20.01,
+      "text": "举个真实的例子，",
+      "asr_text": "举个真实的例子，"
+    },
+    {
+      "index": 8,
+      "start": 20.09,
+      "end": 22.47,
+      "text": "我让 Claude Code 帮我读一份飞书文档，",
+      "asr_text": "我让 cloud code 帮我读一份飞书文档，"
+    },
+    {
+      "index": 9,
+      "start": 22.55,
+      "end": 23.79,
+      "text": "他拿到链接就去抓，",
+      "asr_text": "他拿到链接就去抓，"
+    },
+    {
+      "index": 10,
+      "start": 23.93,
+      "end": 25.51,
+      "text": "结果直接被弹回登录页。",
+      "asr_text": "结果直接被弹回登录页。"
+    },
+    {
+      "index": 11,
+      "start": 25.69,
+      "end": 28.09,
+      "text": "飞书的正文被登录态和权限挡着，",
+      "asr_text": "飞书的正文被登录态和权限挡着，"
+    },
+    {
+      "index": 12,
+      "start": 28.15,
+      "end": 28.73,
+      "text": "裸链接，",
+      "asr_text": "裸链接，"
+    },
+    {
+      "index": 13,
+      "start": 28.73,
+      "end": 30.37,
+      "text": "根本读不到他换方法。",
+      "asr_text": "根本读不到他换方法。"
+    },
+    {
+      "index": 14,
+      "start": 30.67,
+      "end": 33.07,
+      "text": "再是反复好几轮还是空手而归？",
+      "asr_text": "再是反复好几轮还是空手而归？"
+    },
+    {
+      "index": 15,
+      "start": 34.91,
+      "end": 37.79,
+      "text": "其实这个问题我的另一个 Agent 早就解决过了。",
+      "asr_text": "其实这个问题我的另一个 agent 早就解决过了。"
+    },
+    {
+      "index": 16,
+      "start": 39.11,
+      "end": 42.83,
+      "text": "Codex 在自己的会话里已经把这份文档完整读出来了。",
+      "asr_text": " codex 在自己的绘话里已经把这份文档完整读出来了。"
+    },
+    {
+      "index": 17,
+      "start": 43.33,
+      "end": 44.69,
+      "text": "但 Claude Code 不知道，",
+      "asr_text": "但 cloud code 不知道，"
+    },
+    {
+      "index": 18,
+      "start": 44.73,
+      "end": 47.27,
+      "text": "因为那些验被困在 agCodex 的会话里，",
+      "asr_text": "因为那些验被困在 agcodex 的绘话里，"
+    },
+    {
+      "index": 19,
+      "start": 48.05,
+      "end": 49.95,
+      "text": "Codex 的解法是不抓裸链接，",
+      "asr_text": " codex 的解法是不抓裸链接，"
+    },
+    {
+      "index": 20,
+      "start": 50.01,
+      "end": 52.05,
+      "text": "用本机 Chrome 的登录态打开页面，",
+      "asr_text": "用本机 chrome 的登录态打开页面，"
+    },
+    {
+      "index": 21,
+      "start": 52.17,
+      "end": 54.03,
+      "text": "直接从页面里把正文抠出来，",
+      "asr_text": "直接从页面里把正文抠出来，"
+    },
+    {
+      "index": 22,
+      "start": 54.15,
+      "end": 56.85,
+      "text": "遇到懒加载就滚动页面分段拿后半部分。",
+      "asr_text": "遇到懒家在就滚动页面分段拿后半部分。"
+    },
+    {
+      "index": 23,
+      "start": 57.19,
+      "end": 58.29,
+      "text": "这套经验很值钱，",
+      "asr_text": "这套经验很值钱，"
+    },
+    {
+      "index": 24,
+      "start": 58.43,
+      "end": 59.39,
+      "text": "但未必值得做成。",
+      "asr_text": "但未必值得做成。"
+    },
+    {
+      "index": 25,
+      "start": 59.39,
+      "end": 60.52,
+      "text": "一个正式的技能，",
+      "asr_text": "一个正式的技能，"
+    },
+    {
+      "index": 26,
+      "start": 60.6,
+      "end": 62.045,
+      "text": "也很难靠人复述清楚，",
+      "asr_text": "也很难靠人复述清楚，"
+    },
+    {
+      "index": 27,
+      "start": 62.25,
+      "end": 63.745,
+      "text": "它最适合近长期记忆。",
+      "asr_text": "它最适合近长期记忆。"
+    },
+    {
+      "index": 28,
+      "start": 64.08,
+      "end": 65.54,
+      "text": "我对 Codex 只说了一句，",
+      "asr_text": "我对 codex 只说了一句，"
+    },
+    {
+      "index": 29,
+      "start": 65.62,
+      "end": 67,
+      "text": "把这次的经验记下来，",
+      "asr_text": "把这次的经验记下来，"
+    },
+    {
+      "index": 30,
+      "start": 67.14,
+      "end": 68.44,
+      "text": "他自己挑起 mmmoo，",
+      "asr_text": "他自己挑起 mmmoo，"
+    },
+    {
+      "index": 31,
+      "start": 68.44,
+      "end": 69.02,
+      "text": "CLI，",
+      "asr_text": " CLI，"
+    },
+    {
+      "index": 32,
+      "start": 69.04,
+      "end": 70.445,
+      "text": "写成一条结构化记忆。",
+      "asr_text": "写成一条结构化记忆。"
+    },
+    {
+      "index": 33,
+      "start": 70.77,
+      "end": 71.43,
+      "text": "整个过程，",
+      "asr_text": "整个过程，"
+    },
+    {
+      "index": 34,
+      "start": 71.45,
+      "end": 74.22,
+      "text": "我一条命令都没敲过切回 cot，",
+      "asr_text": "我一条命令都没敲过切回 cot，"
+    },
+    {
+      "index": 35,
+      "start": 74.22,
+      "end": 75.05,
+      "text": "code 在读，",
+      "asr_text": " code 在读，"
+    },
+    {
+      "index": 36,
+      "start": 75.05,
+      "end": 75.755,
+      "text": "同一份文档。",
+      "asr_text": "同一份文档。"
+    },
+    {
+      "index": 37,
+      "start": 76.19,
+      "end": 79.71,
+      "text": "这次他第一步先去 mamals 搜了一下 Codex 沉淀的经验，",
+      "asr_text": "这次他第一步先去 mamals 搜了一下 codex 沉淀的经验，"
+    },
+    {
+      "index": 38,
+      "start": 79.71,
+      "end": 81.24,
+      "text": "立刻返回 Chrome，",
+      "asr_text": "立刻返回 chrome，"
+    },
+    {
+      "index": 39,
+      "start": 81.24,
+      "end": 82.04,
+      "text": "登录态提取，",
+      "asr_text": "登录态提取，"
+    },
+    {
+      "index": 40,
+      "start": 82.04,
+      "end": 83.315,
+      "text": "正文滚动加载，",
+      "asr_text": "正文滚动加载，"
+    },
+    {
+      "index": 41,
+      "start": 83.64,
+      "end": 84.875,
+      "text": "照着做一次走通。",
+      "asr_text": "照着做一次走通。"
+    },
+    {
+      "index": 42,
+      "start": 85.44,
+      "end": 87.135,
+      "text": "我没解释过一句飞书的机制，",
+      "asr_text": "我没解释过一句飞书的机制，"
+    },
+    {
+      "index": 43,
+      "start": 88.03,
+      "end": 90.045,
+      "text": "每个 Agent 其实都有自己的记忆，",
+      "asr_text": "每个 agent 其实都有自己的记忆，"
+    },
+    {
+      "index": 44,
+      "start": 90.31,
+      "end": 92.155,
+      "text": "memals 不需要再全量记一遍，",
+      "asr_text": " memals 不需要再全量记一遍，"
+    },
+    {
+      "index": 45,
+      "start": 92.41,
+      "end": 93.51,
+      "text": "真正值得进共享。",
+      "asr_text": "真正值得进共享。"
+    },
+    {
+      "index": 46,
+      "start": 93.51,
+      "end": 94.85,
+      "text": "记忆的不是聊天流水，",
+      "asr_text": "记忆的不是聊天流水，"
+    },
+    {
+      "index": 47,
+      "start": 95.05,
+      "end": 95.97,
+      "text": "而是跨机器，",
+      "asr_text": "而是跨机器，"
+    },
+    {
+      "index": 48,
+      "start": 95.99,
+      "end": 98.615,
+      "text": "跨 Agent 跨时间仍然有价值的东西。",
+      "asr_text": "跨 agent 跨时间仍然有价值的东西。"
+    },
+    {
+      "index": 49,
+      "start": 98.91,
+      "end": 99.59,
+      "text": "长期偏好、",
+      "asr_text": "长期偏好、"
+    },
+    {
+      "index": 50,
+      "start": 99.81,
+      "end": 101.53,
+      "text": "重大决定验证过的解法。",
+      "asr_text": "重大决定验证过的解法。"
+    },
+    {
+      "index": 51,
+      "start": 101.71,
+      "end": 102.43,
+      "text": "排查结论，",
+      "asr_text": "排查结论，"
+    },
+    {
+      "index": 52,
+      "start": 102.53,
+      "end": 104.8,
+      "text": "工作流规则他和技能也不一样，",
+      "asr_text": "工作流规则他和技能也不一样，"
+    },
+    {
+      "index": 53,
+      "start": 104.9,
+      "end": 105.86,
+      "text": "技能适合稳定、",
+      "asr_text": "技能适合稳定、"
+    },
+    {
+      "index": 54,
+      "start": 105.9,
+      "end": 106.46,
+      "text": "可重复，",
+      "asr_text": "可重复，"
+    },
+    {
+      "index": 55,
+      "start": 106.6,
+      "end": 108.46,
+      "text": "要规范执行的流程记忆，",
+      "asr_text": "要规范执行的流程记忆，"
+    },
+    {
+      "index": 56,
+      "start": 108.46,
+      "end": 109.34,
+      "text": "适合这种轻量，",
+      "asr_text": "适合这种轻量，"
+    },
+    {
+      "index": 57,
+      "start": 109.36,
+      "end": 111.71,
+      "text": "但高价值的经验还没必要产品化，",
+      "asr_text": "但高价值的经验还没必要产品化，"
+    },
+    {
+      "index": 58,
+      "start": 111.85,
+      "end": 114.065,
+      "text": "但下一次遇到能少走很多弯路。",
+      "asr_text": "但下一次遇到能少走很多弯路。"
+    },
+    {
+      "index": 59,
+      "start": 115.01,
+      "end": 116.51,
+      "text": "多台 mac 怎么连起来？",
+      "asr_text": "多台 mac 怎么连起来？"
+    },
+    {
+      "index": 60,
+      "start": 116.57,
+      "end": 118.51,
+      "text": "关键不是每台机器都装一个工具，",
+      "asr_text": "关键不是每台机器都装一个工具，"
+    },
+    {
+      "index": 61,
+      "start": 118.71,
+      "end": 122.765,
+      "text": "而是他们用同一套 my mouse 云端配置接入同一个记忆空间。",
+      "asr_text": "而是他们用同一套 my mouse 云端配置接入同一个记忆空间。"
+    },
+    {
+      "index": 62,
+      "start": 123.07,
+      "end": 126.015,
+      "text": "第一台 mac 上 Codex 把排查结论写进去。",
+      "asr_text": "第一台 mac 上 codex 把排查结论写进去。"
+    },
+    {
+      "index": 63,
+      "start": 126.34,
+      "end": 128.8,
+      "text": "第二台上 cloud cold 遇到同类问题，",
+      "asr_text": "第二台上 cloud cold 遇到同类问题，"
+    },
+    {
+      "index": 64,
+      "start": 128.82,
+      "end": 132.105,
+      "text": "先搜再做跑自动化的 open cloud 和 hermes，",
+      "asr_text": "先搜再做跑自动化的 open cloud 和 hermes，"
+    },
+    {
+      "index": 65,
+      "start": 132.35,
+      "end": 134.35,
+      "text": "也能读到同一份偏好和规则。",
+      "asr_text": "也能读到同一份偏好和规则。"
+    },
+    {
+      "index": 66,
+      "start": 134.63,
+      "end": 136.31,
+      "text": "命令行是最轻量的入口，",
+      "asr_text": "命令行是最轻量的入口，"
+    },
+    {
+      "index": 67,
+      "start": 136.51,
+      "end": 138.03,
+      "text": "人能用 Agent 也能用，",
+      "asr_text": "人能用 agent 也能用，"
+    },
+    {
+      "index": 68,
+      "start": 138.21,
+      "end": 138.35,
+      "text": "它，",
+      "asr_text": "它，"
+    },
+    {
+      "index": 69,
+      "start": 138.35,
+      "end": 139.15,
+      "text": "不替代插件，",
+      "asr_text": "不替代插件，"
+    },
+    {
+      "index": 70,
+      "start": 139.21,
+      "end": 140.375,
+      "text": "也不替代 MCP，",
+      "asr_text": "也不替代 MCP，"
+    },
+    {
+      "index": 71,
+      "start": 140.63,
+      "end": 141.97,
+      "text": "只要能调同一套命令行，",
+      "asr_text": "只要能调同一套命令行，"
+    },
+    {
+      "index": 72,
+      "start": 142.09,
+      "end": 143.785,
+      "text": "就接入了同一层长期记忆，",
+      "asr_text": "就接入了同一层长期记忆，"
+    },
+    {
+      "index": 73,
+      "start": 144.45,
+      "end": 147.535,
+      "text": "不要让一个 Agent 解决过的问题困在一台麦克里，",
+      "asr_text": "不要让一个 agent 解决过的问题困在一台麦克里，"
+    },
+    {
+      "index": 74,
+      "start": 147.71,
+      "end": 148.82,
+      "text": "是用 mams cow，",
+      "asr_text": "是用 mams cow，"
+    },
+    {
+      "index": 75,
+      "start": 148.88,
+      "end": 151.225,
+      "text": "把你的 Agent 接到同一层长期记忆上。",
+      "asr_text": "把你的 agent 接到同一层长期记忆上。"
+    },
+    {
+      "index": 76,
+      "start": 151.46,
+      "end": 153.14,
+      "text": "真正的价值不是 AI 记住了你，",
+      "asr_text": "真正的价值不是 AI 记住了你，"
+    },
+    {
+      "index": 77,
+      "start": 153.14,
+      "end": 155.415,
+      "text": "而而是你的 Agent 开始互相学习。",
+      "asr_text": "而而是你的 agent 开始互相学习。"
+    }
+  ],
+  "timeline": {
+    "start": 0.29,
+    "end": 155.415,
+    "duration": 155.125
+  }
+}

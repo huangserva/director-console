@@ -1,0 +1,150 @@
+{
+  "compositionId": "test-duix-ltx",
+  "duration": 119.905,
+  "source": {
+    "video": "/Users/huangzongning/Downloads/first120-template-duix-cosy-master-v2-syncfix-final.mp4"
+  },
+  "output": "projects/test-duix-ltx/index.html",
+  "hyperframesEntry": "projects/test-duix-ltx/index.html",
+  "audio": {
+    "src": "projects/test-duix-ltx/audio/asr.wav",
+    "captions": "projects/test-duix-ltx/captions.json"
+  },
+  "scenes": [
+    {
+      "id": "s001",
+      "component": "TitleCard",
+      "scene_type": "title_card",
+      "start": 0.05,
+      "duration": 16.54,
+      "track": 10,
+      "props": {
+        "cornerLeft": "成片导入",
+        "cornerName": "场景 1",
+        "kicker": "自动场景规划",
+        "title": "八十万人看过的 Codex 加",
+        "subline": "八十万人看过的 Codex 加视频渲染实战已经帮"
+      }
+    },
+    {
+      "id": "s002",
+      "component": "StepCard",
+      "scene_type": "step_card",
+      "start": 16.59,
+      "duration": 16.68,
+      "track": 20,
+      "finePieces": [
+        "StepPanel"
+      ],
+      "props": {
+        "kicker": "场景 02",
+        "title": "配配 Codex 用一句句话渲",
+        "items": [
+          "配配 Codex 用一句",
+          "简单说 hyperframe",
+          "HTMLCSS javascript"
+        ]
+      }
+    },
+    {
+      "id": "s003",
+      "component": "StepCard",
+      "scene_type": "step_card",
+      "start": 33.57,
+      "duration": 17.02,
+      "track": 30,
+      "finePieces": [
+        "StepPanel"
+      ],
+      "props": {
+        "kicker": "场景 03",
+        "title": "这也是它适不合 Agent 的",
+        "items": [
+          "这也是它适不合 Age",
+          "下为视频内容 本质",
+          "大模型不用理解 复"
+        ]
+      }
+    },
+    {
+      "id": "s004",
+      "component": "StepCard",
+      "scene_type": "step_card",
+      "start": 50.95,
+      "duration": 17.2,
+      "track": 40,
+      "finePieces": [
+        "StepPanel"
+      ],
+      "props": {
+        "kicker": "场景 04",
+        "title": "直接输入提示词",
+        "items": [
+          "直接输入提示词 请",
+          "第一步 确认制作规",
+          "他不是随便生成网页"
+        ]
+      }
+    },
+    {
+      "id": "s005",
+      "component": "StepCard",
+      "scene_type": "step_card",
+      "start": 68.31,
+      "duration": 17.435,
+      "track": 50,
+      "finePieces": [
+        "StepPanel"
+      ],
+      "props": {
+        "kicker": "场景 05",
+        "title": "字幕动画和输出格式",
+        "items": [
+          "字幕动画和输出格式",
+          "第二步联网搜索",
+          "因为视频要讲 Codex"
+        ]
+      }
+    },
+    {
+      "id": "s006",
+      "component": "StepCard",
+      "scene_type": "step_card",
+      "start": 86.01,
+      "duration": 16.53,
+      "track": 60,
+      "finePieces": [
+        "StepPanel"
+      ],
+      "props": {
+        "kicker": "场景 06",
+        "title": "如果本地没有装 Agent",
+        "items": [
+          "如果本地没有装 Age",
+          "第四步 初始化项目",
+          "现在你只需要用自然"
+        ]
+      }
+    },
+    {
+      "id": "s007",
+      "component": "StepCard",
+      "scene_type": "step_card",
+      "start": 102.78,
+      "duration": 17.125,
+      "track": 70,
+      "finePieces": [
+        "StepPanel"
+      ],
+      "props": {
+        "kicker": "场景 07",
+        "title": "卡片动效和字幕规则",
+        "items": [
+          "卡片动效和字幕规则",
+          "所以 hyperframe 的",
+          "对于侦才来说 这比"
+        ]
+      }
+    }
+  ]
+}

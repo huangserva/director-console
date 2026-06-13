@@ -1,0 +1,142 @@
+# Aether AI 科普解读视频脚本 v1
+
+项目：Aether AI 商单，方向一：播客内容拆解与解读
+形态：HyperFrames 科普解读视频，数字人讲解 + 暗色 HUD 版面
+目标时长：约 150s
+受众：AI 从业者、研究员、科技博主
+合规口径：品牌名统一为 Aether AI；创始人写黄碧薇教授 / Prof. Biwei Huang；正文只使用公开口径，不写任何红线内容。
+
+TTS 读法备注：
+- 屏幕显示：AI；TTS 喂入：A I
+- 屏幕显示：LLM；TTS 喂入：L L M
+- 屏幕显示：VLA；TTS 喂入：V L A
+- 屏幕显示：Sora；TTS 喂入：Sora
+- 屏幕显示：Aether AI；TTS 喂入：Aether A I
+
+## S001 Hook：相关不等于因果
+
+scene_type：hook_stat
+组件：StatsHero
+预计时长：0-22s
+
+口播：
+现在很多 AI 已经很会识别模式。
+它知道，打雷之后常常下雨；也能生成看起来合理的视频和动作。
+但问题是，它真的知道为什么吗？
+相关不等于因果。
+如果 AI 要进入机器人、自动驾驶、生物医药这些真实世界，只会预测下一个画面，可能还不够。
+
+画面：
+- 开场数字人全屏，脸部无遮挡。
+- 左侧短 punch-in：Correlation ≠ Causation。
+- HUD 卡片：Pattern Recognition / Real-World Action / Why It Happens。
+- 屏幕显示金句：相关 ≠ 因果。
+
+## S002 痛点：模式识别到了物理世界会变脆
+
+scene_type：concept_split
+组件：SplitTextPresenter
+预计时长：22-47s
+
+口播：
+L L M、V L A、Sora 这类系统，代表了当前 AI 的强大进展。
+客观说，它们在语言、视觉和生成任务里非常有效。
+但物理世界不是一张被动的数据分布。
+桌面高两厘米、杯子材质变了、摩擦力不同，一个小变量就可能让动作失败。
+因为这里需要的不只是“像不像”，而是“为什么会这样、我动一下会发生什么”。
+
+画面：
+- 左侧标题：Pattern ≠ Mechanism。
+- 左侧三张 HUD 卡：语言 / 视频 / 动作。
+- 右侧数字人分栏。
+- 底部金蓝进度线：Observation → Action → Outcome。
+
+## S003 解读：什么是因果世界模型
+
+scene_type：concept_split
+组件：SplitTextPresenter
+预计时长：47-77s
+
+口播：
+Aether AI 讲的因果世界模型，可以理解成给 AI 装一个懂物理规律的大脑。
+它不是只看“过去经常怎么发生”，而是学习变量之间怎样互相影响。
+这样，AI 行动前能推演后果；失败后能找到根因；到了新环境，也更有机会举一反三。
+这就是从模式识别，走向机制理解。
+
+画面：
+- 左侧大标题：懂机制的大脑。
+- 英文 kicker：CAUSAL WORLD MODEL。
+- 三张卡片：推演后果 / 找到根因 / 举一反三。
+- 右侧数字人，金色边框。
+
+## S004 三原则：机制、干预、恢复
+
+scene_type：step_card
+组件：StepCard
+预计时长：77-104s
+
+口播：
+这条路线可以压成三句话。
+第一，Mechanism over Pattern，机制优于模式。
+第二，Intervention over Prediction，干预优于预测。
+第三，Recovery over Rigidity，恢复优于僵化。
+真正的智能，不只是猜对答案，而是知道哪些变量能被改变，改变之后世界会怎样，以及失败后怎么重新回到任务上。
+
+画面：
+- 中央 StepCard：THREE PRINCIPLES。
+- 三条编号：
+  1. Mechanism over Pattern
+  2. Intervention over Prediction
+  3. Recovery over Rigidity
+- 背景暗色蜂窝网格，金蓝线条。
+
+## S005 定位：不是硬件，不是 LLM，而是推理层
+
+scene_type：concept_split
+组件：SplitTextPresenter
+预计时长：104-130s
+
+口播：
+所以 Aether AI 的定位，不是机器人硬件公司，也不是 L L M 公司，不是 AI 视频生成，也不是传统 V L A。
+它更像是夹在 Perception 和 Control 之间的智能推理层。
+感知系统告诉 AI 看到了什么，控制系统负责怎么动。
+中间这一层要回答：为什么、如果我干预会怎样、失败了怎么修正。
+
+画面：
+- 左侧结构图：Perception → Reasoning Layer → Control。
+- Reasoning Layer 标注：Aether AI。
+- 两侧小标签：Not Hardware / Not LLM / Not Sora / Not traditional VLA。
+- 右侧数字人分栏。
+
+## S006 收尾：从预测世界到理解世界
+
+scene_type：summary_cta
+组件：SummaryCta
+预计时长：130-150s
+
+口播：
+这期播客最值得拆解的一点是：
+下一代 AI，不只是把世界预测得更像，而是要理解世界运行的机制。
+Aether AI 的 slogan 是：Causal World Models for Real-World Intelligence。
+中文说，就是让 AI 不仅识别世界的表象，更理解世界运行的机制。
+想继续了解，可以去听极客公园这期访谈，也可以关注黄碧薇教授和 Aether AI，官网是 aetherlabs.ai。
+
+画面：
+- 数字人全屏，文字极简不盖脸。
+- 左下角 chip：Aether AI。
+- 主标题：从预测世界，到理解世界。
+- subline：Causal World Models for Real-World Intelligence。
+- 角标：aetherlabs.ai。
+
+## 版本备注
+
+- 当前版本按约 150s 设计，适合 5-7 场 HyperFrames 科普解读视频。
+- 可压到 60-90s 短版：保留 S001、S003、S004、S006，弱化 S002/S005。
+- 可扩到 390s 长版：加入播客原观点拆解、物理 AI 案例、因果推理基础概念、Perception/Reasoning/Control 架构细讲。
+
+## X / KOL 感想文案
+
+看完 Aether AI 这期访谈，最有启发的一点是：Physical AI 的关键，可能不是再堆一层“模式识别”，而是让模型理解机制、干预和失败恢复。相关不等于因果，模式也不等于机制。
+
+推荐 hashtags：
+#CausalWorldModels #PhysicalAI #CausalInference #AI #WorldModels #Robotics

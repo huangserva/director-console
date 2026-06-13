@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://director-console.local/schemas/recipe.schema.json",
+  "title": "Director Recipe",
+  "type": "object",
+  "required": [
+    "id",
+    "name",
+    "description",
+    "inputRequirements",
+    "optionalInputs",
+    "stages",
+    "defaultThemePackId",
+    "recommendedComponents",
+    "validationGates"
+  ],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "name": { "type": "string", "minLength": 1 },
+    "description": { "type": "string", "minLength": 1 },
+    "inputRequirements": { "type": "array", "items": { "$ref": "#/$defs/input" } },
+    "optionalInputs": { "type": "array", "items": { "$ref": "#/$defs/input" } },
+    "stages": { "type": "array", "items": { "$ref": "#/$defs/stage" }, "minItems": 1 },
+    "defaultThemePackId": { "type": "string", "minLength": 1 },
+    "recommendedComponents": { "type": "array", "items": { "type": "string" } },
+    "validationGates": { "type": "array", "items": { "type": "string" } }
+  },
+  "$defs": {
+    "input": {
+      "type": "object",
+      "required": ["id", "type", "description"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "type": { "type": "string", "minLength": 1 },
+        "required": { "type": "boolean" },
+        "description": { "type": "string" }
+      }
+    },
+    "stage": {
+      "type": "object",
+      "required": ["id", "type", "name"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "type": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "dependsOn": { "type": "array", "items": { "type": "string" } },
+        "outputs": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

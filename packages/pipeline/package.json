@@ -1,0 +1,11 @@
+{
+  "name": "director-console-pipeline",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "route-b:asr": "node src/cli.mjs",
+    "route-a": "node src/route-a-cli.mjs",
+    "test": "node --test test/*.test.mjs",
+    "lint": "node --check src/stages.mjs && node --check src/cli.mjs && node --check src/route-a-cli.mjs && node --check test/pipeline.test.mjs"
+  }
+}

@@ -1,0 +1,193 @@
+{
+  "id": "run-acc-p",
+  "projectId": "acc-p",
+  "recipeId": "digital-human-product-introduction",
+  "stages": [
+    {
+      "id": "product-script",
+      "recipeStageId": "product-script",
+      "type": "script",
+      "name": "Prepare product introduction script",
+      "dependsOn": [],
+      "status": "succeeded",
+      "inputs": {},
+      "outputs": {
+        "scriptPath": "/Users/huangzongning/development/director-console/hyperframes-composer/projects/acc-p/script/product-script.txt",
+        "script": {
+          "language": "zh",
+          "text": "P 帮你把D变成可交付结果。它的核心亮点是s，让用户先看到直接价值。再看三个卖点：s。对比手工流程，P 用更易编辑和更稳交付证明它更适合持续生产。立即开始。",
+          "product": {
+            "productName": "P",
+            "productDescription": "D",
+            "sellingPoints": [
+              "s"
+            ],
+            "productMedia": [],
+            "offerCta": "立即开始"
+          },
+          "chapters": [
+            {
+              "id": "p001",
+              "title": "Opening Promise",
+              "intent": "opening-promise",
+              "text": "P 帮你把D变成可交付结果。",
+              "displayHints": [
+                "P",
+                "承诺"
+              ],
+              "targetDurationSeconds": 12
+            },
+            {
+              "id": "p002",
+              "title": "Product Highlight",
+              "intent": "product-highlight",
+              "text": "它的核心亮点是s，让用户先看到直接价值。",
+              "displayHints": [
+                "s"
+              ],
+              "targetDurationSeconds": 12
+            },
+            {
+              "id": "p003",
+              "title": "Feature Callouts",
+              "intent": "feature-callouts",
+              "text": "再看三个卖点：s。",
+              "displayHints": [
+                "s"
+              ],
+              "targetDurationSeconds": 15
+            },
+            {
+              "id": "p004",
+              "title": "Comparison Proof",
+              "intent": "comparison-proof",
+              "text": "对比手工流程，P 用更易编辑和更稳交付证明它更适合持续生产。",
+              "displayHints": [
+                "对比",
+                "证明"
+              ],
+              "targetDurationSeconds": 12
+            },
+            {
+              "id": "p005",
+              "title": "Final CTA",
+              "intent": "final-cta",
+              "text": "立即开始。",
+              "displayHints": [
+                "CTA"
+              ],
+              "targetDurationSeconds": 9
+            }
+          ],
+          "terms": [
+            {
+              "written": "P",
+              "spoken": "P"
+            }
+          ]
+        }
+      },
+      "errors": [],
+      "updatedAt": "2026-06-12T09:07:12.483Z",
+      "startedAt": "2026-06-12T09:07:12.483Z",
+      "finishedAt": "2026-06-12T09:07:12.483Z"
+    },
+    {
+      "id": "tts",
+      "recipeStageId": "tts",
+      "type": "tts",
+      "name": "Generate speech",
+      "dependsOn": [
+        "product-script"
+      ],
+      "status": "needs-review",
+      "inputs": {},
+      "outputs": {},
+      "errors": [
+        {
+          "code": "SERVICE_UNAVAILABLE",
+          "message": "CosyVoice3 service is unavailable at http://127.0.0.1:4090; start TTS before running this stage.",
+          "service": "cosyvoice3"
+        }
+      ],
+      "updatedAt": "2026-06-12T09:07:12.484Z",
+      "startedAt": "2026-06-12T09:07:12.483Z"
+    },
+    {
+      "id": "lip-sync",
+      "recipeStageId": "lip-sync",
+      "type": "lip-sync",
+      "name": "Generate lip-synced presenter video",
+      "dependsOn": [
+        "tts"
+      ],
+      "status": "not-started",
+      "inputs": {},
+      "outputs": {},
+      "errors": []
+    },
+    {
+      "id": "asr",
+      "recipeStageId": "asr",
+      "type": "asr",
+      "name": "Generate captions",
+      "dependsOn": [
+        "lip-sync"
+      ],
+      "status": "not-started",
+      "inputs": {},
+      "outputs": {},
+      "errors": []
+    },
+    {
+      "id": "scene-plan",
+      "recipeStageId": "scene-plan",
+      "type": "scene-plan",
+      "name": "Generate product scene plan",
+      "dependsOn": [
+        "asr"
+      ],
+      "status": "not-started",
+      "inputs": {},
+      "outputs": {},
+      "errors": []
+    },
+    {
+      "id": "packaging",
+      "recipeStageId": "packaging",
+      "type": "packaging",
+      "name": "Build product composer manifest",
+      "dependsOn": [
+        "scene-plan"
+      ],
+      "status": "not-started",
+      "inputs": {},
+      "outputs": {},
+      "errors": []
+    },
+    {
+      "id": "compose",
+      "recipeStageId": "compose",
+      "type": "compose",
+      "name": "Compose preview HTML",
+      "dependsOn": [
+        "packaging"
+      ],
+      "status": "not-started",
+      "inputs": {},
+      "outputs": {},
+      "errors": []
+    }
+  ],
+  "currentStageId": "tts",
+  "checkpoints": [],
+  "errors": [
+    {
+      "stageId": "tts",
+      "code": "SERVICE_UNAVAILABLE",
+      "message": "CosyVoice3 service is unavailable at http://127.0.0.1:4090; start TTS before running this stage."
+    }
+  ],
+  "startedAt": "2026-06-12T09:07:12.483Z",
+  "updatedAt": "2026-06-12T09:07:12.484Z"
+}

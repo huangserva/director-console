@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://director-console.local/schemas/asset.schema.json",
+  "title": "Director Asset",
+  "type": "object",
+  "required": ["id", "type", "path", "status"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "type": {
+      "type": "string",
+      "enum": ["video", "audio", "captions", "transcript", "scene-plan", "manifest", "html", "render", "image", "script", "metadata", "other"]
+    },
+    "path": { "type": "string", "minLength": 1 },
+    "media": { "type": "object" },
+    "createdByStageId": { "type": "string" },
+    "provenance": { "type": "object" },
+    "status": { "type": "string", "enum": ["pending", "ready", "missing", "failed", "stale"] }
+  }
+}

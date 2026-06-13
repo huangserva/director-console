@@ -1,0 +1,10 @@
+{
+  "name": "console-api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.mjs",
+    "test": "node --test test/*.test.mjs",
+    "lint": "node --check src/index.mjs && node --check src/server.mjs && node --check test/server.test.mjs"
+  }
+}

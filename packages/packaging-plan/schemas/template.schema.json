@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://director-console.local/schemas/template.schema.json",
+  "title": "Director Packaging Template",
+  "type": "object",
+  "required": ["id", "name", "description", "cardRules", "styleProfile", "motionProfile"],
+  "additionalProperties": true,
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "name": { "type": "string", "minLength": 1 },
+    "description": { "type": "string" },
+    "cardRules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["cardType", "role", "segmentKind", "layoutStrategy", "styleRef", "motionRef", "contentRules", "mediaRequirements"],
+        "additionalProperties": true,
+        "properties": {
+          "cardType": { "type": "string" },
+          "role": { "type": "string" },
+          "segmentKind": { "type": "string" },
+          "layoutStrategy": { "type": "object", "additionalProperties": true },
+          "styleRef": { "type": "string" },
+          "motionRef": { "type": "string" },
+          "contentRules": { "type": "object", "additionalProperties": true },
+          "mediaRequirements": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["slot", "kind"],
+              "additionalProperties": true,
+              "properties": {
+                "slot": { "type": "string" },
+                "kind": { "type": "string" },
+                "required": { "type": "boolean" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "styleProfile": { "type": "object", "additionalProperties": true },
+    "motionProfile": { "type": "object", "additionalProperties": true }
+  }
+}

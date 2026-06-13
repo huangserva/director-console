@@ -1,0 +1,9 @@
+{
+  "name": "director-console-protocol",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "lint": "node --check src/index.mjs && node --check src/recipes.mjs && node --check src/validator.mjs && node --check src/workflow.mjs && node --check test/protocol.test.mjs"
+  }
+}

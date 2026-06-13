@@ -1,0 +1,161 @@
+# Aether AI 科普解读视频脚本 v2
+
+项目：Aether AI 商单，方向一：极客公园播客拆解与解读
+来源：极客公园「今夜科技谈」2026-06-09，主持张鹏 × 嘉宾黄碧薇教授 / Prof. Biwei Huang
+形态：HyperFrames 科普解读视频，数字人讲解 + 暗色 HUD 版面 + 播客切片
+目标时长：约 150s
+受众：AI 从业者、研究员、科技博主
+合规口径：品牌名统一为 Aether AI；正文只保留公开、可验证的技术解读，不写资本、内部效果或不可验证宣传信息。
+
+TTS 读法备注：
+- 屏幕显示：AI；TTS 喂入：A I
+- 屏幕显示：LLM；TTS 喂入：L L M
+- 屏幕显示：VLA；TTS 喂入：V L A
+- 屏幕显示：Aether AI；TTS 喂入：Aether A I
+- 屏幕显示：Sora；TTS 喂入：Sora
+- 屏幕显示：V-JEPA；TTS 喂入：V JEPA
+
+## S001 Hook：从极客公园这期开始
+
+scene_type：hook_stat
+组件：StatsHero
+预计时长：0-20s
+
+口播：
+这期极客公园「今夜科技谈」，张鹏和黄碧薇教授聊了一个很硬的问题：
+下一代 AI 的关键，可能不是把世界预测得更像，而是理解世界为什么这样运行。
+节目里最抓人的例子，是一个杯子。
+视频生成模型想象一只手去抓杯子，手还没碰到，杯子却自己飞起来了。
+这不是画面不够精细，而是模型学到了相关性，却没有学到因果。
+
+画面：
+- 数字人开场，右侧或全屏脸部无遮挡。
+- 左侧 HUD：极客公园「今夜科技谈」/ 张鹏 × 黄碧薇教授。
+- 大标题：相关 ≠ 因果。
+- B-roll：`~/Downloads/outputs/clip1.mp4`，用作杯子例子切片，可放左侧竖版窗口或 punch-in。
+
+## S002 痛点：物理世界不是聊天窗口
+
+scene_type：concept_split
+组件：SplitTextPresenter
+预计时长：20-43s
+
+口播：
+这也是为什么，L L M、V L A、Sora 到物理世界会遇到边界。
+它们在语言、代码、视觉生成上很强，这是客观进展。
+但物理世界变量太多：桌面高两厘米，杯子材质变了，摩擦力不一样，动作就可能失败。
+聊天说错了，改一句就行；杯子砸了，后果会真实发生。
+所以机器人需要的不只是“下一个画面像不像”，而是“我一动，世界会怎么变”。
+
+画面：
+- 左侧标题：Physical AI needs causality。
+- 三张 HUD 卡：变量变化 / 动作失败 / 真实后果。
+- 右侧数字人分栏，脸部无遮挡。
+- 底部进度线：Observation → Intervention → Outcome。
+
+## S003 解读：Scaling what，而不是盲目 scaling
+
+scene_type：concept_split
+组件：SplitTextPresenter
+预计时长：43-65s
+
+口播：
+播客里还有一个关键拆解：大家都说 Scaling Law，但问题是，scaling what？
+如果只是盲目堆数据、堆算力，黄碧薇教授用 0.2 的斜率做了一个比喻。
+如果模型懂因果、懂物理规律，再有意收集真正缺的高质量数据，斜率可能变成 0.8。
+这不是否定 scaling，而是把 scaling 从信仰，变成工程问题：
+该放大的不是噪声，而是能揭示机制的数据。
+
+画面：
+- 左侧标题：Scaling what?
+- 两条斜率线：Blind scaling 0.2 / Causal scaling 0.8，标注为播客中的工程比喻。
+- 右侧数字人。
+- 小标签：data quality / mechanism / intervention。
+
+## S004 主线：AI 三十年的四代范式
+
+scene_type：step_card
+组件：StepCard
+预计时长：65-94s
+
+口播：
+这期节目最值得收藏的，是黄碧薇教授把 AI 三十年压成了四代范式。
+第一代，九十年代初，相关性小模型。
+第二代，二零一零年前后，因果小模型，也就是 causal discovery。
+第三代，就是今天的相关性大模型，L L M 在语言和编程上很强，因为这些信息更浅层、更离散。
+第四代，下一站，是因果大模型。
+它不是凭空出现，而是站在第二代因果方法和第三代大模型的肩膀上。
+
+画面：
+- 中央 StepCard：FOUR AI PARADIGMS。
+- 四条编号：Correlation Small Models / Causal Small Models / Correlation Large Models / Causal Large Models。
+- B-roll：`~/Downloads/outputs/clip4.mp4`，用作四代范式切片。
+
+## S005 概念：世界模型不等于抓住本质
+
+scene_type：concept_split
+组件：SplitTextPresenter
+预计时长：94-118s
+
+口播：
+所以，世界模型这个词也要拆开看。
+视频生成、三维生成，都可以叫世界模型；但只要没有还原物理规律和因果结构，它就还没抓住本质。
+Aether AI 说的因果世界模型，更像给 AI 装一个懂机制的大脑：
+行动前能推演后果，失败后能找到根因，换到新环境还能举一反三。
+一句话，模式不是机制，相关也不是因果。
+
+画面：
+- 左侧标题：World Model ≠ Mechanism。
+- 三张卡：推演后果 / 找到根因 / 举一反三。
+- 右侧数字人分栏。
+- 可穿插 clip1 的杯子例子定格帧作为小卡，不拉伸变形。
+
+## S006 定位：Perception 与 Control 之间的推理层
+
+scene_type：concept_split
+组件：SplitTextPresenter
+预计时长：118-138s
+
+口播：
+落到 Aether AI，它不是机器人硬件公司，不是 L L M 公司，也不是 AI 视频生成公司。
+它要做的是 Perception 和 Control 之间的智能推理层。
+感知系统回答“我看到了什么”，控制系统负责“我怎么动”。
+中间这一层回答三个问题：
+为什么会这样？如果我干预会怎样？失败后怎么恢复？
+
+画面：
+- 左侧结构图：Perception → Aether AI Reasoning Layer → Control。
+- 三个问题卡：Why / Intervention / Recovery。
+- 右侧数字人；避免任何卡片压脸。
+
+## S007 收尾：下一代 AI 范式之争
+
+scene_type：summary_cta
+组件：SummaryCta
+预计时长：138-154s
+
+口播：
+这就是这期播客真正的看点：
+下一代 AI 范式之争，不只是更大的模型，而是更懂机制的模型。
+三句话收束：Mechanism over Pattern，Intervention over Prediction，Recovery over Rigidity。
+Aether AI 的 slogan 是：Causal World Models for Real-World Intelligence。
+想继续了解，可以去听极客公园这期「今夜科技谈」，也可以关注黄碧薇教授和 Aether AI，官网是 aetherlabs.ai。
+
+画面：
+- 数字人全屏或右侧大窗，脸部无遮挡。
+- 左侧极简 CTA：Causal World Models for Real-World Intelligence。
+- 官网角标：aetherlabs.ai。
+- 可露出极客公园节目来源卡，不使用源稿误转品牌字幕。
+
+## 版本备注
+
+- 当前版本按约 150s 设计，7 场。
+- 可压到 60-90s 短版：保留 S001、S004、S005、S007，删除 S003 的斜率细节并压缩 S006。
+- 可扩到 390s 长版：补充结构化压缩即智能、LeCun / V-JEPA 的客观对比、因果发现与物理世界数据采集方法。
+
+## X / KOL 感想文案
+
+极客公园这期张鹏 × 黄碧薇教授的对谈，最值得记住的不是“又一个世界模型”，而是一个更尖锐的问题：Physical AI 到底应该 scaling what？如果模型只学相关性，杯子可以在没被抓住前自己飞起来；真正的下一站，可能是能理解机制、干预和恢复的因果大模型。
+
+推荐 hashtags：
+#CausalWorldModels #PhysicalAI #CausalInference #AI #WorldModels #Robotics #AetherAI

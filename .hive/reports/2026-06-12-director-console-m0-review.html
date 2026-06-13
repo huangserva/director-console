@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>Director Console M0 Review</title>
+    <style>
+      body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.55; margin: 40px; color: #1f2937; }
+      h1, h2 { color: #111827; }
+      code { background: #f3f4f6; padding: 0.1rem 0.25rem; border-radius: 4px; }
+      .blocking { border-left: 4px solid #dc2626; padding-left: 16px; }
+      .suggestions { border-left: 4px solid #d97706; padding-left: 16px; }
+      .ok { border-left: 4px solid #16a34a; padding-left: 16px; }
+    </style>
+  </head>
+  <body>
+    <h1>Director Console M0 Review</h1>
+    <p><strong>Date:</strong> 2026-06-12<br /><strong>Dispatch:</strong> c1d83e74-d49f-43d4-9048-e3186ad74a47</p>
+
+    <section class="blocking">
+      <h2>阻塞</h2>
+      <p>
+        <code>POST /inspect</code> is not manifest-scoped. The web sends <code>{ name }</code>,
+        but the API ignores it and inspects the current generated <code>index.html</code>.
+        Inspect can therefore report stale results when the selected manifest is not the last composed manifest.
+      </p>
+    </section>
+
+    <section class="suggestions">
+      <h2>建议</h2>
+      <ul>
+        <li>Reconcile <code>console-web/README.md</code> and <code>src/lib/api.ts</code> now that the API contract has landed.</li>
+        <li>Add API tests for illegal <code>scene_type</code> and preview path traversal.</li>
+        <li>Return 400 for malformed percent-encoding in preview paths.</li>
+        <li>Standardize whether worker PM docs are written to the dispatch repo's <code>.hive</code> or the worker workspace <code>.hive</code>.</li>
+      </ul>
+    </section>
+
+    <section class="ok">
+      <h2>Verification</h2>
+      <ul>
+        <li><code>apps/console-api npm test</code>: 8/8 passing.</li>
+        <li><code>apps/console-api npm run lint</code>: passing.</li>
+        <li><code>console-web npm test</code>: 6/6 passing.</li>
+        <li><code>console-web npm run build</code>: passing.</li>
+        <li>Manual preview traversal smoke: encoded escapes outside <code>hyperframes-composer</code> returned 403.</li>
+      </ul>
+    </section>
+
+    <p><strong>Conclusion:</strong> M0 should not be marked done until inspect semantics are reconciled.</p>
+  </body>
+</html>

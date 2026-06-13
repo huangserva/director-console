@@ -1,0 +1,179 @@
+{
+  "schemaVersion": "2026-06-12",
+  "projectId": "sample-text",
+  "recipeId": null,
+  "duration": 12,
+  "source": {
+    "video": null,
+    "audio": null,
+    "captions": null
+  },
+  "tracks": {
+    "video": [],
+    "audio": [],
+    "subtitle": [],
+    "card": [
+      {
+        "id": "sample-title",
+        "type": "caption",
+        "engine": {
+          "component": "TitleCard",
+          "scene_type": "title_card",
+          "track": 10,
+          "finePieces": [],
+          "props": {
+            "cornerLeft": "导演",
+            "cornerName": "样例",
+            "kicker": "可编辑方案",
+            "title": "纯文本预览",
+            "subline": "无需外部媒体素材"
+          }
+        },
+        "content": {
+          "cornerLeft": "导演",
+          "cornerName": "样例",
+          "kicker": "可编辑方案",
+          "title": "纯文本预览",
+          "subline": "无需外部媒体素材"
+        },
+        "media": {},
+        "timeline": {
+          "track": "card",
+          "start": 0,
+          "duration": 4
+        },
+        "validation": {
+          "status": "unchecked",
+          "failures": []
+        }
+      },
+      {
+        "id": "sample-steps",
+        "type": "info-structure",
+        "engine": {
+          "component": "StepCard",
+          "scene_type": "step_card",
+          "track": 20,
+          "finePieces": [
+            "StepPanel"
+          ],
+          "props": {
+            "kicker": "步骤 01",
+            "title": "编辑属性",
+            "items": [
+              "加载方案",
+              "修改文案",
+              "重新合成"
+            ]
+          }
+        },
+        "content": {
+          "kicker": "步骤 01",
+          "title": "编辑属性",
+          "items": [
+            "加载方案",
+            "修改文案",
+            "重新合成"
+          ]
+        },
+        "media": {},
+        "timeline": {
+          "track": "card",
+          "start": 4,
+          "duration": 4
+        },
+        "validation": {
+          "status": "unchecked",
+          "failures": []
+        }
+      },
+      {
+        "id": "sample-close",
+        "type": "caption",
+        "engine": {
+          "component": "TitleCard",
+          "scene_type": "title_card",
+          "track": 30,
+          "finePieces": [],
+          "props": {
+            "cornerLeft": "预览",
+            "cornerName": "控制台",
+            "kicker": "网页壳已就绪",
+            "title": "实时网页输出",
+            "subline": "用于 M0 演示"
+          }
+        },
+        "content": {
+          "cornerLeft": "预览",
+          "cornerName": "控制台",
+          "kicker": "网页壳已就绪",
+          "title": "实时网页输出",
+          "subline": "用于 M0 演示"
+        },
+        "media": {},
+        "timeline": {
+          "track": "card",
+          "start": 8,
+          "duration": 4
+        },
+        "validation": {
+          "status": "unchecked",
+          "failures": []
+        }
+      }
+    ]
+  },
+  "segments": [
+    {
+      "id": "sample-title",
+      "kind": "card-1",
+      "start": 0,
+      "duration": 4,
+      "content": {
+        "cornerLeft": "导演",
+        "cornerName": "样例",
+        "kicker": "可编辑方案",
+        "title": "纯文本预览",
+        "subline": "无需外部媒体素材"
+      },
+      "media": {}
+    },
+    {
+      "id": "sample-steps",
+      "kind": "card-2",
+      "start": 4,
+      "duration": 4,
+      "content": {
+        "kicker": "步骤 01",
+        "title": "编辑属性",
+        "items": [
+          "加载方案",
+          "修改文案",
+          "重新合成"
+        ]
+      },
+      "media": {}
+    },
+    {
+      "id": "sample-close",
+      "kind": "card-3",
+      "start": 8,
+      "duration": 4,
+      "content": {
+        "cornerLeft": "预览",
+        "cornerName": "控制台",
+        "kicker": "网页壳已就绪",
+        "title": "实时网页输出",
+        "subline": "用于 M0 演示"
+      },
+      "media": {}
+    }
+  ],
+  "templateRef": {
+    "id": "p5-smoke-tpl",
+    "version": "2026-06-12"
+  },
+  "output": "projects/sample-text/index.html",
+  "hyperframesEntry": "projects/sample-text/index.html",
+  "engine": {}
+}

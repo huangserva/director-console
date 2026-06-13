@@ -1,0 +1,62 @@
+{
+  "opening": {
+    "component": "StatsHero",
+    "scene_type": "hook_stat",
+    "defaultPropsFn": "defaultOpeningProps"
+  },
+  "caption": {
+    "component": "TitleCard",
+    "scene_type": "title_card",
+    "defaultPropsFn": "defaultCaptionProps"
+  },
+  "product-highlight": {
+    "component": "StepCard",
+    "scene_type": "step_card",
+    "defaultPropsFn": "defaultProductHighlightProps"
+  },
+  "demo-annotation": {
+    "component": "ScreenWithPip",
+    "scene_type": "screen_demo_pip",
+    "defaultPropsFn": "defaultDemoAnnotationProps"
+  },
+  "comparison": {
+    "component": "SplitTextPresenter",
+    "scene_type": "concept_split",
+    "defaultPropsFn": "defaultComparisonProps"
+  },
+  "pip": {
+    "component": "ScreenWithPip",
+    "scene_type": "screen_demo_pip",
+    "defaultPropsFn": "defaultPipProps"
+  },
+  "data-proof": {
+    "component": "ProofMontage",
+    "scene_type": "proof_montage",
+    "defaultPropsFn": "defaultDataProofProps"
+  },
+  "info-structure": {
+    "component": "StepCard",
+    "scene_type": "step_card",
+    "defaultPropsFn": "defaultInfoStructureProps"
+  },
+  "mv-rhythm": {
+    "component": "HeroAroll",
+    "scene_type": "aroll_emphasis",
+    "defaultPropsFn": "defaultMvRhythmProps"
+  },
+  "transition": {
+    "component": "TitleCard",
+    "scene_type": "title_card",
+    "defaultPropsFn": "defaultTransitionProps"
+  },
+  "brand": {
+    "component": "TitleCard",
+    "scene_type": "title_card",
+    "defaultPropsFn": "defaultBrandProps"
+  },
+  "cta": {
+    "component": "SummaryCta",
+    "scene_type": "summary_cta",
+    "defaultPropsFn": "defaultCtaProps"
+  }
+}

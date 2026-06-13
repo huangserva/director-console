@@ -1,0 +1,171 @@
+{
+  "version": 1,
+  "strategy": "text-only-catalog-components",
+  "source": {
+    "language": "zh",
+    "segments": 58,
+    "timeline": {
+      "start": 0.05,
+      "end": 119.905,
+      "duration": 119.855
+    }
+  },
+  "scenes": [
+    {
+      "id": "s001",
+      "start": 0.05,
+      "end": 16.59,
+      "duration": 16.54,
+      "intent": "opening_summary",
+      "componentCandidates": [
+        "TitleCard"
+      ],
+      "segments": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "summary": "八十万人看过的 Codex 加",
+      "text": "八十万人看过的 Codex 加 remotion 实战已经帮助很多小伙伴入门。今天我们继续往前走，用 Agent 制作像这样的高级感动画视频，这次重点测试 HyperFrames。你现在就可以用 Codex Claude Code 这种 Agent 请创建科技感口播视频 hyperframe 的这种做果下么？"
+    },
+    {
+      "id": "s002",
+      "start": 16.59,
+      "end": 33.27,
+      "duration": 16.68,
+      "intent": "transcript_step",
+      "componentCandidates": [
+        "StepCard"
+      ],
+      "segments": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "summary": "配配 Codex 用一句句话渲",
+      "text": "配配 Codex 用一句句话渲染软件简我用这视视频讲清楚。简单说，hyperframe t 是一个开元软件，可以用写 HTML 网页的方式来构建视频。HTMLCSS javascript 能实现的视觉效果，理论上都可以被它渲染出来，"
+    },
+    {
+      "id": "s003",
+      "start": 33.57,
+      "end": 50.59,
+      "duration": 17.02,
+      "intent": "transcript_step",
+      "componentCandidates": [
+        "StepCard"
+      ],
+      "segments": [
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19
+      ],
+      "summary": "这也是它适不合 Agent 的",
+      "text": "这也是它适不合 Agent 的原因。下为视频内容，本质上是页面构构样动动和时间轴。大模型不用理解，复杂剪辑软件，也能一步一步把画面做出来。下面我们用 Codex 创建第一个 hHyperFrames 视频，先不做复杂效果，只测试它能不能一句话出片，"
+    },
+    {
+      "id": "s004",
+      "start": 50.95,
+      "end": 68.15,
+      "duration": 17.2,
+      "intent": "transcript_step",
+      "componentCandidates": [
+        "StepCard"
+      ],
+      "segments": [
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30
+      ],
+      "summary": "直接输入提示词",
+      "text": "直接输入提示词，请创建一个 Codex 安装教程，要求一九二零乘一零八零包含科技感、配色、字幕动画和完整时间轴，接着 a 镇开始创作。第一步，确认制作规范。他不是随便生成网页在录屏，而是先确认尺寸时长、素材、"
+    },
+    {
+      "id": "s005",
+      "start": 68.31,
+      "end": 85.745,
+      "duration": 17.435,
+      "intent": "transcript_step",
+      "componentCandidates": [
+        "StepCard"
+      ],
+      "segments": [
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37
+      ],
+      "summary": "字幕动画和输出格式",
+      "text": "字幕动画和输出格式。第二步联网搜索。因为视频要讲，Codex 安装 Agent 会先读取官方文档，明确当前版本需要展示哪些步骤。第三步，检查环境 HyperFrames 渲染视频需要 node FFM pab creme 这些依赖。"
+    },
+    {
+      "id": "s006",
+      "start": 86.01,
+      "end": 102.54,
+      "duration": 16.53,
+      "intent": "transcript_step",
+      "componentCandidates": [
+        "StepCard"
+      ],
+      "segments": [
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47
+      ],
+      "summary": "如果本地没有装 Agent",
+      "text": "如果本地没有装 Agent，会继续完善环境。第四步，初始化项目生成以后，你会看到完整的项目目录，不会编程也没关系。现在你只需要用自然语言描述目标第五步，建立视觉风格。Agent 会写下字体颜色、背景、"
+    },
+    {
+      "id": "s007",
+      "start": 102.78,
+      "end": 119.905,
+      "duration": 17.125,
+      "intent": "transcript_step",
+      "componentCandidates": [
+        "StepCard"
+      ],
+      "segments": [
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57
+      ],
+      "summary": "卡片动效和字幕规则",
+      "text": "卡片动效和字幕规则，让后面的画面统一在同一套系统里。所以，hyperframe 的价值不只是生成视频，而是把视频制作变成可以复用，可以检查，可以反复修改的工程流程。对于侦才来说，这比传统剪辑软件更容易理解，也更容易稳定复课。"
+    }
+  ]
+}

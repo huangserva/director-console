@@ -1,0 +1,11 @@
+node_modules/
+render/
+audit/frames/
+assets/external-first390
+*.mp4
+*.wav
+*.tar
+.DS_Store
+.env.local
+apps/console-api/.env.local
+apps/console-api/logs/

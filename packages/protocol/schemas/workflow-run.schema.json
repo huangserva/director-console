@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://director-console.local/schemas/workflow-run.schema.json",
+  "title": "Director Workflow Run",
+  "type": "object",
+  "required": ["id", "projectId", "recipeId", "stages", "currentStageId", "checkpoints", "errors", "startedAt", "updatedAt"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "projectId": { "type": "string", "minLength": 1 },
+    "recipeId": { "type": "string", "minLength": 1 },
+    "stages": { "type": "array", "items": { "$ref": "#/$defs/stageRun" } },
+    "currentStageId": { "type": ["string", "null"] },
+    "checkpoints": { "type": "array", "items": { "$ref": "#/$defs/checkpoint" } },
+    "errors": { "type": "array", "items": { "$ref": "#/$defs/error" } },
+    "startedAt": { "type": "string", "format": "date-time" },
+    "updatedAt": { "type": "string", "format": "date-time" }
+  },
+  "$defs": {
+    "stageRun": {
+      "type": "object",
+      "required": ["id", "recipeStageId", "status"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "recipeStageId": { "type": "string", "minLength": 1 },
+        "status": { "type": "string", "enum": ["not-started", "ready", "running", "succeeded", "failed", "skipped", "needs-review"] },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "inputs": { "type": "object" },
+        "outputs": { "type": "object" },
+        "logPath": { "type": "string" }
+      }
+    },
+    "checkpoint": {
+      "type": "object",
+      "required": ["id", "stageId", "status"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "stageId": { "type": "string", "minLength": 1 },
+        "status": { "type": "string", "enum": ["open", "approved", "rejected", "skipped"] },
+        "notes": { "type": "string" }
+      }
+    },
+    "error": {
+      "type": "object",
+      "required": ["message"],
+      "properties": {
+        "stageId": { "type": "string" },
+        "message": { "type": "string", "minLength": 1 },
+        "code": { "type": "string" }
+      }
+    }
+  }
+}

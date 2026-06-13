@@ -1,0 +1,17 @@
+{
+  "name": "hyperframes-composer",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "validate:scaffold": "node scripts/validate-scaffold.mjs",
+    "validate:catalog": "node scripts/validate-catalog.mjs",
+    "validate:registry": "node scripts/validate-registry.mjs",
+    "validate:manifest": "node scripts/validate-manifest.mjs",
+    "test:validator": "node scripts/test-validator.mjs",
+    "test:rich-render": "node --test scripts/test-rich-render.mjs",
+    "compose": "node scripts/compose.mjs",
+    "lint": "npx --yes hyperframes@0.6.79 lint",
+    "inspect": "npx --yes hyperframes@0.6.79 inspect --timeout 180000",
+    "render": "npx --yes hyperframes@0.6.79 render --fps 30 --quality standard --workers 1 --browser-timeout 180 --player-ready-timeout 120000 --protocol-timeout 300000"
+  }
+}

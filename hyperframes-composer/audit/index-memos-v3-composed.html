@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <meta name="generator" content="hyperframes-composer" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 1920px; height: 1080px; overflow: hidden; background: #030405; color: #f7f2df; font-family: Arial, sans-serif; }
+#root {
+  position: relative;
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+  background: #030405;
+  --split-x: 120px;
+  --split-left: 1190px;
+  --split-gap: 60px;
+  --split-video: 430px;
+  --split-total: 1680px;
+  --split-top: 126px;
+  --split-height: 690px;
+  --split-left-pad-x: 74px;
+  --split-card-y: 442px;
+}
+.clip { position: absolute; }
+.scene { position: absolute; inset: 0; overflow: hidden; background: radial-gradient(circle at 44% 48%, rgba(217,177,91,.18), transparent 22%), radial-gradient(circle at 79% 56%, rgba(21,151,202,.14), transparent 18%), #030405; }
+.scene::before { content: ""; position: absolute; inset: -80px; opacity: .22; background-image: linear-gradient(30deg, rgba(255,255,255,.13) 12%, transparent 12.5%, transparent 87%, rgba(255,255,255,.13) 87.5%, rgba(255,255,255,.13)), linear-gradient(150deg, rgba(255,255,255,.13) 12%, transparent 12.5%, transparent 87%, rgba(255,255,255,.13) 87.5%, rgba(255,255,255,.13)); background-size: 118px 204px; }
+.scene::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(90deg, rgba(0,0,0,.72), transparent 22%, transparent 78%, rgba(0,0,0,.7)), linear-gradient(180deg, rgba(0,0,0,.24), transparent 22%, transparent 72%, rgba(0,0,0,.52)); }
+video { display: block; object-fit: cover; }
+.source-video { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; object-fit: cover; }
+.corner-name { position: absolute; z-index: 12; top: 58px; right: 120px; color: #f7f1d6; font-size: 22px; font-weight: 900; text-transform: uppercase; }
+.corner-left { position: absolute; z-index: 5; top: 78px; left: 120px; color: #f4c769; font-size: 28px; font-weight: 900; }
+.stat-pack { position: absolute; inset: 0; z-index: 7; transform-origin: 38% 43%; will-change: transform, opacity; }
+.stat-shell { position: absolute; left: 96px; top: 258px; width: 640px; height: 520px; border: 2px solid rgba(217,177,91,.30); border-radius: 18px; background: linear-gradient(90deg, rgba(217,177,91,.10), transparent 48%), rgba(8,10,11,.60); box-shadow: 0 0 34px rgba(217,177,91,.16), 0 22px 72px rgba(0,0,0,.42), inset 0 0 70px rgba(217,177,91,.08); }
+.stat-shell::after { content: ""; position: absolute; inset: 0; opacity: .24; background-image: linear-gradient(30deg, rgba(217,177,91,.24) 12%, transparent 12.5%, transparent 87%, rgba(217,177,91,.24) 87.5%, rgba(217,177,91,.24)), linear-gradient(150deg, rgba(217,177,91,.24) 12%, transparent 12.5%, transparent 87%, rgba(217,177,91,.24) 87.5%, rgba(217,177,91,.24)); background-size: 126px 218px; }
+.stat-label { position: absolute; left: 158px; top: 326px; color: #f2c45d; font-size: 38px; font-weight: 900; }
+.stat-number { position: absolute; left: 152px; top: 418px; color: #f5c766; font-size: 218px; font-style: italic; font-weight: 950; line-height: .95; text-shadow: 0 0 42px rgba(245,199,102,.46); }
+.stat-unit { position: absolute; left: 386px; top: 546px; color: #f7f1d6; font-size: 70px; font-weight: 950; }
+.stat-title { position: absolute; left: 158px; top: 676px; color: #fff7df; font-size: 42px; font-style: italic; font-weight: 900; }
+.mini-poster { position: absolute; left: 872px; top: 226px; width: 430px; height: 558px; overflow: hidden; border: 2px solid rgba(217,177,91,.22); border-radius: 14px; background: linear-gradient(135deg, rgba(245,199,102,.12), transparent 34%), #101313; box-shadow: 0 0 30px rgba(25,235,212,.18), 0 22px 54px rgba(0,0,0,.52); transform-origin: 50% 50%; will-change: transform, opacity, clip-path; }
+.stat-tools { position: absolute; left: 1370px; top: 300px; display: grid; gap: 28px; }
+.tool-badge { position: relative; display: grid; grid-template-columns: 1fr 108px; align-items: center; width: 426px; height: 218px; padding: 44px 42px; color: #f4f6ff; overflow: hidden; transform-origin: left center; }
+.tool-frame { position: absolute; inset: 0; border: 2px solid rgba(217,177,91,.28); border-radius: 17px; background: linear-gradient(110deg, rgba(217,177,91,.10), transparent 60%), rgba(16,18,22,.82); transform-origin: left center; }
+.badge-icon { position: relative; z-index: 2; grid-column: 2; grid-row: 1; display: grid; place-items: center; width: 96px; height: 96px; border-radius: 25px; background: linear-gradient(135deg, #7b65ff, #30a7ff); color: white; font-size: 28px; font-weight: 950; }
+.badge-label { position: relative; z-index: 2; grid-column: 1; grid-row: 1; display: flex; flex-direction: column; gap: 22px; color: #f7f2df; font-size: 48px; font-style: italic; font-weight: 950; }
+.badge-label::before { content: attr(data-role); color: rgba(255,255,255,.70); font-size: 25px; font-style: normal; font-weight: 900; }
+.browser-overlay { background: transparent; pointer-events: none; }
+.browser-overlay::before, .browser-overlay::after { display: none; }
+.browser-stage { position: absolute; z-index: 6; left: 116px; top: 72px; width: 1688px; height: 850px; border: 1px solid rgba(255,255,255,.16); border-radius: 10px; overflow: hidden; background: rgba(12,13,17,.36); box-shadow: 0 24px 80px rgba(0,0,0,.35); transform-origin: 50% 48%; will-change: transform, opacity, clip-path; }
+.browser-stage::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 50px; z-index: 4; background: rgba(42,41,50,.78); border-bottom: 1px solid rgba(255,255,255,.08); }
+.traffic { position: absolute; z-index: 5; top: 18px; left: 22px; display: flex; gap: 11px; }
+.traffic span { width: 14px; height: 14px; border-radius: 999px; background: #f1ba44; }
+.done-pill { position: absolute; z-index: 5; top: 12px; right: 16px; padding: 4px 10px; border: 1px solid rgba(255,255,255,.28); border-radius: 10px; color: rgba(255,255,255,.78); font-size: 13px; font-weight: 800; }
+.browser-video-card { position: absolute; z-index: 3; left: 48px; top: 76px; width: 1592px; height: 724px; overflow: hidden; border: 1px solid rgba(255,255,255,.14); border-radius: 8px; background: #111; opacity: 1; box-shadow: 0 18px 45px rgba(0,0,0,.28); transform-origin: 50% 50%; will-change: transform, opacity, clip-path; }
+.browser-video-card video { width: 100%; height: 100%; object-fit: cover; }
+.icon-cloud { position: absolute; z-index: 5; left: 166px; top: 196px; width: 230px; height: 230px; }
+.icon-cloud span { position: absolute; display: grid; place-items: center; width: 42px; height: 34px; border-radius: 7px; background: rgba(255,255,255,.86); color: #25252a; font-size: 11px; font-weight: 950; box-shadow: 0 5px 14px rgba(255,255,255,.2); }
+.icon-cloud span:nth-child(1) { left: 98px; top: 6px; } .icon-cloud span:nth-child(2) { left: 42px; top: 24px; } .icon-cloud span:nth-child(3) { left: 148px; top: 35px; } .icon-cloud span:nth-child(4) { left: 12px; top: 85px; } .icon-cloud span:nth-child(5) { left: 183px; top: 88px; } .icon-cloud span:nth-child(6) { left: 70px; top: 96px; } .icon-cloud span:nth-child(7) { left: 126px; top: 118px; } .icon-cloud span:nth-child(8) { left: 34px; top: 154px; } .icon-cloud span:nth-child(9) { left: 158px; top: 165px; } .icon-cloud span:nth-child(10) { left: 92px; top: 190px; }
+.red-proof { position: absolute; z-index: 6; right: 62px; top: 118px; width: 438px; height: 498px; overflow: hidden; border: 1px solid rgba(255,255,255,.12); border-radius: 14px; background: radial-gradient(circle at 70% 54%, rgba(232,37,37,.20), transparent 34%), rgba(18,16,21,.62); box-shadow: 0 24px 65px rgba(0,0,0,.36); }
+.title-block { position: absolute; z-index: 10; left: 500px; top: 380px; }
+.title-kicker { color: #f7f2df; font-size: 20px; font-weight: 900; margin-bottom: 14px; }
+.main-title { color: #f2c361; font-size: 82px; font-style: italic; font-weight: 950; line-height: 1; text-shadow: 0 0 30px rgba(242,195,97,.36); }
+.title-sub { margin-top: 28px; color: rgba(255,255,255,.72); font-size: 17px; font-weight: 900; }
+[data-rich-render="1"] { background: var(--hf-bg, transparent); }
+[data-rich-render="1"] .main-title,
+[data-rich-render="1"] .step-title,
+[data-rich-render="1"] .clean-title { color: var(--hf-accent, currentColor); font-size: var(--hf-font-size, inherit); font-weight: var(--hf-font-weight, inherit); }
+[data-rich-render="1"] .title-kicker,
+[data-rich-render="1"] .step-kicker,
+[data-rich-render="1"] .clean-chip { color: var(--hf-accent, currentColor); }
+[data-rich-render="1"] .title-sub,
+[data-rich-render="1"] .step-item,
+[data-rich-render="1"] .clean-sub { color: var(--hf-text, currentColor); }
+.title-block[data-rich-layout="primary"],
+.step-panel[data-rich-layout="primary"],
+.clean-aroll-copy[data-rich-layout="primary"] { position: absolute; left: var(--hf-x); top: var(--hf-y); width: var(--hf-w); min-height: var(--hf-h); max-width: calc(1920px - var(--hf-x)); max-height: calc(1080px - var(--hf-y)); overflow: hidden; }
+.underline-stack { position: absolute; z-index: 10; right: 470px; top: 690px; width: 290px; display: grid; gap: 11px; }
+.underline-stack i { display: block; height: 2px; transform-origin: left center; background: linear-gradient(90deg, #e0b757, #23a9ff); }
+.screen-shell { position: absolute; z-index: 10; left: 128px; top: 106px; width: 1370px; height: 760px; overflow: hidden; border: 1px solid rgba(255,255,255,.18); border-radius: 14px; background: #101214; box-shadow: 0 30px 90px rgba(0,0,0,.55); transform-origin: 50% 50%; }
+.screen-shell::before { content: ""; position: absolute; left: 0; right: 0; top: 0; z-index: 3; height: 54px; background: #272831; border-bottom: 1px solid rgba(255,255,255,.08); }
+.screen-shell video, .screen-shell img { width: 100%; height: 100%; object-fit: cover; filter: saturate(.9) contrast(1.02); }
+.screen-label { position: absolute; left: 154px; top: 130px; z-index: 14; color: #f4c769; font-size: 20px; font-weight: 950; }
+.circle-pip { position: absolute; right: 108px; bottom: 105px; z-index: 15; width: 188px; height: 188px; overflow: hidden; border: 4px solid rgba(217,177,91,.9); border-radius: 50%; background: #111; box-shadow: 0 0 30px rgba(217,177,91,.30); }
+.circle-pip video { width: 100%; height: 100%; object-fit: cover; }
+.question-panel { position: absolute; left: 128px; top: 168px; z-index: 10; width: 960px; min-height: 380px; padding: 58px 62px; border: 1px solid rgba(217,177,91,.34); background: rgba(8,10,12,.68); box-shadow: inset 0 0 80px rgba(217,177,91,.07); }
+.question-chip { display: inline-flex; align-items: center; height: 44px; padding: 0 20px; border: 1px solid rgba(217,177,91,.50); border-radius: 999px; color: #f1c15e; font-size: 20px; font-weight: 950; }
+.question-title { margin-top: 44px; color: #f8f4e6; font-size: 78px; font-style: italic; font-weight: 950; line-height: 1.06; }
+.question-rule { margin-top: 34px; height: 4px; background: linear-gradient(90deg, #d9b15b, #23a9ff); }
+.question-map { position: absolute; right: 120px; top: 168px; z-index: 10; width: 560px; height: 610px; }
+.q-map-label { position: absolute; top: 0; left: 0; color: #f1c15e; font-size: 22px; font-weight: 950; }
+.q-line { position: absolute; height: 2px; background: rgba(217,177,91,.36); transform-origin: left center; }
+.q-node { position: absolute; min-width: 160px; padding: 16px 18px; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.045); color: #f7f2df; font-size: 20px; font-weight: 900; }
+.q-core { position: absolute; left: 132px; top: 238px; width: 290px; height: 118px; display: grid; place-items: center; border: 1px solid rgba(217,177,91,.45); background: rgba(8,10,12,.74); color: #f8f4e6; font-size: 24px; font-weight: 950; text-align: center; }
+.step-wrap { position: absolute; inset: 0; z-index: 11; display: grid; place-items: center; padding: 110px 160px; }
+.step-panel { width: 1200px; min-height: 470px; padding: 58px 66px; border: 1px solid rgba(217,177,91,.30); background: rgba(8,10,12,.72); box-shadow: inset 0 0 80px rgba(217,177,91,.08); }
+.step-kicker { color: #d7ae55; font-size: 25px; font-style: italic; font-weight: 950; }
+.step-title { margin-top: 26px; color: #f7f2df; font-size: 70px; font-weight: 950; line-height: 1.08; }
+.step-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 48px; }
+.step-item { min-height: 126px; padding: 22px; border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.04); color: rgba(255,255,255,.82); font-size: 22px; font-weight: 850; line-height: 1.25; }
+.scan-local { position: absolute; top: 0; bottom: 0; z-index: 35; width: 7px; background: rgba(255,255,255,.92); box-shadow: 0 0 36px rgba(255,255,255,.68); }
+.def-panel { position: absolute; left: var(--split-x); top: var(--split-top); z-index: 10; width: var(--split-total); height: var(--split-height); opacity: 0; }
+.def-frame { position: absolute; inset: 0; right: calc(var(--split-video) + var(--split-gap)); border: 1px solid rgba(217,177,91,.38); border-radius: 18px; background: linear-gradient(90deg, rgba(217,177,91,.07), rgba(8,10,12,.72) 43%, rgba(35,169,255,.05)), rgba(8,10,12,.60); box-shadow: inset 0 0 110px rgba(217,177,91,.075), 0 0 34px rgba(217,177,91,.12); }
+.def-kicker { position: absolute; left: 0; top: -62px; height: 48px; padding: 0 22px; display: inline-flex; align-items: center; border: 1px solid rgba(217,177,91,.52); border-radius: 999px; background: rgba(8,10,12,.72); box-shadow: 0 0 20px rgba(217,177,91,.16); color: #f1c15e; font-size: 22px; font-style: italic; font-weight: 950; }
+.def-title { position: absolute; left: 74px; top: 150px; max-width: 980px; color: #f8f4e6; font-size: 84px; font-style: italic; font-weight: 950; line-height: 1.04; }
+.def-title .gold { display: block; margin-bottom: 22px; color: #f1c15e; font-size: 38px; line-height: 1; }
+.def-sub { position: absolute; left: 76px; top: 336px; max-width: 980px; color: rgba(255,255,255,.88); font-size: 34px; font-style: italic; font-weight: 950; }
+.def-stack-row { position: absolute; left: 76px; bottom: 104px; width: 1060px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 22px; }
+.def-code { height: 118px; display: flex; align-items: center; padding: 0 34px; border: 1px solid rgba(255,255,255,.14); border-radius: 14px; background: rgba(255,255,255,.035); color: #f7f2df; font-size: 30px; font-weight: 950; text-align: left; }
+.def-code i { flex: 0 0 48px; width: 48px; height: 48px; margin-right: 22px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.22); border-radius: 8px; color: #23a9ff; font-size: 24px; font-style: normal; }
+.def-callout { position: absolute; left: 76px; bottom: 64px; width: 1060px; height: 4px; border: 0; background: linear-gradient(90deg, #f1c15e 0 46%, rgba(35,169,255,.95) 46% 100%); color: transparent; }
+.def-presenter { position: absolute; right: 0; top: 0; width: var(--split-video); height: var(--split-height); overflow: hidden; border: 4px solid rgba(217,177,91,.88); border-radius: 12px; background: #111; box-shadow: 0 0 26px rgba(217,177,91,.28); }
+.def-presenter video { width: 100%; height: 100%; object-fit: cover; transform: scale(1.14) translate(-2.4%, -3.6%); transform-origin: center center; }
+.def-flow-line { position: absolute; z-index: 2; top: 544px; width: 210px; height: 3px; background: linear-gradient(90deg, #d9b15b, #23a9ff); }
+.def-flow-line.ab { left: 432px; }
+.def-flow-line.bc { left: 956px; }
+.def-flow-node { position: absolute; z-index: 3; top: 498px; min-width: 180px; padding: 18px 24px; border: 1px solid rgba(217,177,91,.34); background: rgba(8,10,12,.74); color: #f7f2df; font-size: 24px; font-weight: 950; text-align: center; }
+.def-flow-node.a { left: 170px; }
+.def-flow-node.b { left: 690px; }
+.def-flow-node.c { left: 1168px; color: #23a9ff; }
+.def-create-title { position: absolute; left: 74px; top: 190px; max-width: 1050px; color: #f8f4e6; font-size: 84px; font-style: italic; font-weight: 950; line-height: 1.04; }
+.def-create-title span { color: #f1c15e; }
+.def-pill, .goal-pill { position: absolute; left: 76px; top: 96px; height: 42px; padding: 0 18px; display: inline-flex; align-items: center; border: 1px solid rgba(217,177,91,.50); border-radius: 999px; color: #f1c15e; font-size: 18px; font-weight: 950; }
+.def-one-title { position: absolute; left: 76px; top: 220px; color: #f8f4e6; font-size: 96px; font-style: italic; font-weight: 950; }
+.def-one-sub { position: absolute; left: 80px; top: 348px; color: rgba(255,255,255,.84); font-size: 31px; font-weight: 900; }
+.def-one-actions { position: absolute; left: 76px; bottom: 104px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 22px; width: 900px; }
+.def-action { height: 96px; display: flex; align-items: center; gap: 20px; padding: 0 28px; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.04); color: #f7f2df; font-size: 26px; font-weight: 950; }
+.def-action.blue { border-color: rgba(35,169,255,.35); }
+.def-pip { position: absolute; right: 70px; bottom: 70px; width: 260px; height: 260px; overflow: hidden; border: 4px solid rgba(217,177,91,.88); border-radius: 50%; background: #111; }
+.def-pip video { width: 100%; height: 100%; object-fit: cover; }
+.course-layout { position: absolute; z-index: 8; left: var(--split-x); top: var(--split-top); width: var(--split-left); height: var(--split-height); padding: 78px 74px; border: 1px solid rgba(217,177,91,.38); border-radius: 18px; background: linear-gradient(90deg, rgba(217,177,91,.07), rgba(8,10,12,.72) 43%, rgba(35,169,255,.05)), rgba(8,10,12,.60); box-shadow: inset 0 0 110px rgba(217,177,91,.075), 0 0 34px rgba(217,177,91,.12); }
+.course-chip { display: inline-flex; align-items: center; height: 48px; padding: 0 22px; border: 1px solid rgba(217,177,91,.52); border-radius: 999px; background: rgba(8,10,12,.72); color: #f1c15e; font-size: 22px; font-style: italic; font-weight: 950; box-shadow: 0 0 20px rgba(217,177,91,.16); }
+.course-heading { width: 980px; margin-top: 86px; color: #f8f4e6; font-size: 78px; font-style: italic; font-weight: 950; line-height: 1.04; }
+.course-heading span { display: block; margin-bottom: 22px; color: #f1c15e; font-size: 38px; line-height: 1; }
+.course-cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 22px; width: 1042px; margin-top: 42px; }
+.course-card { height: 118px; display: grid; grid-template-columns: 56px 1fr; align-items: center; padding: 0 34px; border: 1px solid rgba(255,255,255,.14); border-radius: 14px; background: rgba(255,255,255,.035); }
+.course-card:nth-child(3) { display: none; }
+.card-icon { width: 48px; height: 48px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.14); border-radius: 8px; color: #23a9ff; font-size: 24px; font-weight: 950; }
+.course-small { display: none; }
+.course-big, .course-big.blue { margin: 0 0 0 22px; color: #f7f2df; font-size: 30px; font-style: normal; font-weight: 950; }
+.course-line { width: 1042px; height: 4px; margin-top: 54px; transform-origin: left center; background: linear-gradient(90deg, #d9b15b 0 48%, transparent 48% 52%, rgba(35,169,255,.95) 52% 100%); }
+.course-presenter { position: absolute; z-index: 9; right: var(--split-x); top: var(--split-top); width: var(--split-video); height: var(--split-height); overflow: hidden; border: 4px solid rgba(217,177,91,.88); border-radius: 12px; background: #111; box-shadow: 0 0 0 1px rgba(255,255,255,.10), 0 0 32px rgba(217,177,91,.30); }
+.course-presenter video { width: 100%; height: 100%; object-fit: cover; transform: scale(1.14) translate(-2.4%, -3.6%); transform-origin: center center; }
+.proof-grid { position: absolute; inset: 108px 128px; z-index: 10; display: grid; grid-template-columns: repeat(3, 1fr); gap: 26px; }
+.proof-card { position: relative; overflow: hidden; border: 1px solid rgba(217,177,91,.30); background: rgba(8,10,12,.74); box-shadow: 0 24px 70px rgba(0,0,0,.40); }
+.proof-card video { width: 100%; height: 100%; object-fit: cover; }
+.proof-label { position: absolute; left: 18px; bottom: 18px; padding: 8px 12px; border: 1px solid rgba(217,177,91,.35); background: rgba(8,10,12,.72); color: #f7f2df; font-size: 20px; font-weight: 950; }
+.clean-aroll { inset: 0; overflow: hidden; background: #030405; }
+.clean-aroll-overlay { background: transparent; }
+.clean-aroll-overlay::before, .clean-aroll-overlay::after { display: none; }
+.clean-aroll-video { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; object-fit: cover; }
+.clean-aroll-vignette { position: absolute; inset: 0; z-index: 2; pointer-events: none; background: linear-gradient(90deg, rgba(0,0,0,.34), transparent 38%, rgba(0,0,0,.18)), linear-gradient(180deg, rgba(0,0,0,.12), transparent 62%, rgba(0,0,0,.52)); }
+.clean-aroll-copy { position: absolute; z-index: 3; left: 120px; bottom: 152px; max-width: 680px; padding: 0; }
+.clean-chip { display: inline-flex; align-items: center; height: 44px; padding: 0 20px; border: 1px solid rgba(217,177,91,.52); border-radius: 999px; background: rgba(8,10,12,.56); color: #f1c15e; font-size: 22px; font-style: italic; font-weight: 950; }
+.clean-title { margin-top: 28px; color: #f8f4e6; font-size: 76px; font-style: italic; font-weight: 950; line-height: 1.04; text-shadow: 0 3px 18px rgba(0,0,0,.7); }
+.clean-sub { margin-top: 18px; color: rgba(255,255,255,.82); font-size: 30px; font-weight: 850; }
+.scan-line, .wipe-field { position: absolute; inset: 0; z-index: 34; pointer-events: none; }
+.caption-line, .caption { z-index: 80; left: 130px; right: 130px; bottom: 59px; display: flex; justify-content: center; text-align: center; pointer-events: none; }
+.caption-line span, .caption span { color: #fff; font-size: 30px; font-style: italic; font-weight: 950; line-height: 1.18; paint-order: stroke fill; text-shadow: 0 3px 0 #070809, 0 0 14px rgba(0,0,0,.8); -webkit-text-stroke: 4px #070809; }
+
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="155.6" data-width="1920" data-height="1080">
+      <audio id="audio" src="assets/external-first390/production/audio/memos-master-v3.wav" data-start="0" data-duration="155.6" data-track-index="90" data-volume="1"></audio>
+
+      <video id="v-s001-opening" class="clip source-video" data-memos-scene="s001" src="assets/external-first390/production/duix-results/hf390_duix_intro_aroll_v3-r.mp4" muted playsinline data-start="0.000" data-duration="18.480" data-media-start="0.000" data-track-index="1"></video>
+
+      <div id="s001-stat" class="clip scene stat-scene" data-memos-scene="s001-stat" data-start="0.705" data-duration="2.163" data-track-index="2">
+        <div class="corner-left">MemOS 命令行</div>
+        <div class="stat-pack">
+          <div class="stat-shell"></div>
+          <div class="stat-label">智能体记忆</div>
+          <div class="stat-number">7</div>
+          <div class="stat-unit">场</div>
+          <div class="stat-title">共享记忆实战</div>
+        </div>
+      </div>
+
+      <div id="s001-browser" class="clip scene browser-overlay" data-memos-scene="s001-browser" data-start="2.539" data-duration="5.909" data-track-index="3">
+        <div class="browser-stage">
+          <div class="traffic"><span></span><span></span></div>
+          <div class="done-pill">记忆</div>
+          <div class="browser-video-card">
+            <video id="v-s001-browser-card" src="assets/external-first390/production/duix-results/hf390_duix_intro_aroll_v3-r.mp4" muted playsinline data-start="2.539" data-duration="5.909" data-media-start="2.539"></video>
+          </div>
+          <div class="icon-cloud"><span>AI</span><span>CC</span><span>CLI</span><span>MCP</span><span>↻</span><span>AI</span><span>记忆</span><span>⌘</span><span>✓</span><span>AI</span></div>
+        </div>
+      </div>
+
+      <video id="v-s001-return" class="clip source-video" data-memos-scene="s001" src="assets/external-first390/production/duix-results/hf390_duix_intro_aroll_v3-r.mp4" muted playsinline data-start="8.448" data-duration="10.032" data-media-start="8.448" data-track-index="4"></video>
+
+      <div id="s001-title" class="clip scene title-scene" data-memos-scene="s001-title" data-start="9.781" data-duration="2.597" data-track-index="5">
+        <div class="corner-left">共享记忆</div>
+        <div class="corner-name">MemOS CLI</div>
+        <div class="title-block">
+          <div class="title-kicker">智能体记忆层</div>
+          <div class="main-title">MemOS CLI</div>
+          <div class="title-sub">多机 / 多智能体 / 同一层经验</div>
+        </div>
+        <div class="underline-stack"><i></i><i></i></div>
+      </div>
+
+      <div id="s002-screen" class="clip scene screen-proof" data-memos-scene="s002" data-start="18.880" data-duration="28.480" data-track-index="20">
+        <div class="screen-label">飞书被登录挡住</div>
+        <div class="screen-shell"><video id="v-s002-screen-screen" src="assets/external-first390/assets/screen-fitted/s002.mp4" muted playsinline data-start="18.880" data-duration="28.480" data-media-start="0.000"></video></div>
+        <div class="circle-pip"><video id="v-s002-screen-pip" src="assets/external-first390/production/duix-results/hf390_screen_cc_feishu_fail_plus_duix_pip_v3-r.mp4" muted playsinline data-start="18.880" data-duration="28.480" data-media-start="0.000"></video></div>
+      </div>
+      <div id="scan-s002" class="clip scan-local" data-memos-scene="s002" data-start="18.480" data-duration="0.595" data-track-index="21"></div>
+
+      <div id="s003-step" class="clip scene step-scene" data-memos-scene="s003" data-start="47.760" data-duration="4.199" data-track-index="24">
+        <div class="step-wrap">
+          <div class="step-panel">
+            <div class="step-kicker">步骤 01</div>
+            <div class="step-title">把解法写成记忆</div>
+            <div class="step-list"><div class="step-item">浏览器登录态</div><div class="step-item">正文提取</div><div class="step-item">滚动加载</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="s003-screen" class="clip scene screen-proof" data-memos-scene="s003" data-start="51.959" data-duration="20.961" data-track-index="26">
+        <div class="screen-label">Codex 写入记忆</div>
+        <div class="screen-shell"><video id="v-s003-screen-screen" src="assets/external-first390/assets/screen-fitted/s003.mp4" muted playsinline data-start="51.959" data-duration="20.961" data-media-start="4.199"></video></div>
+        <div class="circle-pip"><video id="v-s003-screen-pip" src="assets/external-first390/production/duix-results/hf390_screen_codex_memos_add_plus_duix_pip_v3-r.mp4" muted playsinline data-start="51.959" data-duration="20.961" data-media-start="4.199"></video></div>
+      </div>
+      <div id="scan-s003" class="clip scan-local" data-memos-scene="s003" data-start="51.787" data-duration="0.328" data-track-index="27"></div>
+
+      <div id="s004-step" class="clip scene step-scene" data-memos-scene="s004" data-start="73.320" data-duration="4.629" data-track-index="28">
+        <div class="step-wrap">
+          <div class="step-panel">
+            <div class="step-kicker">步骤 02</div>
+            <div class="step-title">先搜记忆再执行</div>
+            <div class="step-list"><div class="step-item">先查 MemOS</div><div class="step-item">读到经验</div><div class="step-item">一次走通</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="s004-screen" class="clip scene screen-proof" data-memos-scene="s004" data-start="77.949" data-duration="9.371" data-track-index="30">
+        <div class="screen-label">Claude 搜到经验</div>
+        <div class="screen-shell"><video id="v-s004-screen-screen" src="assets/external-first390/assets/screen-fitted/s004.mp4" muted playsinline data-start="77.949" data-duration="9.371" data-media-start="4.629"></video></div>
+        <div class="circle-pip"><video id="v-s004-screen-pip" src="assets/external-first390/production/duix-results/hf390_screen_cc_memos_search_plus_duix_pip_v3-r.mp4" muted playsinline data-start="77.949" data-duration="9.371" data-media-start="4.629"></video></div>
+      </div>
+      <div id="scan-s004" class="clip scan-local" data-memos-scene="s004" data-start="77.760" data-duration="0.362" data-track-index="31"></div>
+
+      <div id="s005-definition" class="clip scene " data-memos-scene="s005" data-start="87.720" data-duration="26.480" data-track-index="30">
+        <div class="corner-name">MemOS CLI</div>
+        
+        <div class="def-panel def-open">
+          <div class="def-frame"></div>
+          <div class="def-kicker">记忆层</div>
+          <div class="def-title"><span class="gold">记住</span>只存高价值经验</div>
+          <div class="def-sub">偏好、决策、解法、规则</div>
+          <div class="def-stack-row"><div class="def-code"><i>✓</i>验证解法</div><div class="def-code"><i>◎</i>工作规则</div></div>
+          <div class="def-callout">line</div>
+          
+          <div class="def-presenter"><video id="v-s005-def-open-presenter" src="assets/external-first390/production/duix-results/hf390_duix_memory_rules_presenter_v3-r.mp4" muted playsinline data-start="87.763" data-duration="8.082" data-media-start="0.000" data-layout-allow-overflow></video></div>
+        </div>
+        <div class="def-panel def-stack">
+          <div class="def-frame"></div>
+          <div class="def-kicker">记忆 ≠ 技能</div>
+          <div class="def-title"><span class="gold">对比</span>记忆不是技能</div>
+          <div class="def-sub">技能要稳定执行，记忆保留经验</div>
+          <div class="def-stack-row"><div class="def-code"><i>JS</i>稳定流程</div><div class="def-code"><i>AI</i>轻量经验</div></div>
+          <div class="def-callout">line</div>
+          
+          <div class="def-presenter"><video id="v-s005-def-stack-presenter" src="assets/external-first390/production/duix-results/hf390_duix_memory_rules_presenter_v3-r.mp4" muted playsinline data-start="96.038" data-duration="8.082" data-media-start="8.082" data-layout-allow-overflow></video></div>
+        </div>
+        <div class="def-panel def-flow">
+          <div class="def-frame"></div>
+          <div class="def-kicker">下次</div>
+          <div class="def-title"><span class="gold">复用</span>下次少走弯路</div>
+          <div class="def-sub">另一个智能体能直接搜到</div>
+          <div class="def-stack-row"><div class="def-code"><i>写</i>写入</div><div class="def-code"><i>用</i>复用</div></div>
+          <div class="def-callout">line</div>
+          <div class="def-flow-line ab"></div><div class="def-flow-line bc"></div><div class="def-flow-node a">写入</div><div class="def-flow-node b">MemOS</div><div class="def-flow-node c">复用</div>
+          <div class="def-presenter"><video id="v-s005-def-flow-presenter" src="assets/external-first390/production/duix-results/hf390_duix_memory_rules_presenter_v3-r.mp4" muted playsinline data-start="104.312" data-duration="9.888" data-media-start="16.164" data-layout-allow-overflow></video></div>
+        </div>
+      </div>
+
+      <div id="s006-course" class="clip scene " data-memos-scene="s006" data-start="114.600" data-duration="29.320" data-track-index="40">
+        <div class="corner-name">MemOS CLI</div>
+        <div class="course-layout" data-layout-allow-overflow>
+          <div class="course-chip">多机协作</div>
+          <div class="course-heading"><span>统一记忆空间</span>多机同层记忆</div>
+          <div class="course-cards"><div class="course-card"><div class="card-icon">AI</div><div class="course-small"></div><div class="course-big">Codex 写入</div></div><div class="course-card"><div class="card-icon blue">CC</div><div class="course-small"></div><div class="course-big blue">Claude 搜索</div></div><div class="course-card"><div class="card-icon blue">CLI</div><div class="course-small"></div><div class="course-big blue">人也能用</div></div></div>
+          <div class="course-line"></div>
+        </div>
+        <div class="course-presenter"><video id="v-s006-course-course-presenter" class="course-video" src="assets/external-first390/production/duix-results/hf390_duix_multimac_presenter_v3-r.mp4" muted playsinline data-start="114.600" data-duration="29.320" data-media-start="0.000" data-layout-allow-overflow></video></div>
+      </div>
+
+      <video id="v-s007-aroll-aroll-video" class="clip clean-aroll-video" data-memos-scene="s007-aroll" src="assets/external-first390/production/duix-results/hf390_duix_final_cta_v3-r.mp4" muted playsinline data-start="144.320" data-duration="11.280" data-media-start="0.000" data-track-index="50"></video>
+      <div id="s007-aroll" class="clip scene clean-aroll clean-aroll-overlay" data-memos-scene="s007" data-start="144.320" data-duration="11.280" data-track-index="51">
+        <div class="clean-aroll-vignette"></div>
+        <div class="clean-aroll-copy">
+          <div class="clean-chip">试用 MemOS CLI</div>
+          <div class="clean-title">让智能体互学</div>
+          <div class="clean-sub">同一层长期记忆</div>
+        </div>
+      </div>
+<div id="cap-0" class="clip caption-line" data-start="0.290" data-duration="2.680" data-track-index="900"><span>现在很多人的工作，早就不在一台电脑里了。</span></div>
+<div id="cap-1" class="clip caption-line" data-start="3.170" data-duration="4.540" data-track-index="901"><span>这台Mac上，Codex在改代码；</span></div>
+<div id="cap-2" class="clip caption-line" data-start="8.050" data-duration="2.980" data-track-index="902"><span>另一台上，</span></div>
+<div id="cap-3" class="clip caption-line" data-start="11.130" data-duration="1.200" data-track-index="903"><span>ClaudeCode在做架构分析；</span></div>
+<div id="cap-4" class="clip caption-line" data-start="12.630" data-duration="2.040" data-track-index="904"><span>Cursor、Hermes、OpenClaw各跑各的。</span></div>
+<div id="cap-5" class="clip caption-line" data-start="14.670" data-duration="1.320" data-track-index="905"><span>每个Agent都很强，但它们天然不互通。</span></div>
+<div id="cap-6" class="clip caption-line" data-start="16.110" data-duration="2.220" data-track-index="906"><span>问题不是某个Agent会忘，而是这些Agent，没办法互相学习。</span></div>
+<div id="cap-7" class="clip caption-line" data-start="19.030" data-duration="0.980" data-track-index="907"><span>举个真实的例子。</span></div>
+<div id="cap-8" class="clip caption-line" data-start="20.090" data-duration="2.380" data-track-index="908"><span>我让ClaudeCode帮我读一份飞书文档。</span></div>
+<div id="cap-9" class="clip caption-line" data-start="22.550" data-duration="1.240" data-track-index="909"><span>它拿到链接就去抓，</span></div>
+<div id="cap-10" class="clip caption-line" data-start="23.930" data-duration="1.580" data-track-index="910"><span>结果直接被弹回登录页—</span></div>
+<div id="cap-11" class="clip caption-line" data-start="25.690" data-duration="2.400" data-track-index="911"><span>飞书的正文被登录态和权限挡着，</span></div>
+<div id="cap-12" class="clip caption-line" data-start="28.150" data-duration="0.580" data-track-index="912"><span>裸链接根本读不到。</span></div>
+<div id="cap-13" class="clip caption-line" data-start="28.730" data-duration="1.640" data-track-index="913"><span>它换方法、再试，反复好几轮，</span></div>
+<div id="cap-14" class="clip caption-line" data-start="30.670" data-duration="2.400" data-track-index="914"><span>还是空手而归。其实这个问题，</span></div>
+<div id="cap-15" class="clip caption-line" data-start="34.890" data-duration="2.900" data-track-index="915"><span>我的另一个Agent早就解决过了。</span></div>
+<div id="cap-16" class="clip caption-line" data-start="39.110" data-duration="3.720" data-track-index="916"><span>Codex在自己的会话里，</span></div>
+<div id="cap-17" class="clip caption-line" data-start="43.330" data-duration="1.360" data-track-index="917"><span>已经把这份文档完整读出来了。</span></div>
+<div id="cap-18" class="clip caption-line" data-start="44.730" data-duration="2.540" data-track-index="918"><span>但ClaudeCode不知道—因为那段经验，被困在Codex的会话里。</span></div>
+<div id="cap-19" class="clip caption-line" data-start="48.050" data-duration="1.900" data-track-index="919"><span>Codex的解法</span></div>
+<div id="cap-20" class="clip caption-line" data-start="50.010" data-duration="2.040" data-track-index="920"><span>是：不抓裸链接，</span></div>
+<div id="cap-21" class="clip caption-line" data-start="52.170" data-duration="1.860" data-track-index="921"><span>用本机Chrome的登录态打开页面，</span></div>
+<div id="cap-22" class="clip caption-line" data-start="54.150" data-duration="2.700" data-track-index="922"><span>直接从页面里把正文抠出来；</span></div>
+<div id="cap-23" class="clip caption-line" data-start="57.170" data-duration="1.120" data-track-index="923"><span>遇到懒加载，</span></div>
+<div id="cap-24" class="clip caption-line" data-start="58.430" data-duration="0.960" data-track-index="924"><span>就滚动页面，</span></div>
+<div id="cap-25" class="clip caption-line" data-start="59.390" data-duration="1.130" data-track-index="925"><span>分段拿后半部分。</span></div>
+<div id="cap-26" class="clip caption-line" data-start="60.600" data-duration="1.445" data-track-index="926"><span>这套经验很值钱，</span></div>
+<div id="cap-27" class="clip caption-line" data-start="62.250" data-duration="1.495" data-track-index="927"><span>但未必值得做成一个正式的技能，</span></div>
+<div id="cap-28" class="clip caption-line" data-start="64.080" data-duration="1.460" data-track-index="928"><span>也很难靠人复述清楚。</span></div>
+<div id="cap-29" class="clip caption-line" data-start="65.620" data-duration="1.405" data-track-index="929"><span>它最适合进长期记忆。</span></div>
+<div id="cap-30" class="clip caption-line" data-start="67.280" data-duration="1.160" data-track-index="930"><span>我对Codex只说了一句：把这次的经验记下来。</span></div>
+<div id="cap-31" class="clip caption-line" data-start="68.440" data-duration="0.520" data-track-index="931"><span>它自己调起MemOSCLI，</span></div>
+<div id="cap-32" class="clip caption-line" data-start="69.040" data-duration="1.425" data-track-index="932"><span>写成一条结构化记忆。</span></div>
+<div id="cap-33" class="clip caption-line" data-start="70.770" data-duration="0.660" data-track-index="933"><span>整个过程，</span></div>
+<div id="cap-34" class="clip caption-line" data-start="71.450" data-duration="2.770" data-track-index="934"><span>我一条命令都没敲过。</span></div>
+<div id="cap-35" class="clip caption-line" data-start="74.220" data-duration="0.830" data-track-index="935"><span>切回Claud</span></div>
+<div id="cap-36" class="clip caption-line" data-start="75.050" data-duration="0.705" data-track-index="936"><span>eCode，</span></div>
+<div id="cap-37" class="clip caption-line" data-start="76.180" data-duration="3.520" data-track-index="937"><span>再读同一份文档。</span></div>
+<div id="cap-38" class="clip caption-line" data-start="79.700" data-duration="1.530" data-track-index="938"><span>这次它第一步先去M</span></div>
+<div id="cap-39" class="clip caption-line" data-start="81.230" data-duration="0.840" data-track-index="939"><span>emOS搜了一下，</span></div>
+<div id="cap-40" class="clip caption-line" data-start="82.070" data-duration="1.235" data-track-index="940"><span>Codex沉淀的经验立刻返回：Chrome登录态、提取正文、滚动加载。</span></div>
+<div id="cap-41" class="clip caption-line" data-start="83.640" data-duration="1.235" data-track-index="941"><span>照着做，一次走通。</span></div>
+<div id="cap-42" class="clip caption-line" data-start="85.440" data-duration="1.695" data-track-index="942"><span>我没解释过一句飞书的机制。</span></div>
+<div id="cap-43" class="clip caption-line" data-start="88.030" data-duration="2.015" data-track-index="943"><span>每个Agent其实</span></div>
+<div id="cap-44" class="clip caption-line" data-start="90.310" data-duration="1.845" data-track-index="944"><span>都有自己的记忆，</span></div>
+<div id="cap-45" class="clip caption-line" data-start="92.410" data-duration="1.100" data-track-index="945"><span>MemOS不需要</span></div>
+<div id="cap-46" class="clip caption-line" data-start="93.510" data-duration="1.340" data-track-index="946"><span>再全量记一遍。</span></div>
+<div id="cap-47" class="clip caption-line" data-start="95.050" data-duration="0.920" data-track-index="947"><span>真正值得进共享记忆的，</span></div>
+<div id="cap-48" class="clip caption-line" data-start="95.990" data-duration="2.625" data-track-index="948"><span>不是聊天流水，</span></div>
+<div id="cap-49" class="clip caption-line" data-start="98.890" data-duration="0.695" data-track-index="949"><span>而是跨机器、跨</span></div>
+<div id="cap-50" class="clip caption-line" data-start="99.860" data-duration="1.700" data-track-index="950"><span>Agent、跨</span></div>
+<div id="cap-51" class="clip caption-line" data-start="101.720" data-duration="0.720" data-track-index="951"><span>时间仍然有价值</span></div>
+<div id="cap-52" class="clip caption-line" data-start="102.540" data-duration="2.260" data-track-index="952"><span>的东西：长期</span></div>
+<div id="cap-53" class="clip caption-line" data-start="104.900" data-duration="0.960" data-track-index="953"><span>偏好、重大决定、验证过的解法、排查结论、工作流规则。</span></div>
+<div id="cap-54" class="clip caption-line" data-start="105.900" data-duration="0.560" data-track-index="954"><span>它和技能也不一样—</span></div>
+<div id="cap-55" class="clip caption-line" data-start="106.600" data-duration="1.860" data-track-index="955"><span>技能适合稳定、可重复、要规范执行的流程；</span></div>
+<div id="cap-56" class="clip caption-line" data-start="108.460" data-duration="0.880" data-track-index="956"><span>记忆适合这种轻量但高价值的经验：还没必要产品化，</span></div>
+<div id="cap-57" class="clip caption-line" data-start="109.360" data-duration="2.370" data-track-index="957"><span>但下一次遇到，</span></div>
+<div id="cap-58" class="clip caption-line" data-start="111.870" data-duration="2.185" data-track-index="958"><span>能少走很多弯路。</span></div>
+<div id="cap-59" class="clip caption-line" data-start="115.010" data-duration="1.500" data-track-index="959"><span>多台Mac怎么连起来？</span></div>
+<div id="cap-60" class="clip caption-line" data-start="116.570" data-duration="1.940" data-track-index="960"><span>关键不是每台机器都装一个工具，</span></div>
+<div id="cap-61" class="clip caption-line" data-start="118.710" data-duration="4.035" data-track-index="961"><span>而是它们用同一套MemOS云端配置，</span></div>
+<div id="cap-62" class="clip caption-line" data-start="123.070" data-duration="2.945" data-track-index="962"><span>接入同一个记忆空间。</span></div>
+<div id="cap-63" class="clip caption-line" data-start="126.340" data-duration="2.460" data-track-index="963"><span>第一台Mac上，</span></div>
+<div id="cap-64" class="clip caption-line" data-start="128.820" data-duration="3.285" data-track-index="964"><span>Codex把排查结论写进去；</span></div>
+<div id="cap-65" class="clip caption-line" data-start="132.350" data-duration="2.000" data-track-index="965"><span>第二台上，</span></div>
+<div id="cap-66" class="clip caption-line" data-start="134.630" data-duration="1.680" data-track-index="966"><span>ClaudeCode遇到同类问题，</span></div>
+<div id="cap-67" class="clip caption-line" data-start="136.510" data-duration="1.520" data-track-index="967"><span>先搜再做；</span></div>
+<div id="cap-68" class="clip caption-line" data-start="138.210" data-duration="0.140" data-track-index="968"><span>跑自动化的OpenClaw和Hermes，</span></div>
+<div id="cap-69" class="clip caption-line" data-start="138.350" data-duration="0.800" data-track-index="969"><span>也能读到同一份偏好和规则。</span></div>
+<div id="cap-70" class="clip caption-line" data-start="139.210" data-duration="1.165" data-track-index="970"><span>命令行是最轻量的入口：人能用，</span></div>
+<div id="cap-71" class="clip caption-line" data-start="140.630" data-duration="1.340" data-track-index="971"><span>Agent也能用。</span></div>
+<div id="cap-72" class="clip caption-line" data-start="142.090" data-duration="1.695" data-track-index="972"><span>它不替代插件，也不替代MCP—只要能调同一套命令行，就接入了同一层长期记忆。</span></div>
+<div id="cap-73" class="clip caption-line" data-start="144.450" data-duration="3.085" data-track-index="973"><span>不要让一个Agent解决过的问题，</span></div>
+<div id="cap-74" class="clip caption-line" data-start="147.730" data-duration="1.090" data-track-index="974"><span>困在一台Mac里。</span></div>
+<div id="cap-75" class="clip caption-line" data-start="148.880" data-duration="2.345" data-track-index="975"><span>试用MemOSCLI，</span></div>
+<div id="cap-76" class="clip caption-line" data-start="151.460" data-duration="1.875" data-track-index="976"><span>把你的Agent接到同一层长期记忆上。</span></div>
+<div id="cap-77" class="clip caption-line" data-start="153.550" data-duration="1.865" data-track-index="977"><span>真正的价值，不是AI记住了你—而是你的Agent，开始互相学习。</span></div>
+    </div>
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+      tl.from("#s001-stat", { opacity: 0, duration: 0.001 }, 0.705);
+      tl.from("#s001-stat", { clipPath: "inset(0 100% 0 0)", duration: 0.30, ease: "power2.inOut" }, 0.705);
+      tl.fromTo("#s001-stat .stat-pack", { opacity: 0.62, x: 124, y: -66, scale: 0.72 }, { opacity: 1, x: 0, y: 0, scale: 1, duration: 0.70, ease: "power3.out" }, 0.855);
+      tl.from("#s001-stat .stat-shell", { opacity: 0, scale: 0.78, duration: 0.24, ease: "power3.out" }, 0.975);
+      tl.from("#s001-stat .stat-label", { opacity: 0, x: -16, duration: 0.18, ease: "power2.out" }, 1.275);
+      tl.fromTo("#s001-stat .stat-number", { opacity: 0, x: -34, scale: 0.52 }, { opacity: 1, x: 0, scale: 1.18, duration: 0.18, ease: "power4.out" }, 1.355);
+      tl.to("#s001-stat .stat-number", { scale: 1, duration: 0.18, ease: "power2.out" }, 1.535);
+      tl.from("#s001-stat .stat-unit", { opacity: 0, x: -20, scale: 0.65, duration: 0.18, ease: "power3.out" }, 1.535);
+      tl.from("#s001-stat .stat-title", { opacity: 0, y: 12, duration: 0.18, ease: "power2.out" }, 1.655);
+      tl.to("#s001-stat .stat-pack", { x: -18, y: 8, scale: 1.065, duration: 0.86, ease: "power1.out" }, 1.655);
+      tl.to("#s001-stat", { opacity: 0, duration: 0.18, ease: "power1.out" }, 2.705);
+      tl.set("#s001-stat", { opacity: 0 }, 2.945);
+      tl.fromTo("#s001-browser .browser-stage", { opacity: 0, x: -360, y: 22, scale: 0.72, clipPath: "inset(0 88% 0 0)" }, { opacity: 1, x: 0, y: 0, scale: 1, clipPath: "inset(0 0% 0 0)", duration: 0.66, ease: "power3.out" }, 2.539);
+      tl.fromTo("#s001-browser .browser-video-card", { opacity: 0.72, x: -260, y: 18, scale: 0.58, clipPath: "inset(0 82% 0 0)" }, { opacity: 1, x: 12, y: 0, scale: 1.15, clipPath: "inset(0 0% 0 0)", duration: 0.18, ease: "power4.out" }, 2.649);
+      tl.to("#s001-browser .browser-video-card", { x: 0, y: 0, scale: 1, duration: 0.24, ease: "power2.out" }, 2.839);
+      tl.from("#s001-browser .icon-cloud span", { opacity: 0, scale: 0.25, stagger: 0.035, duration: 0.16, ease: "power2.out" }, 2.939);
+      tl.to("#s001-browser .browser-stage", { x: 18, y: -8, scale: 1.018, duration: 0.72, ease: "power1.inOut" }, 3.209);
+      tl.to("#s001-browser .browser-video-card", { x: 14, y: 8, scale: 1.035, duration: 0.75, ease: "power1.inOut" }, 3.229);
+      tl.to("#s001-browser .browser-stage", { x: 7, y: 0, scale: 1.006, duration: 0.45, ease: "power1.out" }, 3.929);
+      tl.to("#s001-browser .browser-video-card", { x: 4, y: 0, scale: 1.01, duration: 0.55, ease: "power1.out" }, 3.989);
+      tl.to("#s001-browser", { opacity: 0, duration: 0.16, ease: "power1.out" }, 8.328);
+      tl.set("#s001-browser", { opacity: 0 }, 8.448);
+      tl.from("#s001-title", { opacity: 0, duration: 0.001 }, 9.781);
+      tl.from("#s001-title", { clipPath: "inset(0 100% 0 0)", duration: 0.34, ease: "power2.inOut" }, 9.781);
+      tl.from("#s001-title .main-title", { opacity: 0, x: -20, filter: "blur(6px)", duration: 0.38, ease: "power3.out" }, 10.111);
+      tl.from("#s001-title .title-kicker", { opacity: 0, y: 10, duration: 0.22, ease: "power2.out" }, 10.231);
+      tl.from("#s001-title .title-sub", { opacity: 0, y: 10, duration: 0.22, ease: "power2.out" }, 10.511);
+      tl.from("#s001-title .underline-stack i", { scaleX: 0, stagger: 0.10, duration: 0.28, ease: "none" }, 11.201);
+      tl.to("#s001-title", { opacity: 0, duration: 0.22, ease: "power1.in" }, 12.621);
+      tl.set("#s001-title", { opacity: 0 }, 12.821);
+      function screenTimeline(id, scanId, start, panDuration) {
+        tl.from("#" + scanId, { left: 1810, opacity: 0, duration: 0.36, ease: "power2.inOut" }, start - 0.22);
+        tl.to("#" + scanId, { opacity: 0, duration: 0.08, ease: "power1.out" }, start + 0.18);
+        tl.from("#" + id + " .screen-shell", { opacity: 0, x: -120, scale: 0.97, duration: 0.42, ease: "power3.out" }, start);
+        tl.from("#" + id + " .screen-label", { opacity: 0, x: -18, duration: 0.20, ease: "power2.out" }, start + 0.26);
+        tl.from("#" + id + " .circle-pip", { opacity: 0, scale: 0.70, duration: 0.30, ease: "back.out(1.7)" }, start + 0.42);
+        tl.to("#" + id + " .screen-shell", { x: 18, scale: 1.01, duration: panDuration, ease: "none" }, start + 0.90);
+      }
+      screenTimeline("s002-screen", "scan-s002", 18.880, 24.320);
+      tl.from("#s003-step .step-panel", { opacity: 0, y: 34, scale: 0.96, duration: 0.42, ease: "power3.out" }, 47.760);
+      tl.from("#s003-step .step-kicker", { opacity: 0, x: -18, duration: 0.18, ease: "power2.out" }, 48.030);
+      tl.from("#s003-step .step-title", { opacity: 0, y: 24, duration: 0.30, ease: "power2.out" }, 48.210);
+      tl.from("#s003-step .step-item", { opacity: 0, y: 18, stagger: 0.09, duration: 0.22, ease: "power2.out" }, 48.650);
+      screenTimeline("s003-screen", "scan-s003", 51.959, 17.296);
+      tl.from("#s004-step .step-panel", { opacity: 0, y: 34, scale: 0.96, duration: 0.42, ease: "power3.out" }, 73.320);
+      tl.from("#s004-step .step-kicker", { opacity: 0, x: -18, duration: 0.18, ease: "power2.out" }, 73.590);
+      tl.from("#s004-step .step-title", { opacity: 0, y: 24, duration: 0.30, ease: "power2.out" }, 73.770);
+      tl.from("#s004-step .step-item", { opacity: 0, y: 18, stagger: 0.09, duration: 0.22, ease: "power2.out" }, 74.210);
+      screenTimeline("s004-screen", "scan-s004", 77.949, 6.371);
+      tl.set("#s005-definition .def-panel", { opacity: 0 }, 87.720);
+      tl.fromTo("#s005-definition .def-open", { opacity: 0, x: 90, scale: 0.985 }, { opacity: 1, x: 0, scale: 1, duration: 0.44, ease: "power3.out" }, 87.813);
+      tl.from("#s005-definition .def-open .def-kicker", { opacity: 0, x: -22, duration: 0.22, ease: "power2.out" }, 87.973);
+      tl.from("#s005-definition .def-open .def-title", { opacity: 0, y: 28, filter: "blur(8px)", duration: 0.36, ease: "power3.out" }, 88.153);
+      tl.from("#s005-definition .def-open .def-sub", { opacity: 0, y: 18, duration: 0.28, ease: "power2.out" }, 88.413);
+      tl.from("#s005-definition .def-open .def-code", { opacity: 0, y: 22, stagger: 0.10, duration: 0.26, ease: "power2.out" }, 88.633);
+      tl.from("#s005-definition .def-open .def-callout", { scaleX: 0, transformOrigin: "left center", duration: 0.38, ease: "power2.out" }, 88.893);
+      tl.from("#s005-definition .def-open .def-presenter", { opacity: 0, x: 150, duration: 0.38, ease: "power3.out" }, 88.483);
+      tl.to("#s005-definition .def-open", { opacity: 0, x: -36, duration: 0.22, ease: "power1.out" }, 95.625);
+      tl.fromTo("#s005-definition .def-stack", { opacity: 0, x: 90, scale: 0.985 }, { opacity: 1, x: 0, scale: 1, duration: 0.44, ease: "power3.out" }, 96.088);
+      tl.from("#s005-definition .def-stack .def-kicker", { opacity: 0, x: -22, duration: 0.22, ease: "power2.out" }, 96.248);
+      tl.from("#s005-definition .def-stack .def-title", { opacity: 0, y: 28, filter: "blur(8px)", duration: 0.36, ease: "power3.out" }, 96.428);
+      tl.from("#s005-definition .def-stack .def-sub", { opacity: 0, y: 18, duration: 0.28, ease: "power2.out" }, 96.688);
+      tl.from("#s005-definition .def-stack .def-code", { opacity: 0, y: 22, stagger: 0.10, duration: 0.26, ease: "power2.out" }, 96.908);
+      tl.from("#s005-definition .def-stack .def-callout", { scaleX: 0, transformOrigin: "left center", duration: 0.38, ease: "power2.out" }, 97.168);
+      tl.from("#s005-definition .def-stack .def-presenter", { opacity: 0, x: 150, duration: 0.38, ease: "power3.out" }, 96.758);
+      tl.to("#s005-definition .def-stack", { opacity: 0, x: -36, duration: 0.22, ease: "power1.out" }, 103.900);
+      tl.fromTo("#s005-definition .def-flow", { opacity: 0, x: 90, scale: 0.985 }, { opacity: 1, x: 0, scale: 1, duration: 0.44, ease: "power3.out" }, 104.362);
+      tl.from("#s005-definition .def-flow .def-kicker", { opacity: 0, x: -22, duration: 0.22, ease: "power2.out" }, 104.522);
+      tl.from("#s005-definition .def-flow .def-title", { opacity: 0, y: 28, filter: "blur(8px)", duration: 0.36, ease: "power3.out" }, 104.702);
+      tl.from("#s005-definition .def-flow .def-sub", { opacity: 0, y: 18, duration: 0.28, ease: "power2.out" }, 104.962);
+      tl.from("#s005-definition .def-flow .def-code", { opacity: 0, y: 22, stagger: 0.10, duration: 0.26, ease: "power2.out" }, 105.182);
+      tl.from("#s005-definition .def-flow .def-callout", { scaleX: 0, transformOrigin: "left center", duration: 0.38, ease: "power2.out" }, 105.442);
+      tl.from("#s005-definition .def-flow .def-presenter", { opacity: 0, x: 150, duration: 0.38, ease: "power3.out" }, 105.032);
+      tl.to("#s005-definition .def-flow", { x: -18, scale: 1.012, duration: 8.888, ease: "none" }, 106.172);
+      tl.from("#s006-course", { opacity: 0, duration: 0.001 }, 114.600);
+      tl.from("#s006-course .course-chip", { opacity: 0, x: -18, duration: 0.18, ease: "power2.out" }, 114.700);
+      tl.from("#s006-course .course-heading", { opacity: 0, y: 26, filter: "blur(6px)", duration: 0.34, ease: "power3.out" }, 114.800);
+      tl.fromTo("#s006-course .course-card", { opacity: 0, x: -34, clipPath: "inset(0 100% 0 0)" }, { opacity: 1, x: 0, clipPath: "inset(0 0% 0 0)", stagger: 0.18, duration: 0.34, ease: "power3.out" }, 115.000);
+      tl.from("#s006-course .card-icon", { opacity: 0, scale: 0.72, stagger: 0.18, duration: 0.18, ease: "back.out(1.7)" }, 115.200);
+      tl.from("#s006-course .course-big", { opacity: 0, y: 14, stagger: 0.08, duration: 0.20, ease: "power2.out" }, 115.400);
+      tl.from("#s006-course .course-line", { scaleX: 0, duration: 3.7, ease: "none" }, 115.560);
+      tl.fromTo("#s006-course .course-presenter", { opacity: 0, x: 300, clipPath: "inset(0 0 0 100%)" }, { opacity: 1, x: 0, clipPath: "inset(0 0 0 0%)", duration: 0.46, ease: "power3.out" }, 115.960);
+      tl.to("#s006-course .course-layout", { x: -18, duration: 25.320, ease: "none" }, 116.780);
+      tl.to("#s006-course .course-presenter", { x: -18, scale: 1.018, duration: 25.320, ease: "none" }, 116.730);
+      tl.from("#s007-aroll .clean-aroll-copy", { opacity: 0, x: -26, duration: 0.42, ease: "power3.out" }, 145.100);
+      tl.from("#s007-aroll .clean-title", { opacity: 0, y: 18, filter: "blur(6px)", duration: 0.34, ease: "power3.out" }, 145.340);
+      tl.to("#v-s007-aroll-aroll-video", { scale: 1.018, duration: 10.000, ease: "none" }, 145.000);
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

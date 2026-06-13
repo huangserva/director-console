@@ -1,0 +1,211 @@
+{
+  "schemaVersion": "2026-06-12",
+  "projectId": "m1-acceptance",
+  "recipeId": null,
+  "duration": 155.415,
+  "source": {
+    "video": "/Users/huangzongning/development/paseo/creative/director-duix-hyperframes/hyperframes-composer/render/memos-v3-composed-final.mp4",
+    "audio": "projects/m1-acceptance/audio/asr.wav",
+    "captions": "projects/m1-acceptance/captions.json"
+  },
+  "tracks": {
+    "video": [
+      {
+        "id": "video-main",
+        "track": "video",
+        "src": "/Users/huangzongning/development/paseo/creative/director-duix-hyperframes/hyperframes-composer/render/memos-v3-composed-final.mp4",
+        "start": 0,
+        "duration": 155.415
+      }
+    ],
+    "audio": [
+      {
+        "id": "audio-main",
+        "track": "audio",
+        "src": "projects/m1-acceptance/audio/asr.wav",
+        "start": 0,
+        "duration": 155.415
+      }
+    ],
+    "subtitle": [
+      {
+        "id": "subtitle-main",
+        "track": "subtitle",
+        "src": "projects/m1-acceptance/captions.json",
+        "start": 0,
+        "duration": 155.415
+      }
+    ],
+    "card": [
+      {
+        "id": "s001",
+        "type": "brand",
+        "engine": {
+          "component": "TitleCard",
+          "scene_type": "title_card",
+          "track": 10,
+          "finePieces": [],
+          "props": {
+            "cornerLeft": "成片导入",
+            "cornerName": "场景 1",
+            "kicker": "自动场景规划",
+            "title": "现在很多人的工作早就不在",
+            "subline": "现在很多人的工作早就不在一台电脑里了 这台 ma"
+          }
+        },
+        "content": {
+          "cornerLeft": "成片导入",
+          "cornerName": "场景 1",
+          "kicker": "自动场景规划",
+          "title": "现在很多人的工作早就不在",
+          "subline": "现在很多人的工作早就不在一台电脑里了 这台 ma"
+        },
+        "media": {},
+        "timeline": {
+          "track": "card",
+          "start": 0.29,
+          "duration": 15.7
+        },
+        "validation": {
+          "status": "unchecked",
+          "failures": []
+        }
+      },
+      {
+        "id": "s002",
+        "type": "info-structure",
+        "engine": {
+          "component": "StepCard",
+          "scene_type": "step_card",
+          "track": 20,
+          "finePieces": [
+            "StepPanel"
+          ],
+          "props": {
+            "kicker": "场景 02",
+            "title": "而是这些 Agent 没办法互",
+            "items": [
+              "而是这些 Agent 没",
+              "举个真实的例子 我",
+              "飞书的正文被登录态"
+            ]
+          }
+        },
+        "content": {
+          "kicker": "场景 02",
+          "title": "而是这些 Agent 没办法互",
+          "items": [
+            "而是这些 Agent 没",
+            "举个真实的例子 我",
+            "飞书的正文被登录态"
+          ]
+        },
+        "media": {},
+        "timeline": {
+          "track": "card",
+          "start": 16.11,
+          "duration": 16.96
+        },
+        "validation": {
+          "status": "unchecked",
+          "failures": []
+        }
+      },
+      {
+        "id": "s003",
+        "type": "brand",
+        "engine": {
+          "component": "TitleCard",
+          "scene_type": "title_card",
+          "track": 30,
+          "finePieces": [],
+          "props": {
+            "cornerLeft": "字幕",
+            "cornerName": "字幕行",
+            "kicker": "场景 03",
+            "title": "其实这个问题我的另一个 A",
+            "subline": "在此替换为字幕文本",
+            "items": [
+              "其实这个问题我的另",
+              "Codex 在自己的会话",
+              "但 Claude Code 不"
+            ]
+          }
+        },
+        "content": {
+          "cornerLeft": "字幕",
+          "cornerName": "字幕行",
+          "kicker": "场景 03",
+          "title": "其实这个问题我的另一个 A",
+          "subline": "在此替换为字幕文本",
+          "items": [
+            "其实这个问题我的另",
+            "Codex 在自己的会话",
+            "但 Claude Code 不"
+          ]
+        },
+        "media": {},
+        "timeline": {
+          "track": "card",
+          "start": 34.91,
+          "duration": 17.14
+        },
+        "validation": {
+          "status": "unchecked",
+          "failures": []
+        }
+      }
+    ]
+  },
+  "segments": [
+    {
+      "id": "s001",
+      "kind": "card-1",
+      "start": 0.29,
+      "duration": 15.7,
+      "content": {
+        "cornerLeft": "成片导入",
+        "cornerName": "场景 1",
+        "kicker": "自动场景规划",
+        "title": "现在很多人的工作早就不在",
+        "subline": "现在很多人的工作早就不在一台电脑里了 这台 ma"
+      },
+      "media": {}
+    },
+    {
+      "id": "s002",
+      "kind": "card-2",
+      "start": 16.11,
+      "duration": 16.96,
+      "content": {
+        "kicker": "场景 02",
+        "title": "而是这些 Agent 没办法互",
+        "items": [
+          "而是这些 Agent 没",
+          "举个真实的例子 我",
+          "飞书的正文被登录态"
+        ]
+      },
+      "media": {}
+    },
+    {
+      "id": "s003",
+      "kind": "card-3",
+      "start": 34.91,
+      "duration": 17.14,
+      "content": {
+        "kicker": "场景 03",
+        "title": "其实这个问题我的另一个 A",
+        "items": [
+          "其实这个问题我的另",
+          "Codex 在自己的会话",
+          "但 Claude Code 不"
+        ]
+      },
+      "media": {}
+    }
+  ],
+  "templateRef": null,
+  "output": "projects/m1-acceptance/index.html",
+  "hyperframesEntry": "projects/m1-acceptance/index.html"
+}

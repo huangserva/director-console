@@ -1,0 +1,106 @@
+{
+  "id": "run-test-duix-ltx",
+  "projectId": "test-duix-ltx",
+  "recipeId": "existing-narrated-video",
+  "stages": [
+    {
+      "id": "probe",
+      "recipeStageId": "probe",
+      "type": "probe",
+      "name": "Probe source media",
+      "dependsOn": [],
+      "status": "succeeded",
+      "inputs": {},
+      "outputs": {},
+      "errors": [],
+      "updatedAt": "2026-06-13T02:06:55.366Z",
+      "startedAt": "2026-06-13T02:06:55.366Z",
+      "finishedAt": "2026-06-13T02:06:55.366Z"
+    },
+    {
+      "id": "asr",
+      "recipeStageId": "asr",
+      "type": "asr",
+      "name": "Extract audio and transcribe",
+      "dependsOn": [
+        "probe"
+      ],
+      "status": "succeeded",
+      "inputs": {},
+      "outputs": {},
+      "errors": [],
+      "updatedAt": "2026-06-13T02:06:55.366Z",
+      "startedAt": "2026-06-13T02:06:55.366Z",
+      "finishedAt": "2026-06-13T02:06:55.366Z"
+    },
+    {
+      "id": "transcript",
+      "recipeStageId": "transcript",
+      "type": "transcript",
+      "name": "Build transcript",
+      "dependsOn": [
+        "asr"
+      ],
+      "status": "succeeded",
+      "inputs": {},
+      "outputs": {},
+      "errors": [],
+      "updatedAt": "2026-06-13T02:06:55.366Z",
+      "startedAt": "2026-06-13T02:06:55.366Z",
+      "finishedAt": "2026-06-13T02:06:55.366Z"
+    },
+    {
+      "id": "scene-plan",
+      "recipeStageId": "scene-plan",
+      "type": "scene-plan",
+      "name": "Generate scene plan",
+      "dependsOn": [
+        "transcript"
+      ],
+      "status": "succeeded",
+      "inputs": {},
+      "outputs": {},
+      "errors": [],
+      "updatedAt": "2026-06-13T02:06:55.366Z",
+      "startedAt": "2026-06-13T02:06:55.366Z",
+      "finishedAt": "2026-06-13T02:06:55.366Z"
+    },
+    {
+      "id": "packaging",
+      "recipeStageId": "packaging",
+      "type": "packaging",
+      "name": "Build composer manifest",
+      "dependsOn": [
+        "scene-plan"
+      ],
+      "status": "succeeded",
+      "inputs": {},
+      "outputs": {},
+      "errors": [],
+      "updatedAt": "2026-06-13T02:06:55.366Z",
+      "startedAt": "2026-06-13T02:06:55.366Z",
+      "finishedAt": "2026-06-13T02:06:55.366Z"
+    },
+    {
+      "id": "compose",
+      "recipeStageId": "compose",
+      "type": "compose",
+      "name": "Compose preview HTML",
+      "dependsOn": [
+        "packaging"
+      ],
+      "status": "succeeded",
+      "inputs": {},
+      "outputs": {},
+      "errors": [],
+      "updatedAt": "2026-06-13T02:06:55.366Z",
+      "startedAt": "2026-06-13T02:06:55.366Z",
+      "finishedAt": "2026-06-13T02:06:55.366Z"
+    }
+  ],
+  "currentStageId": null,
+  "checkpoints": [],
+  "errors": [],
+  "startedAt": "2026-06-13T02:06:55.366Z",
+  "updatedAt": "2026-06-13T02:06:55.366Z"
+}

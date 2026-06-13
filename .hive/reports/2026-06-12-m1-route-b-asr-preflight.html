@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>M1 Route B ASR preflight</title>
+<style>
+body{margin:0;background:#0d1117;color:#e6edf3;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.58}
+main{max-width:980px;margin:0 auto;padding:40px 24px 72px}
+h1{font-size:28px;margin:0 0 8px}
+h2{font-size:19px;margin-top:32px;padding-top:18px;border-top:1px solid #30363d}
+p,li,td{color:#c9d1d9}
+code{background:#161b22;border:1px solid #30363d;border-radius:4px;padding:1px 5px;color:#f0f6fc}
+table{width:100%;border-collapse:collapse;margin:12px 0}
+th,td{border:1px solid #30363d;padding:10px 12px;text-align:left;vertical-align:top}
+th{background:#161b22;color:#f0f6fc}
+.meta{color:#8b949e}
+.ok{color:#3fb950;font-weight:700}
+.warn{color:#d29922;font-weight:700}
+</style>
+</head>
+<body>
+<main>
+<h1>M1 Route B ASR preflight</h1>
+<p class="meta">2026-06-12 · dispatch cef8801b-0fac-46dc-8373-2f579934edaf · research only, no render</p>
+
+<h2>ASR 结论</h2>
+<p><span class="ok">M1 默认 ASR：FunASR / Paraformer，通过 <code>/opt/homebrew/Caskroom/miniconda/base/envs/cosyvoice/bin/python</code>。</span></p>
+<p>理由：本机 smoke 已跑通；生产树已有 <code>first390-template-locked/scripts/funasr_transcribe.mjs</code> 作为参考；输出含 <code>sentence_info</code> 毫秒时间戳，可稳定转换成 composer 需要的秒级 captions。</p>
+<p>Fallback：<code>whisper-cli</code> + <code>~/.config/hive/whisper-models/ggml-small.bin</code>。它可运行，但中文样例分段较粗，只建议在 FunASR 不可用时使用。</p>
+<p>不作为默认：<code>mlx_whisper</code> 未安装；<code>~/.config/hive/paraformer-models</code> 和 <code>streaming-paraformer</code> 只有 ONNX 模型，当前没有 <code>sherpa_onnx</code> runtime/CLI。</p>
+
+<h2>本机 ASR 库存</h2>
+<table>
+<tr><th>路径 / runtime</th><th>状态</th></tr>
+<tr><td><code>~/.config/hive/paraformer-models</code></td><td>有 <code>model.int8.onnx</code> 和 tokens；无可用 wrapper。</td></tr>
+<tr><td><code>~/.config/hive/streaming-paraformer</code></td><td>有 encoder/decoder ONNX 与测试 WAV；无 <code>sherpa_onnx</code>。</td></tr>
+<tr><td><code>~/.config/hive/whisper-models/ggml-small.bin</code></td><td>通过 <code>whisper-cli</code> 跑通。</td></tr>
+<tr><td><code>cosyvoice</code> conda env</td><td>有 FunASR、ModelScope、torchaudio、soundfile、onnxruntime；FunASR smoke exit 0。</td></tr>
+</table>
+
+<h2>Composer captions 格式</h2>
+<p><code>manifest.audio.captions</code> 是一个 JSON 路径；<code>compose.mjs</code> 读取该文件的顶层 <code>captions</code> 数组。</p>
+<pre><code>{
+  "captions": [
+    {
+      "start": 0.32,
+      "end": 2.98,
+      "text": "现在很多 AI 已经很会识别模式，",
+      "source": "funasr_sentence_with_term_fixes",
+      "asr_text": "现在很多 AI 已经很会识别模式，"
+    }
+  ]
+}</code></pre>
+<p><code>start</code>/<code>end</code> 单位是秒。FunASR raw <code>sentence_info.start/end</code> 单位是毫秒，转换时除以 1000。</p>
+
+<h2>M1 Route B 执行规格</h2>
+<ol>
+<li>输入：一个含音轨的成片 MP4。</li>
+<li>Probe：<code>ffprobe ... -of json input.mp4 &gt; metadata.json</code>，无音轨则 fail fast。</li>
+<li>抽音频：<code>ffmpeg -map 0:a:0 -ac 1 -ar 16000 project/audio/asr.wav</code>。</li>
+<li>ASR：复用生产 <code>funasr_transcribe.mjs</code> 逻辑，在 director-console 新建本地 wrapper，输出 raw JSON 和 composer captions JSON。</li>
+<li>Transcript：M1 需新增 captions/raw → <code>transcript.json</code> 的确定性转换。</li>
+<li>Scene plan：当前无现成工具。M1 需新增 transcript → scene plan，最小版可按时长/标点规则分段，后续再接 LLM 辅助。</li>
+<li>Manifest：当前无 Route B scene plan → composer manifest 生成器。M1 需新增脚本，使用现有 component catalog、manifest validator 和 M0 compose API。</li>
+<li>Compose/render：后续使用现有 <code>npm run validate:manifest</code>、<code>compose</code>、<code>lint</code>、<code>inspect</code>、<code>render</code>；本次未跑渲染。</li>
+</ol>
+
+<h2>还缺的真实输入</h2>
+<ul>
+<li>需要选定一个 M1 样例成片。推荐 <code>.../hyperframes-composer/render/memos-v3-composed-final.mp4</code>，因为已有对应 manifest/captions 可回归对比。</li>
+<li>需要决定 Route B 是否保留原视频作为视觉素材，还是只用音频/文本重新包装。</li>
+<li>需要确定 Route B 默认 recipe/theme，建议先用现有 dark tech-talk component set。</li>
+</ul>
+
+<h2>PM 文档</h2>
+<p>已写 research note：<code>.hive/research/2026-06-12-m1-route-b-asr-preflight.md</code>。已起草 ADR：<code>.hive/decisions/draft-2026-06-12-default-route-b-asr.md</code>。已更新 <code>.hive/plan.md</code>、<code>docs/PLAN.md</code> 和 PRD Open Question #1。</p>
+</main>
+</body>
+</html>

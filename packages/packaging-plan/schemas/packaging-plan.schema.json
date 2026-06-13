@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://director-console.local/schemas/packaging-plan.schema.json",
+  "title": "Director Packaging Plan",
+  "type": "object",
+  "required": ["schemaVersion", "source", "tracks", "segments", "templateRef"],
+  "additionalProperties": true,
+  "properties": {
+    "schemaVersion": { "type": "string" },
+    "projectId": { "type": ["string", "null"] },
+    "recipeId": { "type": ["string", "null"] },
+    "duration": { "type": "number", "minimum": 0 },
+    "source": {
+      "type": "object",
+      "required": ["video", "audio", "captions"],
+      "additionalProperties": true,
+      "properties": {
+        "video": { "type": ["string", "null"] },
+        "audio": { "type": ["string", "null"] },
+        "captions": { "type": ["string", "null"] }
+      }
+    },
+    "tracks": {
+      "type": "object",
+      "required": ["video", "audio", "subtitle", "card"],
+      "additionalProperties": false,
+      "properties": {
+        "video": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+        "audio": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+        "subtitle": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+        "card": { "type": "array", "items": { "$ref": "component-card.schema.json" } }
+      }
+    },
+    "segments": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+    "templateRef": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["id", "version"],
+          "additionalProperties": true,
+          "properties": {
+            "id": { "type": "string" },
+            "version": { "type": "string" }
+          }
+        }
+      ]
+    },
+    "output": { "type": ["string", "null"] },
+    "hyperframesEntry": { "type": ["string", "null"] }
+  }
+}

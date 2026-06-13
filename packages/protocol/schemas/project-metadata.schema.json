@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://director-console.local/schemas/project-metadata.schema.json",
+  "title": "Director Project Metadata Extension",
+  "type": "object",
+  "properties": {
+    "recipeId": { "type": ["string", "null"], "default": null },
+    "workflowRunId": { "type": ["string", "null"], "default": null },
+    "sourceCapabilities": { "type": "array", "items": { "type": "string" }, "default": [] },
+    "assets": { "type": "array", "items": { "$ref": "asset.schema.json" }, "default": [] },
+    "stageState": { "type": "object", "default": {} },
+    "outputs": { "type": "object", "default": {} }
+  },
+  "additionalProperties": true
+}

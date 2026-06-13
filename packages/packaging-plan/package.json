@@ -1,0 +1,9 @@
+{
+  "name": "director-console-packaging-plan",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "lint": "node --check src/index.mjs && node --check test/packaging-plan.test.mjs"
+  }
+}

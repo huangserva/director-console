@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://director-console.local/schemas/component-card.schema.json",
+  "title": "Director Component Card",
+  "type": "object",
+  "required": ["id", "type", "engine", "content", "media", "timeline", "validation"],
+  "additionalProperties": true,
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "type": {
+      "type": "string",
+      "enum": [
+        "opening",
+        "caption",
+        "product-highlight",
+        "demo-annotation",
+        "comparison",
+        "pip",
+        "data-proof",
+        "info-structure",
+        "mv-rhythm",
+        "transition",
+        "brand",
+        "cta"
+      ]
+    },
+    "engine": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["component", "scene_type"],
+      "properties": {
+        "component": { "type": "string", "minLength": 1 },
+        "scene_type": { "type": "string", "minLength": 1 },
+        "track": { "type": "number" },
+        "finePieces": { "type": "array", "items": { "type": "string" } },
+        "props": { "type": "object", "additionalProperties": true }
+      }
+    },
+    "content": { "type": "object", "additionalProperties": true },
+    "media": { "type": "object", "additionalProperties": true },
+    "timeline": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["start", "duration"],
+      "properties": {
+        "start": { "type": "number" },
+        "duration": { "type": "number", "exclusiveMinimum": 0 },
+        "track": { "type": "string" }
+      }
+    },
+    "layout": { "type": "object", "additionalProperties": true },
+    "font": { "type": "object", "additionalProperties": true },
+    "color": { "type": "object", "additionalProperties": true },
+    "graphics": { "type": "object", "additionalProperties": true },
+    "animation": { "type": "object", "additionalProperties": true },
+    "validation": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "status": { "type": "string" },
+        "failures": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

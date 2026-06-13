@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.hyperframes-composer/schemas/component-props.schema.json",
+  "title": "HyperFrames Composer Component Props",
+  "type": "object",
+  "$defs": {
+    "StatsHero": {
+      "type": "object",
+      "required": ["media", "stat", "browser", "titleBeat"],
+      "properties": {
+        "media": { "type": "object", "required": ["presenter"], "properties": { "presenter": { "type": "string" } } },
+        "stat": { "type": "object", "required": ["label", "number", "unit", "title"], "properties": { "cornerLeft": { "type": "string" }, "label": { "type": "string" }, "number": { "type": "string" }, "unit": { "type": "string" }, "title": { "type": "string" } } },
+        "browser": { "type": "object", "properties": { "done": { "type": "string" }, "icons": { "type": "array", "items": { "type": "string" } }, "mediaStart": { "type": "number" } } },
+        "titleBeat": { "type": "object", "required": ["title"], "properties": { "cornerLeft": { "type": "string" }, "cornerName": { "type": "string" }, "kicker": { "type": "string" }, "title": { "type": "string" }, "subline": { "type": "string" } } }
+      }
+    },
+    "TitleCard": {
+      "type": "object",
+      "required": ["title"],
+      "properties": { "cornerLeft": { "type": "string" }, "cornerName": { "type": "string" }, "kicker": { "type": "string" }, "title": { "type": "string" }, "subline": { "type": "string" } }
+    },
+    "SplitTextPresenter": {
+      "type": "object",
+      "required": ["variant"],
+      "properties": {
+        "variant": { "enum": ["course", "definition"] },
+        "cornerName": { "type": "string" },
+        "chip": { "type": "string" },
+        "kicker": { "type": "string" },
+        "title": { "type": "string" },
+        "subline": { "type": "string" },
+        "cards": { "type": "array", "items": { "type": "object" } },
+        "panels": { "type": "array", "items": { "type": "object" } },
+        "media": { "type": "object" }
+      }
+    },
+    "ScreenWithPip": {
+      "type": "object",
+      "required": ["label", "media"],
+      "properties": { "label": { "type": "string" }, "media": { "type": "object", "required": ["screen", "pip"], "properties": { "screen": { "type": "string" }, "pip": { "type": "string" } } }, "scan": { "type": "object" } }
+    },
+    "HeroAroll": {
+      "type": "object",
+      "required": ["media"],
+      "properties": { "media": { "type": "object", "required": ["presenter"], "properties": { "presenter": { "type": "string" } } } }
+    },
+    "StepCard": {
+      "type": "object",
+      "required": ["kicker", "title", "items"],
+      "properties": { "kicker": { "type": "string" }, "title": { "type": "string" }, "items": { "type": "array", "items": { "type": "string" }, "minItems": 1, "maxItems": 3 } }
+    },
+    "ProofMontage": {
+      "type": "object",
+      "required": ["media"],
+      "properties": { "media": { "type": "object", "required": ["items"], "properties": { "items": { "type": "array", "items": { "type": "object", "required": ["src"] } } } } }
+    },
+    "SummaryCta": {
+      "type": "object",
+      "required": ["media", "chip", "title", "subline"],
+      "properties": { "media": { "type": "object", "required": ["presenter"], "properties": { "presenter": { "type": "string" } } }, "chip": { "type": "string" }, "title": { "type": "string" }, "subline": { "type": "string" } }
+    }
+  }
+}
