@@ -65,6 +65,14 @@ export function Canvas(props: {
     return () => cancelAnimationFrame(raf);
   }, [previewMode, playing, videoRef]);
   const composeT = playing ? rafT : (playTime ?? 0);
+  // 轨道 👁 隐藏对视频/音频生效：视频轨隐藏→画面不显示（保留挂载/ref）；音频轨隐藏→静音。
+  const videoTrackHidden = !!hiddenTracks?.has("video");
+  const audioTrackHidden = !!hiddenTracks?.has("audio");
+  // muted 用 ref 命令式设置（React 的 muted prop 不可靠：不会同步到已挂载元素）。
+  useEffect(() => {
+    const v = videoRef?.current;
+    if (v) v.muted = audioTrackHidden;
+  }, [audioTrackHidden, videoRef, videoUrl]);
   const [preview, setPreview] = useState<Layout | null>(null);
   const dragRef = useRef<{ mode: Handle | "move"; startX: number; startY: number; startLayout: Layout } | null>(null);
 
@@ -181,10 +189,11 @@ export function Canvas(props: {
           {videoUrl && (
             <video
               ref={videoRef}
-              className={previewMode ? "pc-stage-video show" : "pc-stage-video"}
+              className={`${previewMode ? "pc-stage-video show" : "pc-stage-video"}${videoTrackHidden ? " track-hidden" : ""}`}
               src={videoUrl}
               playsInline
               preload="metadata"
+              muted={audioTrackHidden}
               onTimeUpdate={(e) => onVideoTime?.(e.currentTarget.currentTime)}
               onPlay={() => onPlayStateChange?.(true)}
               onPause={() => onPlayStateChange?.(false)}

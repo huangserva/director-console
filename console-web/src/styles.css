@@ -1331,6 +1331,8 @@ button.pc-navitem:disabled { opacity: 0.5; cursor: not-allowed; }
 /* C 预览：画布预览模式铺满源视频，编辑层隐藏。 */
 .pc-stage-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; border-radius: 6px; opacity: 0; pointer-events: none; z-index: 0; }
 .pc-stage-video.show { opacity: 1; pointer-events: auto; z-index: 6; }
+/* 视频轨 👁 隐藏：画面不显示但元素保留挂载（videoRef 仍可被 ▶/seek 操作，播放头照走）。 */
+.pc-stage-video.track-hidden { visibility: hidden; }
 .pc-stage-preview { background: #000; }
 
 /* 合成预览叠加层（dispatch 4ff723c3）：按 currentTime 把当下卡片 + 字幕叠在视频上。
