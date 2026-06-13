@@ -205,17 +205,11 @@ export function Canvas(props: {
           {previewMode && (
             <div className="pc-composite">
               {activeCards.map((c) => {
-                const r = pxRect(resolveLayout(c.layout as Partial<Layout> | undefined), stageW);
                 const sel = c.id === selectedId;
-                // 真实卡片渲染器（@全栈工程师 CardVisual.tsx，含画中画小人像窗等真实样式）；
-                // 外层 div 按 resolveLayout/pxRect 定位 + 选中高亮 + 点选。
+                // composer 真实卡片是 1920×1080 整帧设计（CardVisual 内部按 stageW/1920 缩放），故外层铺满整个画布
+                // （inset:0），不再塞进 layout 小方块；选中高亮 + 点选保留。
                 return (
-                  <div
-                    key={c.id}
-                    className={sel ? "pc-overlay-cv selected" : "pc-overlay-cv"}
-                    style={{ left: r.left, top: r.top, width: r.width, height: r.height }}
-                    onClick={() => onSelect?.(c.id)}
-                  >
+                  <div key={c.id} className={sel ? "pc-overlay-cv selected" : "pc-overlay-cv"} onClick={() => onSelect?.(c.id)}>
                     <CardVisual card={c} stageW={stageW} mediaUrls={c.mediaUrls as { screen?: string | null; pip?: string | null } | undefined} currentTime={composeT - c.timeline.start} />
                   </div>
                 );

@@ -1338,9 +1338,9 @@ button.pc-navitem:disabled { opacity: 0.5; cursor: not-allowed; }
 /* 合成预览叠加层（dispatch 4ff723c3）：按 currentTime 把当下卡片 + 字幕叠在视频上。
    pointer-events:none —— 不挡视频/scrub；隐藏轨道由 React 直接不渲染（👁 生效）。 */
 .pc-composite { position: absolute; inset: 0; z-index: 7; pointer-events: none; }
-/* 叠加卡片：用真实渲染器 CardVisual（width/height:100% 填满），外层只做定位 + 点选 + 选中高亮。 */
-.pc-overlay-cv { position: absolute; pointer-events: auto; cursor: pointer; }
-.pc-overlay-cv.selected { outline: 2px solid #fff; outline-offset: 2px; border-radius: 14px; }
+/* 叠加卡片：composer 真实卡片是 1920×1080 整帧（CardVisual 内部缩放），外层铺满整个画布 + 点选 + 选中高亮。 */
+.pc-overlay-cv { position: absolute; inset: 0; overflow: hidden; pointer-events: auto; cursor: pointer; }
+.pc-overlay-cv.selected { outline: 2px solid #fff; outline-offset: -2px; }
 .pc-overlay-sub {
   position: absolute; left: 8%; right: 8%; bottom: 6%; text-align: center;
   font-size: clamp(14px, 1.9vw, 24px); font-weight: 600; line-height: 1.4; color: #fff;

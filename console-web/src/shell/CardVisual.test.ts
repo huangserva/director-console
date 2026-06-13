@@ -1,79 +1,58 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { CARD_TYPES, type CardType, type PlanCard } from "../lib/packaging-plan";
-import CardVisual, { cardVisualModel } from "./CardVisual";
+import type { PlanCard } from "../lib/packaging-plan";
+import CardVisual from "./CardVisual";
 
-function makeCard(type: CardType, content: PlanCard["content"] = {}): PlanCard {
+// CardVisual 现用 composer 的真实 renderScene（单一真相）：断言产出 composer 卡片类名/文本，
+// 而非旧手搓 cv-* 近似。engine.props 提供原始 scene props（renderScene 读它）。
+function makeCard(component: string, scene_type: string, props: Record<string, unknown>, type = "opening"): PlanCard {
   return {
-    id: `${type}-card`,
-    type,
-    engine: { component: "TitleCard", scene_type: "title_card" },
-    content: {
-      kicker: "自动包装",
-      title: "关键片段",
-      subline: "可编辑说明",
-      label: "标签",
-      items: ["第一点", "第二点"],
-      ...content,
-    },
+    id: `${component}-card`,
+    type: type as PlanCard["type"],
+    engine: { component, scene_type, props },
+    content: { title: "关键片段", kicker: "自动包装", subline: "可编辑说明" },
     media: {},
     timeline: { track: "card", start: 0, duration: 4 },
     validation: { status: "ok", failures: [] },
-    color: { accent: "#6ee7b7" },
-  };
+  } as PlanCard;
 }
+const render = (card: PlanCard, stageW = 960) => renderToStaticMarkup(createElement(CardVisual, { card, stageW }));
 
-function render(card: PlanCard, stageW = 960): string {
-  return renderToStaticMarkup(createElement(CardVisual, { card, stageW }));
-}
-
-describe("CardVisual", () => {
-  it("为全部 12 类卡片生成可区分的视觉模型", () => {
-    const variants = new Set(CARD_TYPES.map((type) => cardVisualModel(makeCard(type), 960).variant));
-
-    expect(variants).toEqual(new Set(CARD_TYPES));
+describe("CardVisual — 复用 composer 真实卡片渲染", () => {
+  it("标题卡：产出 composer 的 title-block / main-title + 文本", () => {
+    const html = render(makeCard("TitleCard", "title_card", { kicker: "开场", title: "关键片段", subline: "副标题" }));
+    expect(html).toContain("hf-frame");
+    expect(html).toContain("title-block");
+    expect(html).toContain("main-title");
+    expect(html).toContain("关键片段");
   });
 
-  it("按类型渲染关键视觉元素，尤其画中画不是标题卡", () => {
-    const cases: Array<[CardType, string]> = [
-      ["opening", "cv-title-stack"],
-      ["stats-hero" as CardType, "cv-title-stack"],
-      ["step" as CardType, "cv-step-list"],
-      ["pip", "cv-pip-window"],
-      ["comparison", "cv-compare-grid"],
-      ["data-proof", "cv-proof-number"],
-      ["demo-annotation", "cv-annotation-arrow"],
-      ["product-highlight", "cv-product-badges"],
-      ["info-structure", "cv-info-map"],
-      ["cta", "cv-cta-button"],
-      ["caption", "cv-caption-line"],
-      ["transition", "cv-transition-line"],
-      ["mv-rhythm", "cv-rhythm-bars"],
-      ["brand", "cv-brand-mark"],
-    ];
-
-    for (const [type, marker] of cases) {
-      const html = render(makeCard(type));
-      expect(html).toContain(marker);
-      expect(html).toContain("关键片段");
-    }
+  it("步骤卡：产出 step-panel / step-list / step-item + 条目文本", () => {
+    const html = render(makeCard("StepCard", "step_card", { kicker: "步骤", title: "三步走", items: ["第一点", "第二点", "第三点"] }, "step"));
+    expect(html).toContain("step-panel");
+    expect(html).toContain("step-item");
+    expect(html).toContain("第二点");
   });
 
-  it("使用内容字段和强调色，不依赖外部 App 状态", () => {
+  it("开场数据卡：产出 stat-pack / stat-number 等（composer 整帧设计）", () => {
     const html = render(
-      makeCard("data-proof", {
-        title: "转化提升",
-        label: "增长",
-        number: "38",
-        unit: "%",
-      }),
-      640,
+      makeCard(
+        "StatsHero",
+        "hook_stat",
+        { stat: { label: "增长", number: "38", unit: "%", title: "转化" }, browser: { done: "Done", icons: ["AI"] }, titleBeat: { title: "标题" }, media: { presenter: "x.mp4" } },
+        "stats-hero",
+      ),
     );
-
-    expect(html).toContain("转化提升");
+    expect(html).toContain("stat-pack");
+    expect(html).toContain("stat-number");
     expect(html).toContain("38");
-    expect(html).toContain("%");
-    expect(html).toContain("--cv-accent:#6ee7b7");
+  });
+
+  it("画中画卡：用 composer 的 screen-shell / circle-pip 结构（live 视频容器）", () => {
+    const html = render(makeCard("ScreenWithPip", "screen_demo_pip", { label: "演示", media: {} }, "pip"));
+    expect(html).toContain("screen-shell");
+    expect(html).toContain("circle-pip");
+    expect(html).toContain("演示");
   });
 });

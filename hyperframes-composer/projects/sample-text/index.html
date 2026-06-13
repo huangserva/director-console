@@ -30,6 +30,10 @@ html, body { width: 1920px; height: 1080px; overflow: hidden; background: #03040
 .scene::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(90deg, rgba(0,0,0,.72), transparent 22%, transparent 78%, rgba(0,0,0,.7)), linear-gradient(180deg, rgba(0,0,0,.24), transparent 22%, transparent 72%, rgba(0,0,0,.52)); }
 video { display: block; object-fit: cover; }
 .source-video { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; object-fit: cover; }
+.source-video-background { z-index: 0; }
+#root[data-has-source-video="1"] .scene { background: transparent; }
+#root[data-has-source-video="1"] .scene::before,
+#root[data-has-source-video="1"] .scene::after { display: none; }
 .corner-name { position: absolute; z-index: 12; top: 58px; right: 120px; color: #f7f1d6; font-size: 22px; font-weight: 900; text-transform: uppercase; }
 .corner-left { position: absolute; z-index: 5; top: 78px; left: 120px; color: #f4c769; font-size: 28px; font-weight: 900; }
 .stat-pack { position: absolute; inset: 0; z-index: 7; transform-origin: 38% 43%; will-change: transform, opacity; }
