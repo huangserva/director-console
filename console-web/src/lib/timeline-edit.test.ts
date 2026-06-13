@@ -6,6 +6,7 @@ import {
   moveCardStart,
   resolveCardStart,
   snapTime,
+  splitClip,
   timelineEndMax,
   trimLeft,
   trimRight,
@@ -94,6 +95,31 @@ describe("buildSnapTargets", () => {
 describe("clipEnd", () => {
   it("rounds start+duration to ms precision", () => {
     expect(clipEnd({ start: 1.111, duration: 2.222 })).toBe(3.333);
+  });
+});
+
+describe("splitClip — 剪映式剪断", () => {
+  it("splits video/audio clips and advances mediaStart for the second segment", () => {
+    const [left, right] = splitClip({ id: "video-main", track: "video", src: "source.mp4", start: 10, duration: 8, mediaStart: 30 }, 13);
+
+    expect(left).toMatchObject({ id: "video-main-a", start: 10, duration: 3, mediaStart: 30 });
+    expect(right).toMatchObject({ id: "video-main-b", start: 13, duration: 5, mediaStart: 33 });
+  });
+
+  it("splits card clips by copying content and changing only timing/id", () => {
+    const clip = { id: "card-1", type: "pip", content: { title: "画中画" }, timeline: { track: "card", start: 2, duration: 6 } };
+    const [left, right] = splitClip(clip, 5);
+
+    expect(left).toMatchObject({ id: "card-1-a", type: "pip", content: { title: "画中画" }, timeline: { track: "card", start: 2, duration: 3 } });
+    expect(right).toMatchObject({ id: "card-1-b", type: "pip", content: { title: "画中画" }, timeline: { track: "card", start: 5, duration: 3 } });
+  });
+
+  it("returns the original clip when split time is outside the clip interior", () => {
+    const clip = { id: "audio-main", track: "audio", start: 0, duration: 4, mediaStart: 7 };
+
+    expect(splitClip(clip, 0)).toEqual([clip]);
+    expect(splitClip(clip, 4)).toEqual([clip]);
+    expect(splitClip(clip, 9)).toEqual([clip]);
   });
 });
 

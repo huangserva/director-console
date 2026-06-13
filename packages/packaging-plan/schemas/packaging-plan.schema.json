@@ -25,8 +25,8 @@
       "required": ["video", "audio", "subtitle", "card"],
       "additionalProperties": false,
       "properties": {
-        "video": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
-        "audio": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+        "video": { "type": "array", "items": { "$ref": "#/$defs/timelineClip" } },
+        "audio": { "type": "array", "items": { "$ref": "#/$defs/timelineClip" } },
         "subtitle": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
         "card": { "type": "array", "items": { "$ref": "component-card.schema.json" } }
       }
@@ -48,5 +48,20 @@
     },
     "output": { "type": ["string", "null"] },
     "hyperframesEntry": { "type": ["string", "null"] }
+  },
+  "$defs": {
+    "timelineClip": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["id", "track", "start", "duration"],
+      "properties": {
+        "id": { "type": "string" },
+        "track": { "enum": ["video", "audio"] },
+        "src": { "type": ["string", "null"] },
+        "start": { "type": "number", "minimum": 0 },
+        "duration": { "type": "number", "exclusiveMinimum": 0 },
+        "mediaStart": { "type": "number", "minimum": 0 }
+      }
+    }
   }
 }

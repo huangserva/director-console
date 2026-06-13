@@ -243,7 +243,61 @@ function maxManifestEnd(manifest = {}) {
   return Math.max(
     Number(manifest.duration) || 0,
     ...(manifest.scenes || []).map((scene) => numericEnd(scene.start, scene.duration)),
+    ...(manifest.source?.videoClips || []).map((clip) => numericEnd(clip.start, clip.duration)),
+    ...(manifest.audio?.clips || []).map((clip) => numericEnd(clip.start, clip.duration)),
     ...(manifest.captions || []).map((caption) => (typeof caption.end === "number" ? caption.end : 0)),
+  );
+}
+
+function trackClipFromManifestClip(clip, track, fallbackSrc, duration, index, previewUrl) {
+  return compactObject({
+    id: clip.id || `${track}-${index + 1}`,
+    track,
+    src: clip.src ?? fallbackSrc,
+    previewUrl: track === "video" ? (clip.previewUrl ?? previewUrl) : undefined,
+    start: Number(clip.start ?? 0),
+    duration: Number(clip.duration ?? duration),
+    mediaStart: Number(clip.mediaStart ?? 0),
+  });
+}
+
+function trackClipsFromManifest(clips, track, fallbackSrc, duration, previewUrl) {
+  if (Array.isArray(clips) && clips.length > 0) {
+    return clips.map((clip, index) => trackClipFromManifestClip(clip, track, fallbackSrc, duration, index, previewUrl));
+  }
+  return fallbackSrc
+    ? [
+        compactObject({
+          id: `${track}-main`,
+          track,
+          src: fallbackSrc,
+          previewUrl: track === "video" ? previewUrl : undefined,
+          start: 0,
+          duration,
+        }),
+      ]
+    : [];
+}
+
+function manifestClipFromTrackClip(clip, fallbackSrc) {
+  return compactObject({
+    id: clip.id,
+    src: clip.src ?? fallbackSrc,
+    start: clip.start,
+    duration: clip.duration,
+    mediaStart: clip.mediaStart ?? 0,
+  });
+}
+
+function shouldWriteClips(trackClips, fallbackSrc, totalDuration) {
+  if (!Array.isArray(trackClips) || trackClips.length === 0) return false;
+  if (trackClips.length > 1) return true;
+  const clip = trackClips[0];
+  return (
+    (clip.src ?? fallbackSrc ?? null) !== (fallbackSrc ?? null) ||
+    Number(clip.start ?? 0) !== 0 ||
+    Number(clip.mediaStart ?? 0) !== 0 ||
+    Number(clip.duration ?? 0) !== Number(totalDuration ?? 0)
   );
 }
 
@@ -510,10 +564,8 @@ export function manifestToPlan(manifest, options = {}) {
   });
   const captionCues = captionCuesForManifest(manifest, options);
   const tracks = {
-    video: source.video
-      ? [compactObject({ id: "video-main", track: "video", src: source.video, previewUrl: source.videoUrl, start: 0, duration })]
-      : [],
-    audio: source.audio ? [{ id: "audio-main", track: "audio", src: source.audio, start: 0, duration }] : [],
+    video: trackClipsFromManifest(manifest.source?.videoClips, "video", source.video, duration, source.videoUrl),
+    audio: trackClipsFromManifest(manifest.audio?.clips, "audio", source.audio, duration),
     subtitle: source.captions
       ? [compactObject({ id: "subtitle-main", track: "subtitle", src: source.captions, start: 0, duration, cues: captionCues })]
       : [],
@@ -588,16 +640,32 @@ export function planToManifest(plan) {
     });
   });
 
+  const videoTrackClips = plan.tracks.video || [];
+  const audioTrackClips = plan.tracks.audio || [];
+  const duration = maxTrackEnd(plan.tracks) || Number(plan.duration) || 0;
+  const sourceVideo = plan.source.video || videoTrackClips[0]?.src;
+  const sourceAudio = plan.source.audio || audioTrackClips[0]?.src;
+
   const audio = clone(plan.engine?.manifestAudio);
   if (audio) {
-    if (plan.source.audio !== undefined) audio.src = plan.source.audio;
+    if (sourceAudio !== undefined) audio.src = sourceAudio;
     if (plan.source.captions !== undefined) audio.captions = plan.source.captions;
+    if (shouldWriteClips(audioTrackClips, sourceAudio, duration)) {
+      audio.clips = audioTrackClips.map((clip) => manifestClipFromTrackClip(clip, sourceAudio));
+    } else {
+      delete audio.clips;
+    }
   }
 
   const topLevel = clone(plan.engine?.manifestTopLevel) || {};
-  const source = compactObject({ ...(topLevel.source || {}), video: plan.source.video || undefined });
+  const source = compactObject({
+    ...(topLevel.source || {}),
+    video: sourceVideo || undefined,
+    videoClips: shouldWriteClips(videoTrackClips, sourceVideo, duration)
+      ? videoTrackClips.map((clip) => manifestClipFromTrackClip(clip, sourceVideo))
+      : undefined,
+  });
   delete topLevel.source;
-  const duration = maxTrackEnd(plan.tracks) || Number(plan.duration) || 0;
 
   return compactObject({
     ...topLevel,
@@ -606,7 +674,17 @@ export function planToManifest(plan) {
     source: objectHasKeys(source) ? source : undefined,
     output: plan.output ?? undefined,
     hyperframesEntry: plan.hyperframesEntry ?? undefined,
-    audio: audio || (plan.source.audio || plan.source.captions ? compactObject({ src: plan.source.audio, captions: plan.source.captions }) : undefined),
+    audio:
+      audio ||
+      (sourceAudio || plan.source.captions
+        ? compactObject({
+            src: sourceAudio,
+            captions: plan.source.captions,
+            clips: shouldWriteClips(audioTrackClips, sourceAudio, duration)
+              ? audioTrackClips.map((clip) => manifestClipFromTrackClip(clip, sourceAudio))
+              : undefined,
+          })
+        : undefined),
     scenes,
   });
 }

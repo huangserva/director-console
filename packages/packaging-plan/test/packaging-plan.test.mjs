@@ -278,6 +278,43 @@ describe("manifest and packaging-plan projection", () => {
     ]);
   });
 
+  test("video and audio clips round-trip with mediaStart without merging segments", () => {
+    const manifest = readJson(path.join(composerRoot, "manifests", "sample-text.json"));
+    const plan = manifestToPlan(manifest);
+    plan.source.video = "/Users/example/input/source.mp4";
+    plan.source.audio = "projects/split/audio.wav";
+    plan.tracks.video = [
+      { id: "video-a", track: "video", src: plan.source.video, start: 0, duration: 4, mediaStart: 10 },
+      { id: "video-b", track: "video", src: plan.source.video, start: 7, duration: 3, mediaStart: 24 },
+    ];
+    plan.tracks.audio = [
+      { id: "audio-a", track: "audio", src: plan.source.audio, start: 0, duration: 4, mediaStart: 10 },
+      { id: "audio-b", track: "audio", src: plan.source.audio, start: 7, duration: 3, mediaStart: 24 },
+    ];
+
+    const projected = planToManifest(plan);
+
+    assert.deepEqual(projected.source.videoClips, [
+      { id: "video-a", src: "/Users/example/input/source.mp4", start: 0, duration: 4, mediaStart: 10 },
+      { id: "video-b", src: "/Users/example/input/source.mp4", start: 7, duration: 3, mediaStart: 24 },
+    ]);
+    assert.deepEqual(projected.audio.clips, [
+      { id: "audio-a", src: "projects/split/audio.wav", start: 0, duration: 4, mediaStart: 10 },
+      { id: "audio-b", src: "projects/split/audio.wav", start: 7, duration: 3, mediaStart: 24 },
+    ]);
+    assert.equal(projected.duration, 12);
+
+    const nextPlan = manifestToPlan(projected);
+    assert.deepEqual(nextPlan.tracks.video, [
+      { id: "video-a", track: "video", src: "/Users/example/input/source.mp4", start: 0, duration: 4, mediaStart: 10 },
+      { id: "video-b", track: "video", src: "/Users/example/input/source.mp4", start: 7, duration: 3, mediaStart: 24 },
+    ]);
+    assert.deepEqual(nextPlan.tracks.audio, [
+      { id: "audio-a", track: "audio", src: "projects/split/audio.wav", start: 0, duration: 4, mediaStart: 10 },
+      { id: "audio-b", track: "audio", src: "projects/split/audio.wav", start: 7, duration: 3, mediaStart: 24 },
+    ]);
+  });
+
   test("manifestToPlan exposes a playable source video URL for API consumers", () => {
     const manifest = {
       ...readJson(path.join(composerRoot, "manifests", "sample-text.json")),

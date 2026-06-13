@@ -282,6 +282,42 @@ test("manifest source.video renders as a full-duration background video below sc
   assert.ok(videoIndex < captionIndex, "source video should render below captions");
 });
 
+test("source video and audio clips render multiple split segments with mediaStart", () => {
+  const html = renderCompositionDocument({
+    compositionId: "split-media",
+    duration: 10,
+    source: {
+      video: "/tmp/source.mp4",
+      videoClips: [
+        { id: "video-a", src: "/tmp/source.mp4", start: 0, duration: 4, mediaStart: 10 },
+        { id: "video-b", src: "/tmp/source.mp4", start: 7, duration: 3, mediaStart: 24 },
+      ],
+    },
+    audio: {
+      src: "/tmp/audio.wav",
+      clips: [
+        { id: "audio-a", src: "/tmp/audio.wav", start: 0, duration: 4, mediaStart: 10 },
+        { id: "audio-b", src: "/tmp/audio.wav", start: 7, duration: 3, mediaStart: 24 },
+      ],
+    },
+    scenes: [
+      {
+        id: "overlay-title",
+        component: "TitleCard",
+        scene_type: "title_card",
+        start: 4,
+        duration: 2,
+        props: { kicker: "卡片", title: "中间叠加" },
+      },
+    ],
+  });
+
+  assert.match(html, /id="source-video-background-layer-0"[^>]+data-start="0\.000"[^>]+data-duration="4\.000"[^>]+data-media-start="10\.000"/);
+  assert.match(html, /id="source-video-background-layer-1"[^>]+data-start="7\.000"[^>]+data-duration="3\.000"[^>]+data-media-start="24\.000"/);
+  assert.match(html, /id="audio-0"[^>]+data-start="0\.000"[^>]+data-duration="4\.000"[^>]+data-media-start="10\.000"/);
+  assert.match(html, /id="audio-1"[^>]+data-start="7\.000"[^>]+data-duration="3\.000"[^>]+data-media-start="24\.000"/);
+});
+
 test("source-video compositions make generic card scenes transparent over the background video", () => {
   const html = renderCompositionDocument({
     compositionId: "source-video-transparent-scenes",

@@ -15,6 +15,55 @@ export function clipEnd(c: Span): number {
   return round3((Number(c.start) || 0) + (Number(c.duration) || 0));
 }
 
+function clone<T>(value: T): T {
+  return value === undefined ? value : (JSON.parse(JSON.stringify(value)) as T);
+}
+
+type SplitTarget =
+  | (Span & { id?: string; track?: string | number; mediaStart?: number })
+  | { id?: string; timeline: Span; track?: string | number };
+
+function splitId(id: unknown, suffix: "a" | "b"): string | undefined {
+  return typeof id === "string" && id ? `${id}-${suffix}` : undefined;
+}
+
+/** 剪断：在 clip 内部时间点 at 切成左右两段；不在范围内则原样返回。 */
+export function splitClip<T extends SplitTarget>(clip: T, at: number): T[] {
+  const raw = clip as any;
+  const span = raw.timeline ? raw.timeline : raw;
+  const start = round3(Number(span.start) || 0);
+  const duration = round3(Number(span.duration) || 0);
+  const end = round3(start + duration);
+  const cut = round3(Number(at));
+  if (!Number.isFinite(cut) || cut <= start || cut >= end) return [clip];
+
+  const leftDuration = round3(cut - start);
+  const rightDuration = round3(end - cut);
+  const left = clone(clip) as any;
+  const right = clone(clip) as any;
+  const leftId = splitId((clip as any).id, "a");
+  const rightId = splitId((clip as any).id, "b");
+  if (leftId) left.id = leftId;
+  if (rightId) right.id = rightId;
+
+  if (raw.timeline) {
+    left.timeline = { ...left.timeline, start, duration: leftDuration };
+    right.timeline = { ...right.timeline, start: cut, duration: rightDuration };
+    return [left, right] as T[];
+  }
+
+  left.start = start;
+  left.duration = leftDuration;
+  right.start = cut;
+  right.duration = rightDuration;
+  if (raw.track === "video" || raw.track === "audio") {
+    const mediaStart = Number(raw.mediaStart ?? 0) || 0;
+    left.mediaStart = round3(mediaStart);
+    right.mediaStart = round3(mediaStart + cut - start);
+  }
+  return [left, right] as T[];
+}
+
 /** 项目总时长 = 所有轨道所有 clip 的 max(start+duration)，再与一个下限取大。 */
 export function timelineEndMax(clipGroups: Span[][], floor = 0): number {
   let max = floor;

@@ -93,6 +93,7 @@ export interface PlanTrackClip {
   src?: string | null;
   start: number;
   duration: number;
+  mediaStart?: number;
 }
 
 export interface PlanSegment {
@@ -123,6 +124,41 @@ function clone<T>(value: T): T {
 
 function compactObject<T extends Record<string, unknown>>(object: T): Partial<T> {
   return Object.fromEntries(Object.entries(object).filter(([, v]) => v !== undefined)) as Partial<T>;
+}
+
+function trackClipsFromManifest(
+  clips: any[] | undefined,
+  track: "video" | "audio",
+  fallbackSrc: string | null,
+  duration: number,
+  previewUrl?: string | null,
+): PlanTrackClip[] {
+  if (Array.isArray(clips) && clips.length > 0) {
+    return clips.map((clip, index) =>
+      compactObject({
+        id: clip.id ?? `${track}-${index + 1}`,
+        track,
+        src: clip.src ?? fallbackSrc,
+        start: Number(clip.start ?? 0),
+        duration: Number(clip.duration ?? duration),
+        mediaStart: Number(clip.mediaStart ?? 0),
+        previewUrl: track === "video" ? (clip.previewUrl ?? previewUrl) : undefined,
+      }) as PlanTrackClip,
+    );
+  }
+  return fallbackSrc
+    ? [
+        compactObject({
+          id: `${track}-main`,
+          track,
+          src: fallbackSrc,
+          start: 0,
+          duration,
+          mediaStart: 0,
+          previewUrl: track === "video" ? previewUrl : undefined,
+        }) as PlanTrackClip,
+      ]
+    : [];
 }
 
 export function inferCardType(scene: Scene): CardType {
@@ -187,11 +223,14 @@ export function manifestToPlan(
   const video = (manifest as any).source?.video ?? null;
   const duration = Number(manifest.duration ?? 0);
 
-  const source = { video, audio: audioSrc, captions };
+  const videoUrl = (manifest as any).source?.videoUrl ?? null;
+  const source = { video, audio: audioSrc, captions, videoUrl };
+  const videoClips = (manifest as any).source?.videoClips;
+  const audioClips = (manifest.audio as any)?.clips;
 
   const tracks: PackagingPlan["tracks"] = {
-    video: video ? [{ id: "video-main", track: "video", src: video, start: 0, duration }] : [],
-    audio: audioSrc ? [{ id: "audio-main", track: "audio", src: audioSrc, start: 0, duration }] : [],
+    video: trackClipsFromManifest(videoClips, "video", video, duration, videoUrl),
+    audio: trackClipsFromManifest(audioClips, "audio", audioSrc, duration),
     subtitle: captions ? [{ id: "subtitle-main", track: "subtitle", src: captions, start: 0, duration }] : [],
     card: (manifest.scenes ?? []).map((scene, index) => {
       const rich = extractRichFields(scene.props as any);

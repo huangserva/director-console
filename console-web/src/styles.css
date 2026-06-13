@@ -1354,6 +1354,14 @@ button.pc-navitem:disabled { opacity: 0.5; cursor: not-allowed; }
 .pc-btn-fit, .pc-btn-snap { padding: 4px 9px; border-radius: 5px; font-size: 11.5px; color: var(--pc-muted); background: var(--pc-panel-2, #171b21); border: 1px solid var(--pc-line, #262c35); cursor: pointer; white-space: nowrap; }
 .pc-btn-fit:hover, .pc-btn-snap:hover { color: var(--pc-gold, #e8b23a); border-color: rgba(232, 178, 58, 0.4); }
 .pc-btn-snap.on { color: var(--pc-gold, #e8b23a); border-color: rgba(232, 178, 58, 0.5); background: rgba(232, 178, 58, 0.12); }
+/* 剪映式分割按钮 */
+.pc-btn-split { padding: 4px 9px; border-radius: 5px; font-size: 11.5px; color: var(--text); background: var(--pc-panel-2, #171b21); border: 1px solid var(--pc-line, #262c35); cursor: pointer; white-space: nowrap; }
+.pc-btn-split:hover:not(:disabled) { color: var(--pc-gold, #e8b23a); border-color: rgba(232, 178, 58, 0.45); }
+.pc-btn-split:disabled { opacity: 0.4; cursor: not-allowed; }
+/* 全轨道选中：视频/音频片段高亮描边（卡片/字幕已各自有 .selected） */
+.tl-clip { cursor: pointer; }
+.tl-clip.video.selected, .tl-clip.audio.selected { outline: 2px solid #fff; outline-offset: -1px; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.25); }
+.pc-clipinfo .pc-clip-src { font-family: ui-monospace, Menlo, monospace; font-size: 11px; overflow: hidden; text-overflow: ellipsis; max-width: 170px; }
 
 /* 卡片左右 trim 把手：默认低调，hover 卡片块时显现金色边把手。 */
 .trim-handle { position: absolute; top: 0; bottom: 0; width: 7px; z-index: 3; opacity: 0; transition: opacity 0.1s; background: rgba(232, 178, 58, 0.85); }

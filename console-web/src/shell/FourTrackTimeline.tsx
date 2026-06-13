@@ -94,8 +94,14 @@ export function FourTrackTimeline(props: {
   selectedCueId?: string | null;
   onSelectCue?: (id: string | null) => void;
   onEditCueText?: (id: string, text: string) => void;
+  /** 剪映式：视频/音频轨片段选中（点 clip）+ 高亮。 */
+  selectedClipId?: string | null;
+  onSelectClip?: (kind: "video" | "audio", id: string) => void;
+  /** 剪映式：在播放头处分割选中片段（S / 分割按钮）。 */
+  onSplit?: () => void;
+  canSplit?: boolean;
 }) {
-  const { plan, scenes, selectedId, unboundIds, onSelect, onMoveCard, onTrimCard, onDropCard, highlightSubtitle, heightPx, onDeleteScene, playing, playTime, onTogglePlay, onSeek, hiddenTracks, onToggleTrackHidden, cues, selectedCueId, onSelectCue, onEditCueText } = props;
+  const { plan, scenes, selectedId, unboundIds, onSelect, onMoveCard, onTrimCard, onDropCard, highlightSubtitle, heightPx, onDeleteScene, playing, playTime, onTogglePlay, onSeek, hiddenTracks, onToggleTrackHidden, cues, selectedCueId, onSelectCue, onEditCueText, selectedClipId, onSelectClip, onSplit, canSplit } = props;
   const editable = !!onMoveCard;
 
   // 总时长 = 所有轨道 clip 的 max(start+duration)，与 plan.duration 取大。
@@ -352,19 +358,22 @@ export function FourTrackTimeline(props: {
   const laneCls = (key: string, extra = "") =>
     ["pc-lane", extra, hidden.has(key) ? "tl-lane-hidden" : "", locked.has(key) ? "tl-lane-locked" : ""].filter(Boolean).join(" ");
 
-  // 回归修复：clip 上的 mousedown 不冒泡到 lane 的 seek（点空白才 seek）。video/audio/subtitle clip
-  // 目前不可单独选中，故只阻止 seek（不做选中）。
-  const clip = (c: { id: string; src?: string | null; start: number; duration: number }, cls: string, label: string) => (
-    <div
-      key={c.id}
-      className={`tl-clip ${cls}`}
-      style={{ left: timeToPx(c.start, pps), width: Math.max(timeToPx(c.duration, pps), 2) }}
-      title={c.src ?? label}
-      onMouseDown={(e) => e.stopPropagation()}
-    >
-      {label}
-    </div>
-  );
+  // 剪映式：clip 点击=选中该片段（不冒泡到 lane 的 seek）+ 高亮描边；mousedown stopPropagation 防 seek。
+  const clip = (c: { id: string; src?: string | null; start: number; duration: number }, kind: "video" | "audio", label: string) => {
+    const sel = c.id === selectedClipId;
+    return (
+      <div
+        key={c.id}
+        className={`tl-clip ${kind}${sel ? " selected" : ""}`}
+        style={{ left: timeToPx(c.start, pps), width: Math.max(timeToPx(c.duration, pps), 2) }}
+        title={`${c.src ?? label} · ${Number(c.start).toFixed(2)}s +${Number(c.duration).toFixed(2)}s${onSelectClip ? " · 点击选中" : ""}`}
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={onSelectClip ? (e) => { e.stopPropagation(); onSelectClip(kind, c.id); } : undefined}
+      >
+        {label}
+      </div>
+    );
+  };
 
   const playheadPx = timeToPx(head_time, pps);
   const guidePx = live?.guide != null ? timeToPx(live.guide, pps) : null;
@@ -393,6 +402,11 @@ export function FourTrackTimeline(props: {
           <button type="button" className={snapEnabled ? "pc-btn-snap on" : "pc-btn-snap"} onClick={() => setSnapEnabled((v) => !v)} title={snapEnabled ? "吸附：开（按 Alt 临时关闭）" : "吸附：关"} aria-pressed={snapEnabled}>
             吸附
           </button>
+          {onSplit && (
+            <button type="button" className="pc-btn-split" onClick={() => onSplit()} disabled={!canSplit} title="在播放头处分割选中片段（S）">
+              ✂ 分割
+            </button>
+          )}
         </span>
         <span className="pc-tl-right">四类轨道：视频 / 音频 / 字幕 / 卡片</span>
       </div>

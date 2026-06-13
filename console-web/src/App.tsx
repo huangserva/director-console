@@ -78,7 +78,7 @@ import {
   moveScene,
   sceneUnboundMediaCount,
 } from "./lib/scene-templates";
-import { timelineEndMax } from "./lib/timeline-edit";
+import { splitClip, timelineEndMax } from "./lib/timeline-edit";
 import { compact } from "./lib/string-list";
 import { computeStageGates, type StageGate } from "./lib/workflow";
 import { Canvas } from "./shell/Canvas";
@@ -261,6 +261,21 @@ export default function App() {
 
   // 字幕条选中（时间线点字幕条）。改文本的 onEditCueText 在 onSaveCues 之后定义（见下，避免捕获过期 onSaveCues）。
   const [selectedCueId, setSelectedCueId] = useState<string | null>(null);
+
+  // 剪映式全轨道选中：视频/音频轨片段选中（卡片用 selectedId、字幕用 selectedCueId）。三者互斥。
+  const [selectedClip, setSelectedClip] = useState<{ kind: "video" | "audio"; id: string } | null>(null);
+  // 统一选中入口：选卡片 / 选轨道片段时清掉另一种，保证 Inspector 只显示一类。
+  const selectCard = useCallback((id: string | null) => {
+    setSelectedId(id);
+    setSelectedClip(null);
+    setSelectedCueId(null);
+  }, []);
+  const selectTrackClip = useCallback((kind: "video" | "audio", id: string) => {
+    setSelectedClip({ kind, id });
+    setSelectedId(null);
+    setSelectedCueId(null);
+  }, []);
+  useEffect(() => setSelectedClip(null), [name]); // 换项目复位
 
   // 播放跟随：预览播放中，Inspector 自动选中当前播放到的卡片（让属性面板跟着播放头走）。
   // 仅播放时生效；暂停/scrub 不抢用户的手动选择（用户可随时点别的卡）。
@@ -562,22 +577,72 @@ export default function App() {
     setDirty(true);
   };
 
+  // 剪映式分割：在播放头时间把当前选中片段切两段（调用 splitClip）。
+  //  · 卡片 → 切两个 scene（落 manifest，持久化）。
+  //  · 视频/音频 → 切两个 plan 轨道 clip（带 mediaStart，供数据侧 composer 分段消费）。
+  // 播放头不在所选片段范围内则提示不执行。
+  const onSplitAtPlayhead = useCallback(() => {
+    const t = playTime;
+    if (selectedClip && plan) {
+      const arr = plan.tracks[selectedClip.kind];
+      const c = arr.find((x) => x.id === selectedClip.id);
+      if (!c) return;
+      if (!(t > c.start && t < c.start + c.duration)) {
+        setNotice("播放头不在所选片段范围内，无法分割。");
+        return;
+      }
+      const parts = splitClip(c, t);
+      if (parts.length < 2) {
+        setNotice("播放头不在所选片段范围内，无法分割。");
+        return;
+      }
+      setPlan((prev) => (prev ? { ...prev, tracks: { ...prev.tracks, [selectedClip.kind]: arr.flatMap((x) => (x.id === c.id ? parts : [x])) } } : prev));
+      setSelectedClip({ kind: selectedClip.kind, id: parts[0].id });
+      setNotice(`已在 ${t.toFixed(2)}s 处分割${selectedClip.kind === "video" ? "视频" : "音频"}片段。`);
+      return;
+    }
+    if (selectedScene && manifest) {
+      const start = Number(selectedScene.start ?? 0);
+      const dur = Number(selectedScene.duration ?? 0);
+      if (!(t > start && t < start + dur)) {
+        setNotice("播放头不在所选卡片范围内，无法分割。");
+        return;
+      }
+      const [a, b] = splitClip({ ...selectedScene } as Scene & { start: number; duration: number }, t) as Scene[];
+      delete (b as { mediaStart?: number }).mediaStart; // 卡片 scene 无源媒体入点，去掉 split 带出的字段
+      const scenes = manifest.scenes.flatMap((s) => (s.id === selectedScene.id ? [a, b] : [s]));
+      setManifest({ ...manifest, scenes, duration: Math.max(timelineEndMax([scenes.map(sceneSpan)], 1), manifest.duration || 0) });
+      setSelectedId(a.id);
+      setDirty(true);
+      setNotice(`已在 ${t.toFixed(2)}s 处分割卡片。`);
+      return;
+    }
+    setNotice("先选中一个片段，再在播放头处分割。");
+  }, [playTime, selectedClip, plan, selectedScene, manifest]);
+
   // 核心编辑 A：选中卡片后按 Delete/Backspace 删除（在输入框/下拉/可编辑区内不触发）。
   // web-only console（直接用 DOM 事件，与 Canvas/时间线一致）。
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Delete" && e.key !== "Backspace") return;
       const el = document.activeElement as HTMLElement | null;
       const tag = el?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el?.isContentEditable) return;
-      if (!selectedId || busy !== null) return;
-      e.preventDefault();
-      onDeleteScene();
+      if (busy !== null) return;
+      if (e.key === "Delete" || e.key === "Backspace") {
+        if (!selectedId) return;
+        e.preventDefault();
+        onDeleteScene();
+      } else if (e.key === "s" || e.key === "S") {
+        // 剪映式：在播放头处分割选中片段
+        if (!selectedId && !selectedClip) return;
+        e.preventDefault();
+        onSplitAtPlayhead();
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedId, busy, manifest]);
+  }, [selectedId, selectedClip, busy, manifest, onSplitAtPlayhead]);
 
   // v2-P3: rich-field edits (canvas drag + Inspector) write to the scene's props
   // subtree where the plan/manifest round-trip expects them (props.layout /
@@ -1075,6 +1140,27 @@ export default function App() {
     <ResultsPanel manifestName={name} lintResult={lintResult} inspectResult={inspectResult} composeResult={null} />
   );
 
+  // 选中的视频/音频轨片段 → Inspector 只读信息面板（类型 / 源文件名 / 时长 / 入点）。
+  const selectedTrackClipObj = selectedClip ? visiblePlan.tracks[selectedClip.kind].find((c) => c.id === selectedClip.id) ?? null : null;
+  const clipInfoNode: ReactNode = selectedTrackClipObj
+    ? (() => {
+        const c = selectedTrackClipObj;
+        const fname = String(c.src ?? "").split(/[\\/]/).pop() || "（无源文件）";
+        const kindLabel = selectedClip?.kind === "video" ? "视频轨片段" : "音频轨片段";
+        return (
+          <>
+            <h4>片段信息</h4>
+            <div className="pc-kv"><span className="pc-k">类型</span><span className="pc-vv">{kindLabel}</span></div>
+            <div className="pc-kv"><span className="pc-k">源文件</span><span className="pc-vv pc-clip-src" title={String(c.src ?? "")}>{fname}</span></div>
+            <div className="pc-kv"><span className="pc-k">时长</span><span className="pc-vv">{Number(c.duration).toFixed(2)}s</span></div>
+            <div className="pc-kv"><span className="pc-k">时间轴入点</span><span className="pc-vv">{Number(c.start).toFixed(2)}s</span></div>
+            {c.mediaStart != null && <div className="pc-kv"><span className="pc-k">源媒体入点</span><span className="pc-vv">{Number(c.mediaStart).toFixed(2)}s</span></div>}
+            <div className="pc-note muted">选中片段后按 S 在播放头处分割。</div>
+          </>
+        );
+      })()
+    : null;
+
   return (
     <div className="pc-console">
       {/* 1. 顶栏 */}
@@ -1280,7 +1366,7 @@ export default function App() {
             hiddenTracks={hiddenTracks}
             playTime={playTime}
             playing={playing}
-            onSelect={setSelectedId}
+            onSelect={selectCard}
           />
           <SmartStrip plan={visiblePlan} />
         </div>
@@ -1289,7 +1375,8 @@ export default function App() {
         <Inspector
           tab={inspectorTab}
           onTab={setInspectorTab}
-          card={selectedCard}
+          card={selectedClip ? null : selectedCard}
+          clipInfo={clipInfoNode}
           component={component}
           attributes={attributesNode}
           validation={validationNode}
@@ -1317,7 +1404,11 @@ export default function App() {
         scenes={visibleScenes}
         selectedId={selectedId}
         unboundIds={unboundSceneIds}
-        onSelect={setSelectedId}
+        onSelect={selectCard}
+        selectedClipId={selectedClip?.id ?? null}
+        onSelectClip={selectTrackClip}
+        onSplit={onSplitAtPlayhead}
+        canSplit={!!(selectedId || selectedClip)}
         onMoveCard={manifest && busy === null ? onMoveCard : undefined}
         onTrimCard={manifest && busy === null ? onTrimCard : undefined}
         onDropCard={manifest && busy === null ? onInsertCard : undefined}

@@ -24,6 +24,8 @@ export function Inspector(props: {
   tab: InspectorTab;
   onTab: (t: InspectorTab) => void;
   card: PlanCard | null;
+  /** 选中视频/音频轨片段时的只读信息面板（剪映式全轨道选中）。 */
+  clipInfo?: ReactNode;
   component: CatalogComponent | undefined;
   attributes: ReactNode;
   validation: ReactNode;
@@ -33,7 +35,7 @@ export function Inspector(props: {
   onColorChange?: (patch: Record<string, unknown>) => void;
   onAnimationChange?: (patch: Record<string, unknown>) => void;
 }) {
-  const { tab, onTab, card, component, attributes, validation, editable } = props;
+  const { tab, onTab, card, clipInfo, component, attributes, validation, editable } = props;
   const layout = resolveLayout(card?.layout);
   const font = (card?.font ?? {}) as Record<string, unknown>;
   const color = (card?.color ?? {}) as Record<string, unknown>;
@@ -69,7 +71,8 @@ export function Inspector(props: {
         ))}
       </div>
       <div className="pc-inspbody">
-        {tab === "props" && (
+        {tab === "props" && clipInfo && <div className="pc-inspsect pc-clipinfo">{clipInfo}</div>}
+        {tab === "props" && !clipInfo && (
           <>
             {card && (
               <div className="pc-inspsect">
