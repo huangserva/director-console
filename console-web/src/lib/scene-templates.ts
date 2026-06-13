@@ -34,11 +34,14 @@ const DEFAULT_PROPS: Record<string, PropsFactory> = {
   }),
   StatsHero: () => ({
     media: { presenter: MEDIA_PLACEHOLDER },
-    stat: { label: "LABEL", number: "0", unit: "个", title: "统计标题" },
+    // Sample preset (not empty placeholders): inserting the card gives a polished,
+    // meaningful "开场数据卡" out of the box — a real data beat the operator tweaks,
+    // not "标题占位 / 0 / LABEL". This is the standard template for the other components.
+    stat: { cornerLeft: "DATA", label: "增长", number: "38", unit: "%", title: "转化提升" },
     // `browser` is required by the renderer (registry.mjs renderOpeningStat) even
     // though it's not in catalog requiredProps — shape mirrors memos-v3's StatsHero.
-    browser: { done: "Done", icons: ["AI", "CC", "CLI", "MCP", "✓"], mediaStart: 0 },
-    titleBeat: { title: "标题占位" },
+    browser: { done: "完成", icons: ["AI", "CC", "CLI", "MCP", "✓"], mediaStart: 0 },
+    titleBeat: { cornerLeft: "OPENING", cornerName: "PASEO", kicker: "开场", title: "标题节拍", subline: "一句话点题，承接下文" },
   }),
   ScreenWithPip: () => ({
     label: "屏幕标签",

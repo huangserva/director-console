@@ -381,6 +381,54 @@ button.primary {
   flex: 1;
 }
 
+/* 组件专属友好表单（如开场数据卡）：label 用正常字体 + 下方一句灰字说明，而非裸 prop 路径。 */
+.pc-comp-form .panel-title {
+  margin-top: 14px;
+}
+.pc-comp-form .panel-title:first-child {
+  margin-top: 0;
+}
+.pc-comp-form .prop-field {
+  align-items: flex-start;
+}
+.pc-comp-form .prop-path {
+  width: 110px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--txt);
+  font-family: inherit;
+  font-size: 13px;
+  word-break: normal;
+  padding-top: 5px;
+}
+.pc-field-hint {
+  font-size: 11px;
+  line-height: 1.35;
+  font-weight: 400;
+}
+.pc-icons-field {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+.pc-icons-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pc-icon-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.pc-icon-row input {
+  flex: 1;
+}
+.pc-icon-add {
+  align-self: flex-start;
+}
+
 .actions {
   display: flex;
   gap: 10px;

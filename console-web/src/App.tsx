@@ -499,6 +499,16 @@ export default function App() {
     updateScene(selectedScene.id, (s) => ({ ...s, props: applyEdits(s.props ?? {}, { [path]: value }) }));
   };
 
+  // StatsHero 图标列表（browser.icons）增删改：整组替换 props.browser.icons，保留 browser 其它字段。
+  const onStatsIconsChange = (icons: string[]) => {
+    if (!selectedScene) return;
+    updateScene(selectedScene.id, (s) => {
+      const props = (s.props ?? {}) as Record<string, unknown>;
+      const browser = (props.browser ?? {}) as Record<string, unknown>;
+      return { ...s, props: { ...props, browser: { ...browser, icons } } };
+    });
+  };
+
   // 媒体绑定：原生文件选择器选一个 mp4 → 把绝对路径写进 card.props.media.<slot>（落 manifest + dirty 持久）。
   const onBindMedia = async (slotPath: string) => {
     setError(null);
@@ -1076,6 +1086,74 @@ export default function App() {
   const sceneTypeIllegal =
     selectedScene?.scene_type && sceneTypes.length > 0 && !sceneTypes.includes(selectedScene.scene_type);
 
+  // 开场数据卡（StatsHero）专属友好表单：按 registry.mjs renderOpeningStat 的真实结构给字段（中文 label + 一句
+  // 说明），写裸 prop 路径的活儿（stat.label / browser.done / titleBeat.kicker…）藏在背后，编辑实时反映到画布。
+  // 这是「真正定义 + 真实字段」的样板，供其它 11 个组件照此扩展。
+  const statsHeroForm: ReactNode = (() => {
+    if (!selectedScene || selectedScene.component !== "StatsHero") return null;
+    const props = (selectedScene.props ?? {}) as Record<string, unknown>;
+    const stat = (props.stat ?? {}) as Record<string, unknown>;
+    const browser = (props.browser ?? {}) as Record<string, unknown>;
+    const titleBeat = (props.titleBeat ?? {}) as Record<string, unknown>;
+    const icons = Array.isArray(browser.icons) ? (browser.icons as unknown[]).map((x) => String(x)) : [];
+    const str = (v: unknown) => (v == null ? "" : String(v));
+    const TextField = ({ path, label, hint, value, type }: { path: string; label: string; hint: string; value: string; type?: "number" }) => (
+      <label className="prop-field">
+        <span className="prop-path" title={hint}>
+          {label}
+          <span className="pc-field-hint muted">{hint}</span>
+        </span>
+        <input type={type === "number" ? "number" : "text"} step={type === "number" ? "any" : undefined} value={value} onChange={(e) => onFieldChange(path, e.target.value)} />
+      </label>
+    );
+    return (
+      <div className="props pc-comp-form">
+        <div className="panel-title">数据块</div>
+        <TextField path="stat.cornerLeft" label="角标" hint="左上角的小角标文字" value={str(stat.cornerLeft)} />
+        <TextField path="stat.label" label="标签" hint="数字上方的小标题（如 增长）" value={str(stat.label)} />
+        <TextField path="stat.number" label="数字" hint="核心大数字（如 38），入场会弹大强调" value={str(stat.number)} />
+        <TextField path="stat.unit" label="单位" hint="数字后的单位（如 % / 个 / 倍）" value={str(stat.unit)} />
+        <TextField path="stat.title" label="统计标题" hint="数字下方说明这组数据的含义（如 转化提升）" value={str(stat.title)} />
+
+        <div className="panel-title">浏览器框</div>
+        <TextField path="browser.done" label="完成标" hint="浏览器框右上角的完成提示（如 完成）" value={str(browser.done)} />
+        <div className="prop-field pc-icons-field">
+          <span className="prop-path" title="浏览器框里逐个揭示的小图标标签">
+            图标列表
+            <span className="pc-field-hint muted">浏览器框里逐个揭示的小图标，可增删</span>
+          </span>
+          <div className="pc-icons-list">
+            {icons.map((icon, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: 图标按位置编辑，索引即身份。
+              <div className="pc-icon-row" key={i}>
+                <input
+                  type="text"
+                  value={icon}
+                  onChange={(e) => {
+                    const next = icons.slice();
+                    next[i] = e.target.value;
+                    onStatsIconsChange(next);
+                  }}
+                />
+                <button type="button" className="clear-btn" title="删除该图标" onClick={() => onStatsIconsChange(icons.filter((_, j) => j !== i))}>
+                  删除
+                </button>
+              </div>
+            ))}
+            <button type="button" className="pc-btn ghost pc-icon-add" onClick={() => onStatsIconsChange([...icons, "新图标"])}>
+              + 添加图标
+            </button>
+          </div>
+        </div>
+
+        <div className="panel-title">标题块</div>
+        <TextField path="titleBeat.kicker" label="眉标" hint="主标题上方的小字（如 开场）" value={str(titleBeat.kicker)} />
+        <TextField path="titleBeat.title" label="主标题" hint="数据卡收尾的大标题（如 标题节拍）" value={str(titleBeat.title)} />
+        <TextField path="titleBeat.subline" label="副标题" hint="主标题下方一句话点题" value={str(titleBeat.subline)} />
+      </div>
+    );
+  })();
+
   // The props-era editor body — reused as the Inspector 属性 tab 底子.
   const attributesNode: ReactNode = !selectedScene ? (
     <div className="pc-note muted">在时间线或场景列表选中一张卡片以编辑其内容。</div>
@@ -1153,24 +1231,26 @@ export default function App() {
         </div>
       )}
 
-      <div className="props">
-        <div className="panel-title">文本字段（{fields.length}）</div>
-        {fields.length === 0 && <div className="empty">该卡片无可编辑文本。</div>}
-        {fields.map((f) => (
-          <label className="prop-field" key={f.path}>
-            {/* R5-S1: Chinese business label; raw key kept in tooltip / data-field. */}
-            <span className="prop-path" title={`${fieldHint(f.path) ?? ""}（字段 ${f.path}）`.trim()} data-field={f.path}>
-              {fieldLabel(f.path)}
-            </span>
-            <input
-              type={f.type === "number" ? "number" : "text"}
-              value={String(f.value)}
-              step={f.type === "number" ? "any" : undefined}
-              onChange={(e) => onFieldChange(f.path, e.target.value)}
-            />
-          </label>
-        ))}
-      </div>
+      {statsHeroForm ?? (
+        <div className="props">
+          <div className="panel-title">文本字段（{fields.length}）</div>
+          {fields.length === 0 && <div className="empty">该卡片无可编辑文本。</div>}
+          {fields.map((f) => (
+            <label className="prop-field" key={f.path}>
+              {/* R5-S1: Chinese business label; raw key kept in tooltip / data-field. */}
+              <span className="prop-path" title={`${fieldHint(f.path) ?? ""}（字段 ${f.path}）`.trim()} data-field={f.path}>
+                {fieldLabel(f.path)}
+              </span>
+              <input
+                type={f.type === "number" ? "number" : "text"}
+                value={String(f.value)}
+                step={f.type === "number" ? "any" : undefined}
+                onChange={(e) => onFieldChange(f.path, e.target.value)}
+              />
+            </label>
+          ))}
+        </div>
+      )}
 
       <div className="actions">
         <button className="primary" onClick={onSave} disabled={busy !== null || !dirty}>
