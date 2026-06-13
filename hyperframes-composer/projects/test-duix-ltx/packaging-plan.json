@@ -1,0 +1,240 @@
+{
+  "schemaVersion": "2026-06-12",
+  "projectId": "test-duix-ltx",
+  "recipeId": null,
+  "duration": 124.905,
+  "source": {
+    "video": "/Users/huangzongning/Downloads/first120-template-duix-cosy-master-v2-syncfix-final.mp4",
+    "audio": "projects/test-duix-ltx/audio/asr.wav",
+    "captions": "projects/test-duix-ltx/captions.json",
+    "videoUrl": "/api/preview/source/test-duix-ltx"
+  },
+  "tracks": {
+    "video": [
+      {
+        "id": "video-main",
+        "track": "video",
+        "src": "/Users/huangzongning/Downloads/first120-template-duix-cosy-master-v2-syncfix-final.mp4",
+        "start": 0,
+        "duration": 124.905,
+        "mediaStart": 0,
+        "previewUrl": null
+      }
+    ],
+    "audio": [
+      {
+        "id": "audio-main",
+        "track": "audio",
+        "src": "projects/test-duix-ltx/audio/asr.wav",
+        "start": 0,
+        "duration": 124.905,
+        "mediaStart": 0
+      }
+    ],
+    "subtitle": [
+      {
+        "id": "subtitle-main",
+        "track": "subtitle",
+        "src": "projects/test-duix-ltx/captions.json",
+        "start": 0,
+        "duration": 124.905
+      }
+    ],
+    "card": [
+      {
+        "id": "s001",
+        "type": "brand",
+        "engine": {
+          "component": "TitleCard",
+          "scene_type": "title_card",
+          "track": 10,
+          "props": {
+            "cornerLeft": "成片导入",
+            "cornerName": "场景 1",
+            "kicker": "自动场景规划",
+            "title": "八十万人看过的 Codex 加",
+            "subline": "八十万人看过的 Codex 加视频渲染实战已经帮"
+          }
+        },
+        "content": {
+          "cornerLeft": "成片导入",
+          "cornerName": "场景 1",
+          "kicker": "自动场景规划",
+          "title": "八十万人看过的 Codex 加",
+          "subline": "八十万人看过的 Codex 加视频渲染实战已经帮"
+        },
+        "media": {},
+        "timeline": {
+          "track": "card",
+          "start": 0.05,
+          "duration": 16.54
+        },
+        "validation": {
+          "status": "unchecked",
+          "failures": []
+        }
+      },
+      {
+        "id": "s002",
+        "type": "info-structure",
+        "engine": {
+          "component": "StepCard",
+          "scene_type": "step_card",
+          "track": 20,
+          "finePieces": [
+            "StepPanel"
+          ],
+          "props": {
+            "kicker": "场景 02",
+            "title": "配配 Codex 用一句句话渲",
+            "items": [
+              "配配 Codex 用一句",
+              "简单说 hyperframe",
+              "HTMLCSS javascript"
+            ]
+          }
+        },
+        "content": {
+          "kicker": "场景 02",
+          "title": "配配 Codex 用一句句话渲",
+          "items": [
+            "配配 Codex 用一句",
+            "简单说 hyperframe",
+            "HTMLCSS javascript"
+          ]
+        },
+        "media": {},
+        "timeline": {
+          "track": "card",
+          "start": 16.59,
+          "duration": 16.68
+        },
+        "validation": {
+          "status": "unchecked",
+          "failures": []
+        }
+      },
+      {
+        "id": "s006",
+        "type": "info-structure",
+        "engine": {
+          "component": "StepCard",
+          "scene_type": "step_card",
+          "track": 60,
+          "finePieces": [
+            "StepPanel"
+          ],
+          "props": {
+            "kicker": "场景 06",
+            "title": "如果本地没有装 Agent",
+            "items": [
+              "如果本地没有装 Age",
+              "第四步 初始化项目",
+              "现在你只需要用自然"
+            ]
+          }
+        },
+        "content": {
+          "kicker": "场景 06",
+          "title": "如果本地没有装 Agent",
+          "items": [
+            "如果本地没有装 Age",
+            "第四步 初始化项目",
+            "现在你只需要用自然"
+          ]
+        },
+        "media": {},
+        "timeline": {
+          "track": "card",
+          "start": 86.01,
+          "duration": 16.53
+        },
+        "validation": {
+          "status": "unchecked",
+          "failures": []
+        }
+      },
+      {
+        "id": "s007",
+        "type": "info-structure",
+        "engine": {
+          "component": "StepCard",
+          "scene_type": "step_card",
+          "track": 70,
+          "finePieces": [
+            "StepPanel"
+          ],
+          "props": {
+            "kicker": "场景 07",
+            "title": "卡片动效和字幕规则",
+            "items": [
+              "卡片动效和字幕规则",
+              "所以 hyperframe 的",
+              "对于侦才来说 这比"
+            ]
+          }
+        },
+        "content": {
+          "kicker": "场景 07",
+          "title": "卡片动效和字幕规则",
+          "items": [
+            "卡片动效和字幕规则",
+            "所以 hyperframe 的",
+            "对于侦才来说 这比"
+          ]
+        },
+        "media": {},
+        "timeline": {
+          "track": "card",
+          "start": 102.78,
+          "duration": 17.125
+        },
+        "validation": {
+          "status": "unchecked",
+          "failures": []
+        }
+      },
+      {
+        "id": "new-screenwithpip",
+        "type": "pip",
+        "engine": {
+          "component": "ScreenWithPip",
+          "scene_type": "screen_demo_pip",
+          "track": 50,
+          "props": {
+            "label": "屏幕标签",
+            "media": {
+              "screen": "/Users/huangzongning/Downloads/first120-template-duix-cosy-master-v2-syncfix-final.mp4",
+              "pip": "/Users/huangzongning/development/director-console/assets/digital-humans/duix-agent-log-pip.mp4"
+            },
+            "__cardType": "pip"
+          }
+        },
+        "content": {
+          "label": "屏幕标签"
+        },
+        "media": {
+          "screen": "/Users/huangzongning/Downloads/first120-template-duix-cosy-master-v2-syncfix-final.mp4",
+          "pip": "/Users/huangzongning/development/director-console/assets/digital-humans/duix-agent-log-pip.mp4"
+        },
+        "timeline": {
+          "track": "card",
+          "start": 40,
+          "duration": 5
+        },
+        "validation": {
+          "status": "unchecked",
+          "failures": []
+        },
+        "mediaUrls": {
+          "screen": "/api/preview/media?path=%2FUsers%2Fhuangzongning%2Fdevelopment%2Fdirector-console%2Fassets%2Ftest-screen-image.png",
+          "pip": "/api/preview/media?path=%2FUsers%2Fhuangzongning%2Fdevelopment%2Fdirector-console%2Fassets%2Fdigital-humans%2Fduix-agent-log-pip.mp4"
+        }
+      }
+    ]
+  },
+  "segments": [],
+  "templateRef": null,
+  "output": "projects/test-duix-ltx/index.html",
+  "hyperframesEntry": "projects/test-duix-ltx/index.html"
+}

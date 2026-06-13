@@ -15,6 +15,14 @@ import { getComponent } from "./catalog";
 /** Placeholder for a media field the operator must replace with a real path. */
 export const MEDIA_PLACEHOLDER = "TODO-bind-media";
 
+/** Image file extensions a screen slot may carry (rendered as <img>, not <video>). */
+const IMAGE_EXT = /\.(png|jpe?g|webp|gif|avif|bmp|svg)$/i;
+
+/** True when a bound media path points at an image (vs a video). Empty/placeholder → false. */
+export function isImageMediaPath(value: string | null | undefined): boolean {
+  return typeof value === "string" && value.trim() !== "" && value !== MEDIA_PLACEHOLDER && IMAGE_EXT.test(value.trim());
+}
+
 const DEFAULT_SCENE_DURATION = 5;
 
 type PropsFactory = () => Record<string, unknown>;

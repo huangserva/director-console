@@ -25,6 +25,17 @@ export function renderVideo({ id, className, src, start, duration, mediaStart = 
   return `<video${idAttr}${classAttr}${sceneAttr} src="${esc(required(src, "video.src"))}" muted playsinline data-start="${f(required(start, "video.start"))}" data-duration="${f(required(duration, "video.duration"))}" data-media-start="${f(mediaStart)}"${trackAttr}${extra}></video>`;
 }
 
+export function isImageMedia(src) {
+  return /\.(png|jpe?g|webp|gif)$/i.test(String(src || "").split(/[?#]/)[0]);
+}
+
+export function renderImage({ id, className, src, start, duration, mediaStart = 0, track, extra = "" }) {
+  const idAttr = id ? ` id="${esc(id)}"` : "";
+  const classAttr = className ? ` class="${esc(className)}"` : "";
+  const trackAttr = track === undefined ? "" : ` data-track-index="${Number(track)}"`;
+  return `<img${idAttr}${classAttr} src="${esc(required(src, "image.src"))}" data-media-kind="image" data-start="${f(required(start, "image.start"))}" data-duration="${f(required(duration, "image.duration"))}" data-media-start="${f(mediaStart)}"${trackAttr}${extra}>`;
+}
+
 export function renderAudio({ id, src, start, duration, mediaStart = 0, track = 90, volume = 1 }) {
   const idAttr = id ? ` id="${esc(id)}"` : "";
   return `<audio${idAttr} src="${esc(required(src, "audio.src"))}" data-start="${f(required(start, "audio.start"))}" data-duration="${f(required(duration, "audio.duration"))}" data-media-start="${f(mediaStart)}" data-track-index="${Number(track)}" data-volume="${Number(volume)}"></audio>`;

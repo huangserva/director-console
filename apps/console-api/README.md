@@ -58,6 +58,22 @@ service endpoints and credentials also belong in `.env.local`; do not commit the
   Long renders are synchronous and use `CONSOLE_API_CHILD_TIMEOUT_MS`.
 - `GET /api/preview/*` and `GET /preview/*` - statically serve files from
   `hyperframes-composer/` for iframe previews and relative media.
+- `GET /assets/digital-humans` and `GET /api/assets/digital-humans` - list the
+  local managed digital-human library from `director-console/assets/digital-humans/`.
+  The directory may contain symlinks to the real generated presenter videos. The
+  API resolves symlinks for validation but returns the library path in each
+  serviceable URL. Success returns
+  `{ ok:true, assets:[{ id, name, url, duration? }] }`, where `id` is the filename
+  without extension, `name` is the filename, and `url` points at
+  `/api/preview/media?path=...`.
+- `GET /preview/media?path=/absolute/file` and
+  `GET /api/preview/media?path=/absolute/file` - stream a bound card media file.
+  Supports MP4/MOV/M4V/WebM/MKV videos plus PNG/JPG/WebP/GIF images. Videos and
+  images are canonicalized with `realpath` and must resolve inside
+  `ROUTE_B_IMPORT_ROOTS`, or the managed digital-human library / its symlink
+  targets. Video requests support HTTP Range (`206 Partial Content`) for
+  seeking; image requests return the matching `image/*` content type. Bad paths
+  return `4xx { ok:false, error }`.
 - `GET /fs/list?path=/absolute/dir` - list a local directory for file-picker UIs.
   If `path` is omitted, the API starts at the user's home directory (`$HOME` /
   `os.homedir()`). The directory is canonicalized with `realpath` and must resolve
@@ -95,7 +111,10 @@ service endpoints and credentials also belong in `.env.local`; do not commit the
   plan from `manifestToPlan(manifest)` as
   `{ ok:true, name, source:"manifest", plan }`, so legacy Route A/B projects can
   open in the v2 editor. If neither exists, returns `404`
-  `{ ok:false, error }`.
+  `{ ok:false, error }`. Cards with `card.media.screen` / `card.media.pip` string
+  bindings also include `card.mediaUrls.{screen,pip}` pointing at
+  `/api/preview/media?path=...` so the web preview can play a local video or show
+  a local image without guessing URL rules.
 - `PUT /projects/:name/packaging-plan` - save a v2 packaging-plan and compile it
   back to the composer manifest target. Body is the packaging-plan JSON. The API:
   validates with `validatePackagingPlan`, projects with `planToManifest`, validates

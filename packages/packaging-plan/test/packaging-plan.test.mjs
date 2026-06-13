@@ -328,7 +328,7 @@ describe("manifest and packaging-plan projection", () => {
         props: {
           label: "画中画",
           media: {
-            screen: "/Users/example/media/screen.mp4",
+            screen: "/Users/example/media/screen.png",
             pip: "/Users/example/media/presenter.mp4",
           },
         },
@@ -337,13 +337,13 @@ describe("manifest and packaging-plan projection", () => {
 
     const plan = manifestToPlan(manifest);
     assert.deepEqual(plan.tracks.card[0].media, {
-      screen: "/Users/example/media/screen.mp4",
+      screen: "/Users/example/media/screen.png",
       pip: "/Users/example/media/presenter.mp4",
     });
 
     const projected = planToManifest(plan);
     assert.deepEqual(projected.scenes[0].props.media, {
-      screen: "/Users/example/media/screen.mp4",
+      screen: "/Users/example/media/screen.png",
       pip: "/Users/example/media/presenter.mp4",
     });
   });

@@ -1,4 +1,4 @@
-import { esc, f, renderCards, renderVideo, required } from "./html.mjs";
+import { esc, f, isImageMedia, renderCards, renderImage, renderVideo, required } from "./html.mjs";
 import { richAnimationAttrs, richAttrs } from "./rich.mjs";
 
 function sceneAttrs(scene, className, track) {
@@ -66,10 +66,13 @@ function renderScreenWithPip(scene) {
   const screenId = props.screenVideoId || `v-${scene.id}-screen`;
   const pipId = props.pipVideoId || `v-${scene.id}-pip`;
   const scanId = props.scan?.id || `scan-${scene.scene || scene.id}`;
+  const screenMedia = isImageMedia(media.screen)
+    ? renderImage({ id: screenId, src: media.screen, start: scene.start, duration: scene.duration, mediaStart: props.mediaStart ?? 0 })
+    : renderVideo({ id: screenId, src: media.screen, start: scene.start, duration: scene.duration, mediaStart: props.mediaStart ?? 0 });
   return `
       <div ${sceneAttrs(scene, "screen-proof", scene.track ?? 20)}>
         <div class="screen-label">${esc(props.label)}</div>
-        <div class="screen-shell">${renderVideo({ id: screenId, src: media.screen, start: scene.start, duration: scene.duration, mediaStart: props.mediaStart ?? 0 })}</div>
+        <div class="screen-shell">${screenMedia}</div>
         <div class="circle-pip">${renderVideo({ id: pipId, src: media.pip, start: scene.start, duration: scene.duration, mediaStart: props.pipMediaStart ?? props.mediaStart ?? 0 })}</div>
       </div>
       ${props.scan ? `<div id="${esc(scanId)}" class="clip scan-local" data-memos-scene="${esc(scene.scene || scene.id)}" data-start="${f(props.scan.start)}" data-duration="${f(props.scan.duration)}" data-track-index="${Number(props.scan.track ?? (scene.track ?? 20) + 1)}"></div>` : ""}`;

@@ -523,14 +523,56 @@ export interface NativeChooseResult {
   error?: string;
 }
 
-export async function chooseNativeFile(kind: "video" | "wav", multiple = false): Promise<NativeChooseResult> {
-  const res = await req("POST", "/fs/choose-native", { kind, multiple });
+// kind:"any" = no type filter (内容素材：视频或图片都可选)；prompt 自定义对话框标题。
+export async function chooseNativeFile(kind: "video" | "wav" | "any", multiple = false, prompt?: string): Promise<NativeChooseResult> {
+  const body: Record<string, unknown> = { kind, multiple };
+  if (prompt) body.prompt = prompt;
+  const res = await req("POST", "/fs/choose-native", body);
   const text = await res.text();
   const data = text ? JSON.parse(text) : {};
   if (data.ok === undefined && !res.ok) {
     return { ok: false, error: `${res.status} ${res.statusText}: ${text.slice(0, 200)}` };
   }
   return data as NativeChooseResult;
+}
+
+// ── 画中画卡：数字人库（GET /api/assets/digital-humans，后端 @全栈工程师 提供）──
+//   200 { digitalHumans: [{ name, url?, path?, duration? }] }（或裸数组）。
+//   `path` = 绝对路径（写进 manifest 的 media.pip，能跑 compose + GET packaging-plan 补 mediaUrls）；
+//   `url`  = 可服务预览 URL（缩略/试看用）。
+export interface DigitalHuman {
+  name: string;
+  /** 可服务预览 URL（/api/preview/media?path=… 或其它），列表试看用。 */
+  url?: string;
+  /** 绝对路径，写进 manifest 的首选值（round-trip 经后端 cardMediaUrls 转可服务 URL）。 */
+  path?: string;
+  /** 时长（秒），列表展示用。 */
+  duration?: number;
+}
+
+export async function listDigitalHumans(): Promise<DigitalHuman[]> {
+  const data = await asJson(await req("GET", "/assets/digital-humans"));
+  const list = Array.isArray(data) ? data : (data.digitalHumans ?? data.items ?? data.assets ?? []);
+  return (list as DigitalHuman[]).filter((d) => d && typeof d.name === "string");
+}
+
+/**
+ * 选中数字人后写进 manifest 的 media.pip 值：优先 `path`（绝对路径，round-trip 正确）；
+ * 否则若 `url` 是 /preview/media?path=… 形式，抽出其 path 查询参数；再否则退回 url 原值。
+ * 纯函数，便于单测。
+ */
+export function digitalHumanMediaPath(dh: DigitalHuman): string {
+  if (typeof dh.path === "string" && dh.path.trim()) return dh.path;
+  const url = typeof dh.url === "string" ? dh.url : "";
+  const match = /[?&]path=([^&]+)/.exec(url);
+  if (match) {
+    try {
+      return decodeURIComponent(match[1]);
+    } catch {
+      return match[1];
+    }
+  }
+  return url;
 }
 
 export async function listDir(path?: string): Promise<FsListResult> {

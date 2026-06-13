@@ -1,6 +1,6 @@
 {
   "compositionId": "test-duix-ltx",
-  "duration": 119.905,
+  "duration": 124.905,
   "source": {
     "video": "/Users/huangzongning/Downloads/first120-template-duix-cosy-master-v2-syncfix-final.mp4"
   },
@@ -47,66 +47,6 @@
       }
     },
     {
-      "id": "s003",
-      "component": "StepCard",
-      "scene_type": "step_card",
-      "start": 33.57,
-      "duration": 17.02,
-      "track": 30,
-      "finePieces": [
-        "StepPanel"
-      ],
-      "props": {
-        "kicker": "场景 03",
-        "title": "这也是它适不合 Agent 的",
-        "items": [
-          "这也是它适不合 Age",
-          "下为视频内容 本质",
-          "大模型不用理解 复"
-        ]
-      }
-    },
-    {
-      "id": "s004",
-      "component": "StepCard",
-      "scene_type": "step_card",
-      "start": 50.95,
-      "duration": 17.2,
-      "track": 40,
-      "finePieces": [
-        "StepPanel"
-      ],
-      "props": {
-        "kicker": "场景 04",
-        "title": "直接输入提示词",
-        "items": [
-          "直接输入提示词 请",
-          "第一步 确认制作规",
-          "他不是随便生成网页"
-        ]
-      }
-    },
-    {
-      "id": "s005",
-      "component": "StepCard",
-      "scene_type": "step_card",
-      "start": 68.31,
-      "duration": 17.435,
-      "track": 50,
-      "finePieces": [
-        "StepPanel"
-      ],
-      "props": {
-        "kicker": "场景 05",
-        "title": "字幕动画和输出格式",
-        "items": [
-          "字幕动画和输出格式",
-          "第二步联网搜索",
-          "因为视频要讲 Codex"
-        ]
-      }
-    },
-    {
       "id": "s006",
       "component": "StepCard",
       "scene_type": "step_card",
@@ -144,6 +84,22 @@
           "所以 hyperframe 的",
           "对于侦才来说 这比"
         ]
+      }
+    },
+    {
+      "id": "new-screenwithpip",
+      "component": "ScreenWithPip",
+      "scene_type": "screen_demo_pip",
+      "start": 40,
+      "duration": 5,
+      "track": 50,
+      "props": {
+        "label": "屏幕标签",
+        "media": {
+          "screen": "/Users/huangzongning/Downloads/first120-template-duix-cosy-master-v2-syncfix-final.mp4",
+          "pip": "/Users/huangzongning/development/director-console/assets/digital-humans/duix-agent-log-pip.mp4"
+        },
+        "__cardType": "pip"
       }
     }
   ]

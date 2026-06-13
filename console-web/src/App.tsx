@@ -12,6 +12,8 @@ import {
   inspect,
   lint,
   chooseNativeFile,
+  digitalHumanMediaPath,
+  type DigitalHuman,
   listManifests,
   listRecipes,
   listTemplates,
@@ -51,6 +53,7 @@ import { fieldHint, fieldLabel, sceneRoleLabel } from "./lib/field-labels";
 import { componentName, QUALITY_LABELS, T } from "./lib/i18n";
 import { applyThemeToManifest, type Theme } from "./lib/themes";
 import { CaptionsModal } from "./shell/CaptionsModal";
+import { DigitalHumanPickerModal } from "./shell/DigitalHumanPickerModal";
 import { ImportSummary } from "./shell/ImportSummary";
 import { StylePackModal } from "./shell/StylePackModal";
 import { WorkflowStepper } from "./shell/WorkflowStepper";
@@ -74,8 +77,10 @@ import {
   componentNeedsMedia,
   countUnboundMedia,
   deleteScene,
+  isImageMediaPath,
   listMediaSlots,
   makeNewScene,
+  MEDIA_PLACEHOLDER,
   moveScene,
   sceneUnboundMediaCount,
 } from "./lib/scene-templates";
@@ -164,6 +169,7 @@ export default function App() {
   const [captionsOpen, setCaptionsOpen] = useState(false);
   const [captionsReloadKey, setCaptionsReloadKey] = useState(0);
   const [stylePackOpen, setStylePackOpen] = useState(false);
+  const [dhPickerOpen, setDhPickerOpen] = useState(false);
   const [exportSettingsOpen, setExportSettingsOpen] = useState(false);
   const [renderOptions, setRenderOptions] = useState<RenderOptions>({});
 
@@ -305,6 +311,7 @@ export default function App() {
     setPreviewOpen(false);
     setCaptionsOpen(false);
     setStylePackOpen(false);
+    setDhPickerOpen(false);
     setExportSettingsOpen(false);
   }, []);
   const openCaptionsPanel = useCallback(() => {
@@ -325,13 +332,13 @@ export default function App() {
   }, [closeTopModals]);
 
   useEffect(() => {
-    if (!previewOpen && !captionsOpen && !stylePackOpen && !exportSettingsOpen) return;
+    if (!previewOpen && !captionsOpen && !stylePackOpen && !dhPickerOpen && !exportSettingsOpen) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") closeTopModals();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [captionsOpen, closeTopModals, exportSettingsOpen, previewOpen, stylePackOpen]);
+  }, [captionsOpen, closeTopModals, dhPickerOpen, exportSettingsOpen, previewOpen, stylePackOpen]);
 
   const [lintResult, setLintResult] = useState<LintResult | null>(null);
   const [inspectResult, setInspectResult] = useState<InspectResult | null>(null);
@@ -524,6 +531,29 @@ export default function App() {
       setError("选择视频失败，请重试或检查本地服务。");
       setErrorDetails(String(e));
     }
+  };
+
+  // 画中画卡底层大画面 media.screen：内容/讲解素材，视频或图片都可选（kind:"any" 无类型过滤）。
+  const onChooseScreenMedia = async (slotPath: string) => {
+    setError(null);
+    try {
+      const res = await chooseNativeFile("any", false, "选择内容素材（视频或图片）");
+      if (res.canceled) return;
+      if (res.ok && res.path) onFieldChange(slotPath, res.path);
+      else if (res.error) {
+        setError("选择素材失败，请重试或检查本地服务。");
+        setErrorDetails(res.error);
+      }
+    } catch (e) {
+      setError("选择素材失败，请重试或检查本地服务。");
+      setErrorDetails(String(e));
+    }
+  };
+
+  // 画中画卡右下角圆窗 media.pip：从数字人库选一个 → 写绝对路径进 manifest（非绑任意文件）。
+  const onPickDigitalHuman = (dh: DigitalHuman) => {
+    onFieldChange("media.pip", digitalHumanMediaPath(dh));
+    setDhPickerOpen(false);
   };
 
   const onSceneTypeChange = (value: string) => {
@@ -1154,6 +1184,84 @@ export default function App() {
     );
   })();
 
+  // 画中画卡（ScreenWithPip）专属媒体绑定：底层大画面 media.screen 支持视频或图片（绑定素材），
+  // 右下角圆窗 media.pip 改为「选数字人」库选择器（不是绑任意文件）。替换通用「媒体绑定」槽列表。
+  const screenWithPipMediaForm: ReactNode = (() => {
+    if (!selectedScene || selectedScene.component !== "ScreenWithPip") return null;
+    const props = (selectedScene.props ?? {}) as Record<string, unknown>;
+    const media = (props.media ?? {}) as Record<string, unknown>;
+    const screenVal = typeof media.screen === "string" ? media.screen : "";
+    const pipVal = typeof media.pip === "string" ? media.pip : "";
+    const screenBound = screenVal.trim() !== "" && screenVal !== MEDIA_PLACEHOLDER;
+    const pipBound = pipVal.trim() !== "" && pipVal !== MEDIA_PLACEHOLDER;
+    const screenName = screenBound ? screenVal.split(/[\\/]/).pop() || screenVal : "";
+    const screenKind = screenBound ? (isImageMediaPath(screenVal) ? "图片" : "视频") : "";
+    const pipName = pipBound ? pipVal.split(/[\\/]/).pop() || pipVal : "";
+    return (
+      <div className="media-binds pc-pip-media">
+        <div className="panel-title">媒体绑定 · 画中画</div>
+
+        {/* 底层大画面：视频或图片 */}
+        <div className={screenBound ? "media-slot" : "media-slot unbound"}>
+          <span className="prop-path">
+            底层大画面 内容/讲解
+            <span className="pc-field-hint muted">底层铺满的大画面，支持视频或图片（mp4/mov/png/jpg/webp）</span>
+          </span>
+          {screenBound ? (
+            <span className="media-slot-file" title={screenVal}>已绑（{screenKind}）：{screenName}</span>
+          ) : (
+            <span className="media-slot-file muted">未绑定</span>
+          )}
+          <span className="media-slot-actions">
+            <button className="pc-btn ghost" onClick={() => onChooseScreenMedia("media.screen")} disabled={busy !== null}>
+              {screenBound ? "更换素材" : "绑定素材"}
+            </button>
+            <button className="clear-btn" title="解除绑定" onClick={() => onFieldChange("media.screen", "")} disabled={!screenBound}>
+              解除绑定
+            </button>
+          </span>
+          {/* 备用：手动粘贴绝对路径（与「绑定素材」同一写入路径），无原生对话框时也能绑。 */}
+          <input
+            className="media-slot-input pc-screen-paste"
+            type="text"
+            placeholder="或粘贴素材绝对路径（视频或图片）"
+            value={screenBound ? screenVal : ""}
+            onChange={(e) => onFieldChange("media.screen", e.target.value)}
+          />
+        </div>
+
+        {/* 右下角圆窗：选数字人 */}
+        <div className={pipBound ? "media-slot" : "media-slot unbound"}>
+          <span className="prop-path">
+            数字人口播 右下角圆形小窗
+            <span className="pc-field-hint muted">从数字人库选一个，作为右下角圆形口播小窗</span>
+          </span>
+          {pipBound ? (
+            <span className="media-slot-file" title={pipVal}>已选数字人：{pipName}</span>
+          ) : (
+            <span className="media-slot-file muted">未选数字人</span>
+          )}
+          <span className="media-slot-actions">
+            <button className="pc-btn gold" onClick={() => setDhPickerOpen(true)} disabled={busy !== null}>
+              {pipBound ? "更换数字人" : "选数字人"}
+            </button>
+            <button className="clear-btn" title="清除" onClick={() => onFieldChange("media.pip", "")} disabled={!pipBound}>
+              清除
+            </button>
+          </span>
+          {/* 备用：手动粘贴数字人视频绝对路径（数字人库不可用时也能绑）。 */}
+          <input
+            className="media-slot-input pc-pip-paste"
+            type="text"
+            placeholder="或粘贴数字人视频绝对路径（备用）"
+            value={pipBound ? pipVal : ""}
+            onChange={(e) => onFieldChange("media.pip", e.target.value)}
+          />
+        </div>
+      </div>
+    );
+  })();
+
   // The props-era editor body — reused as the Inspector 属性 tab 底子.
   const attributesNode: ReactNode = !selectedScene ? (
     <div className="pc-note muted">在时间线或场景列表选中一张卡片以编辑其内容。</div>
@@ -1188,7 +1296,9 @@ export default function App() {
         </div>
       )}
 
-      {mediaSlots.length > 0 && (
+      {screenWithPipMediaForm}
+
+      {!screenWithPipMediaForm && mediaSlots.length > 0 && (
         <div className="media-binds">
           <div className="panel-title">
             媒体绑定 ({mediaSlots.length})
@@ -1602,6 +1712,13 @@ export default function App() {
         hasManifest={!!manifest}
         onApply={onApplyTheme}
         onClose={() => setStylePackOpen(false)}
+      />
+
+      <DigitalHumanPickerModal
+        open={dhPickerOpen}
+        selectedPath={typeof (selectedScene?.props?.media as Record<string, unknown> | undefined)?.pip === "string" ? ((selectedScene?.props?.media as Record<string, unknown>).pip as string) : null}
+        onPick={onPickDigitalHuman}
+        onClose={() => setDhPickerOpen(false)}
       />
 
       {exportSettingsOpen && (

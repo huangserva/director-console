@@ -134,7 +134,28 @@ function getContentType(filePath) {
   if (ext === ".m4a") return "audio/mp4";
   if (ext === ".png") return "image/png";
   if (ext === ".jpg" || ext === ".jpeg") return "image/jpeg";
+  if (ext === ".webp") return "image/webp";
+  if (ext === ".gif") return "image/gif";
   return "application/octet-stream";
+}
+
+const PREVIEW_MEDIA_CONTENT_TYPES = new Map([
+  [".mp4", "video/mp4"],
+  [".mov", "video/mp4"],
+  [".m4v", "video/mp4"],
+  [".webm", "video/webm"],
+  [".mkv", "video/mp4"],
+  [".png", "image/png"],
+  [".jpg", "image/jpeg"],
+  [".jpeg", "image/jpeg"],
+  [".webp", "image/webp"],
+  [".gif", "image/gif"],
+]);
+
+const DIGITAL_HUMAN_VIDEO_EXTENSIONS = new Set([".mp4", ".mov", ".m4v", ".webm", ".mkv"]);
+
+function previewMediaContentType(filePath) {
+  return PREVIEW_MEDIA_CONTENT_TYPES.get(path.extname(filePath).toLowerCase()) || null;
 }
 
 function htmlAttr(value) {
@@ -352,11 +373,16 @@ async function serveProjectSourceVideo({ composerRoot, projectName, request, res
   return true;
 }
 
-async function servePreviewMedia({ mediaPath, request, response, importRoots }) {
-  const check = await validateVideoPath(mediaPath, importRoots);
+async function servePreviewMedia({ mediaPath, request, response, importRoots, digitalHumansRoot }) {
+  const check = await validateVideoPath(mediaPath, await mediaImportRoots(importRoots, digitalHumansRoot));
   if (!check.ok) {
     const status = check.status === 400 && check.stderr?.startsWith("videoPath not found:") ? 404 : check.status;
     jsonResponse(response, status, { ok: false, error: check.stderr });
+    return true;
+  }
+  const contentType = previewMediaContentType(check.realPath);
+  if (!contentType) {
+    jsonResponse(response, 400, { ok: false, error: "unsupported preview media type" });
     return true;
   }
   const stat = await fs.stat(check.realPath);
@@ -372,7 +398,7 @@ async function servePreviewMedia({ mediaPath, request, response, importRoots }) 
   }
   const commonHeaders = {
     "accept-ranges": "bytes",
-    "content-type": "video/mp4",
+    "content-type": contentType,
   };
   if (range) {
     const length = range.end - range.start + 1;
@@ -652,6 +678,60 @@ async function realImportRoots(importRoots = []) {
     }
   }
   return roots;
+}
+
+async function digitalHumanMediaRoots(digitalHumansRoot) {
+  const roots = [];
+  if (!digitalHumansRoot) return roots;
+  try {
+    roots.push(await fs.realpath(digitalHumansRoot));
+  } catch {
+    return roots;
+  }
+  let entries;
+  try {
+    entries = await fs.readdir(digitalHumansRoot, { withFileTypes: true });
+  } catch {
+    return roots;
+  }
+  for (const entry of entries) {
+    if (!entry.isFile() && !entry.isSymbolicLink()) continue;
+    const fullPath = path.join(digitalHumansRoot, entry.name);
+    try {
+      roots.push(await fs.realpath(fullPath));
+    } catch {
+      // Broken symlinks are ignored by the library list and preview allowlist.
+    }
+  }
+  return [...new Set(roots)];
+}
+
+async function mediaImportRoots(importRoots = [], digitalHumansRoot) {
+  return [...importRoots, ...(await digitalHumanMediaRoots(digitalHumansRoot))];
+}
+
+async function listDigitalHumanAssets({ digitalHumansRoot, previewBasePath }) {
+  if (!(await pathExists(digitalHumansRoot))) return [];
+  const entries = await fs.readdir(digitalHumansRoot, { withFileTypes: true });
+  const assets = [];
+  for (const entry of entries) {
+    if (!entry.isFile() && !entry.isSymbolicLink()) continue;
+    const ext = path.extname(entry.name).toLowerCase();
+    if (!DIGITAL_HUMAN_VIDEO_EXTENSIONS.has(ext)) continue;
+    const filePath = path.join(digitalHumansRoot, entry.name);
+    try {
+      const stat = await fs.stat(filePath);
+      if (!stat.isFile()) continue;
+    } catch {
+      continue;
+    }
+    assets.push({
+      id: path.basename(entry.name, ext),
+      name: entry.name,
+      url: mediaPreviewUrl(filePath, { previewBasePath }),
+    });
+  }
+  return assets.sort((a, b) => a.name.localeCompare(b.name));
 }
 
 // Boundary check for a Route B videoPath BEFORE it ever reaches ffprobe/ffmpeg.
@@ -1404,6 +1484,7 @@ export function createApiServer(options = {}) {
     ...(options.recaptionDeps || {}),
   };
   const importRoots = options.importRoots || getImportRoots(env);
+  const digitalHumansRoot = options.digitalHumansRoot || path.resolve(composerRoot, "..", "assets", "digital-humans");
   const templatesRoot = options.templatesRoot || path.resolve(import.meta.dirname, "../../../templates");
   // Per-name lock: reject a concurrent import of the same name so two runs can't
   // clobber each other's shared tmp/project dirs. (A real queue is deferred.)
@@ -1503,6 +1584,16 @@ export function createApiServer(options = {}) {
 
       if (
         request.method === "GET" &&
+        ((parts[0] === "assets" && parts[1] === "digital-humans" && parts.length === 2) ||
+          (parts[0] === "api" && parts[1] === "assets" && parts[2] === "digital-humans" && parts.length === 3))
+      ) {
+        const assets = await listDigitalHumanAssets({ digitalHumansRoot, previewBasePath });
+        jsonResponse(response, 200, { ok: true, assets });
+        return;
+      }
+
+      if (
+        request.method === "GET" &&
         ((parts[0] === "preview" && parts[1] === "source" && parts.length === 3) ||
           (parts[0] === "api" && parts[1] === "preview" && parts[2] === "source" && parts.length === 4))
       ) {
@@ -1535,7 +1626,7 @@ export function createApiServer(options = {}) {
           (parts[0] === "api" && parts[1] === "preview" && parts[2] === "media" && parts.length === 3))
       ) {
         const mediaPath = url.searchParams.get("path");
-        await servePreviewMedia({ mediaPath, request, response, importRoots });
+        await servePreviewMedia({ mediaPath, request, response, importRoots, digitalHumansRoot });
         return;
       }
 

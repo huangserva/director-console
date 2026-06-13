@@ -343,6 +343,33 @@ test("source-video compositions make generic card scenes transparent over the ba
   assert.match(css, /#root\[data-has-source-video="1"\] \.scene::after/);
 });
 
+test("ScreenWithPip renders image screen media and video pip media", () => {
+  const html = renderCompositionDocument({
+    compositionId: "pip-image-screen",
+    duration: 4,
+    scenes: [
+      {
+        id: "pip-card",
+        component: "ScreenWithPip",
+        scene_type: "screen_demo_pip",
+        start: 0,
+        duration: 4,
+        props: {
+          label: "画中画",
+          media: {
+            screen: "/tmp/screen.png",
+            pip: "/tmp/digital-human.mp4",
+          },
+        },
+      },
+    ],
+  });
+
+  assert.match(html, /<img id="v-pip-card-screen" src="\/tmp\/screen\.png" data-media-kind="image" data-start="0\.000" data-duration="4\.000" data-media-start="0\.000">/);
+  assert.match(html, /<div class="circle-pip"><video id="v-pip-card-pip" src="\/tmp\/digital-human\.mp4" muted playsinline data-start="0\.000" data-duration="4\.000" data-media-start="0\.000"><\/video><\/div>/);
+  assert.doesNotMatch(html, /<video id="v-pip-card-screen"/);
+});
+
 test("accepted manifests without rich fields match frozen no-drift golden snapshots", () => {
   for (const name of acceptedManifestNames) {
     const manifest = readManifest(name);

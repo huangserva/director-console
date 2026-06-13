@@ -362,7 +362,12 @@ describe("console-api", () => {
   let fixtureDir;
   let fixtureRoot;
   let fixtureVideo;
+  let fixtureImage;
   let fixtureWav;
+  let digitalHumansDir;
+  let digitalHumanTargetDir;
+  let digitalHumanVideo;
+  let digitalHumanLink;
   let originalIndexHtml;
   const scriptCalls = [];
 
@@ -375,19 +380,28 @@ describe("console-api", () => {
     fixtureDir = await fs.mkdtemp(path.join(os.tmpdir(), "console-api-import-"));
     fixtureRoot = await fs.realpath(fixtureDir);
     fixtureVideo = path.join(fixtureRoot, "finished.mp4");
+    fixtureImage = path.join(fixtureRoot, "screen.png");
     fixtureWav = path.join(fixtureRoot, "voice.wav");
     await fs.writeFile(fixtureVideo, "fake video bytes");
+    await fs.writeFile(fixtureImage, "fake image bytes");
     await fs.writeFile(fixtureWav, "fake wav bytes");
     await fs.mkdir(path.join(fixtureRoot, "Clips"));
     await fs.mkdir(path.join(fixtureRoot, "audio"));
     await fs.writeFile(path.join(fixtureRoot, "B.MOV"), "fake mov bytes");
     await fs.writeFile(path.join(fixtureRoot, "notes.txt"), "notes");
     await fs.writeFile(path.join(fixtureRoot, ".hidden.mp4"), "hidden");
+    digitalHumansDir = await fs.mkdtemp(path.join(os.tmpdir(), "console-api-digital-humans-"));
+    digitalHumanTargetDir = await fs.mkdtemp(path.join(os.tmpdir(), "console-api-digital-human-target-"));
+    digitalHumanVideo = path.join(digitalHumanTargetDir, "duix-prompt-pip.mp4");
+    digitalHumanLink = path.join(digitalHumansDir, "duix-prompt-pip.mp4");
+    await fs.writeFile(digitalHumanVideo, "fake digital human video");
+    await fs.symlink(digitalHumanVideo, digitalHumanLink);
     server = http.createServer(
       createApiServer({
         composerRoot,
         logDir,
         importRoots: [fixtureRoot],
+        digitalHumansRoot: digitalHumansDir,
         runScript: async ({ script, args }) => {
           scriptCalls.push({ script, args });
           if (script === "compose") {
@@ -495,6 +509,8 @@ describe("console-api", () => {
     await fs.writeFile(path.join(composerRoot, "index.html"), originalIndexHtml, "utf8");
     await fs.rm(logDir, { recursive: true, force: true });
     await fs.rm(fixtureDir, { recursive: true, force: true });
+    await fs.rm(digitalHumansDir, { recursive: true, force: true });
+    await fs.rm(digitalHumanTargetDir, { recursive: true, force: true });
     // Clean any manifests/projects created by the security tests below.
     for (const extra of ["overwrite", "lock", "atomic-fail", "sentinel-test", "longname"]) {
       const slug = `${routeBManifestName}-${extra}`;
@@ -526,6 +542,7 @@ describe("console-api", () => {
         ["B.MOV", "file", true],
         ["finished.mp4", "file", true],
         ["notes.txt", "file", false],
+        ["screen.png", "file", false],
         ["voice.wav", "file", false],
       ],
     );
@@ -1896,6 +1913,19 @@ describe("console-api", () => {
     assert.equal(ranged.headers.get("content-range"), "bytes 0-3/16");
     assert.equal(ranged.text, "fake");
 
+    const image = await rawRequest(baseUrl, `/api/preview/media?path=${encodeURIComponent(fixtureImage)}`);
+    assert.equal(image.status, 200);
+    assert.equal(image.headers.get("content-type"), "image/png");
+    assert.equal(image.text, "fake image bytes");
+
+    const symlinkedDigitalHuman = await rawRequest(baseUrl, `/api/preview/media?path=${encodeURIComponent(digitalHumanLink)}`, {
+      headers: { range: "bytes=0-3" },
+    });
+    assert.equal(symlinkedDigitalHuman.status, 206);
+    assert.equal(symlinkedDigitalHuman.headers.get("content-type"), "video/mp4");
+    assert.equal(symlinkedDigitalHuman.headers.get("content-range"), "bytes 0-3/24");
+    assert.equal(symlinkedDigitalHuman.text, "fake");
+
     const outside = await request(baseUrl, `/api/preview/media?path=${encodeURIComponent("/etc/hosts")}`);
     assert.equal(outside.status, 403);
     assert.equal(outside.body.ok, false);
@@ -1905,9 +1935,21 @@ describe("console-api", () => {
     assert.equal(missing.body.ok, false);
   });
 
+  test("lists digital human assets with serviceable media URLs", async () => {
+    const response = await request(baseUrl, "/api/assets/digital-humans");
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body.ok, true);
+    assert.deepEqual(response.body.assets, [
+      {
+        id: "duix-prompt-pip",
+        name: "duix-prompt-pip.mp4",
+        url: `/api/preview/media?path=${encodeURIComponent(digitalHumanLink)}`,
+      },
+    ]);
+  });
+
   test("adds serviceable mediaUrls for bound card media in packaging-plan responses", async () => {
-    const pipVideo = path.join(fixtureRoot, "presenter.mp4");
-    await fs.writeFile(pipVideo, "fake presenter bytes");
     const manifest = titleCardManifest({
       compositionId: mediaPreviewProjectName,
       output: `projects/${mediaPreviewProjectName}/index.html`,
@@ -1921,7 +1963,7 @@ describe("console-api", () => {
           duration: 2,
           props: {
             label: "画中画",
-            media: { screen: fixtureVideo, pip: pipVideo },
+            media: { screen: fixtureImage, pip: digitalHumanLink },
           },
         },
       ],
@@ -1933,10 +1975,10 @@ describe("console-api", () => {
 
     assert.equal(response.status, 200);
     const card = response.body.plan.tracks.card[0];
-    assert.deepEqual(card.media, { screen: fixtureVideo, pip: pipVideo });
+    assert.deepEqual(card.media, { screen: fixtureImage, pip: digitalHumanLink });
     assert.deepEqual(card.mediaUrls, {
-      screen: `/api/preview/media?path=${encodeURIComponent(fixtureVideo)}`,
-      pip: `/api/preview/media?path=${encodeURIComponent(pipVideo)}`,
+      screen: `/api/preview/media?path=${encodeURIComponent(fixtureImage)}`,
+      pip: `/api/preview/media?path=${encodeURIComponent(digitalHumanLink)}`,
     });
   });
 
@@ -1959,8 +2001,8 @@ describe("console-api", () => {
           props: {
             label: "画中画",
             media: {
-              screen: fixtureVideo,
-              pip: path.join(fixtureRoot, "B.MOV"),
+              screen: fixtureImage,
+              pip: digitalHumanLink,
             },
           },
         },
@@ -1977,8 +2019,8 @@ describe("console-api", () => {
         "<!doctype html>",
         '<div id="root">',
         `<video id="source-video-background-layer" muted src="${fixtureVideo}"></video>`,
-        `<video id="v-pip-card-screen" muted src="${fixtureVideo}"></video>`,
-        `<video id="v-pip-card-pip" muted src="${path.join(fixtureRoot, "B.MOV")}"></video>`,
+        `<img id="v-pip-card-screen" src="${fixtureImage}">`,
+        `<video id="v-pip-card-pip" muted src="${digitalHumanLink}"></video>`,
         `<audio id="audio" src="projects/${previewHtmlProjectName}/audio/asr.wav"></audio>`,
         "</div>",
       ].join(""),
@@ -1989,11 +2031,12 @@ describe("console-api", () => {
 
     assert.equal(response.status, 200);
     assert.match(response.text, new RegExp(`id="source-video-background-layer"[^>]+src="/api/preview/source/${previewHtmlProjectName}"`));
-    assert.match(response.text, new RegExp(`id="v-pip-card-screen"[^>]+src="/api/preview/media\\?path=${encodeURIComponent(fixtureVideo).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`));
-    assert.match(response.text, new RegExp(`id="v-pip-card-pip"[^>]+src="/api/preview/media\\?path=${encodeURIComponent(path.join(fixtureRoot, "B.MOV")).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`));
+    assert.match(response.text, new RegExp(`id="v-pip-card-screen"[^>]+src="/api/preview/media\\?path=${encodeURIComponent(fixtureImage).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`));
+    assert.match(response.text, new RegExp(`id="v-pip-card-pip"[^>]+src="/api/preview/media\\?path=${encodeURIComponent(digitalHumanLink).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`));
     assert.match(response.text, new RegExp(`id="audio"[^>]+src="/api/preview/audio/${previewHtmlProjectName}"`));
     assert.doesNotMatch(response.text, new RegExp(`src="${fixtureVideo.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`));
-    assert.doesNotMatch(response.text, new RegExp(`src="${path.join(fixtureRoot, "B.MOV").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`));
+    assert.doesNotMatch(response.text, new RegExp(`src="${fixtureImage.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`));
+    assert.doesNotMatch(response.text, new RegExp(`src="${digitalHumanLink.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`));
     assert.doesNotMatch(response.text, new RegExp(`src="projects/${previewHtmlProjectName}/audio/asr\\.wav"`));
   });
 

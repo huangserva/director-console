@@ -8,6 +8,7 @@ import { gsap } from "gsap";
 import { type CSSProperties, useEffect, useMemo, useRef } from "react";
 import { renderScene } from "../../../hyperframes-composer/components/registry.mjs";
 import type { PlanCard } from "../lib/packaging-plan";
+import { isImageMediaPath } from "../lib/scene-templates";
 import "./composer-card.css";
 
 const FRAME_W = 1920;
@@ -96,19 +97,30 @@ function useSyncedVideo(time: number | undefined) {
   return ref;
 }
 
-// 画中画卡：composer 的 screen-proof 结构（同 CSS 比例）+ 绑定的 live 视频；未绑则空壳占位。
+// 画中画卡：composer 的 screen-proof 结构（同 CSS 比例）+ 绑定的 live 媒体；未绑则空壳占位。
+// - 底层大画面 screen：图片 → <img>（object-fit cover 铺满）；视频 → <video>（随播放头同步）。
+// - 右下角圆形 pip：数字人口播视频，<video> 随播放头同步。
+// 图片/视频按 media.screen 的扩展名判定；都用 card.mediaUrls 的可服务 URL（不直接喂绝对路径）。
 function PipFrame({ card, mediaUrls, currentTime }: { card: PlanCard; mediaUrls?: CardVisualProps["mediaUrls"]; currentTime?: number }) {
   const props = (card.engine?.props as Record<string, unknown>) ?? {};
+  const media = (props.media as Record<string, unknown> | undefined) ?? {};
   const label = typeof props.label === "string" ? props.label : "";
   const screenUrl = mediaUrls?.screen ?? null;
   const pipUrl = mediaUrls?.pip ?? null;
+  const screenIsImage = isImageMediaPath(typeof media.screen === "string" ? (media.screen as string) : null);
   const screenRef = useSyncedVideo(currentTime);
   const pipRef = useSyncedVideo(currentTime);
   return (
     <div className="clip scene screen-proof">
       <div className="screen-label">{label}</div>
       <div className="screen-shell">
-        {screenUrl ? <video ref={screenRef} src={screenUrl} muted playsInline preload="metadata" /> : null}
+        {screenUrl ? (
+          screenIsImage ? (
+            <img src={screenUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+          ) : (
+            <video ref={screenRef} src={screenUrl} muted playsInline preload="metadata" />
+          )
+        ) : null}
       </div>
       <div className="circle-pip">
         {pipUrl ? <video ref={pipRef} src={pipUrl} muted playsInline preload="metadata" /> : null}
