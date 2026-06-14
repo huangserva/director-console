@@ -158,6 +158,26 @@ service endpoints and credentials also belong in `.env.local`; do not commit the
   validation, atomic manifest publish, and plan save. Success
   returns `{ ok:true, name, manifestName }`; invalid templates or generated plans
   return `422 { error, failures:string[] }`.
+- `POST /projects/from-skill-output` - import a generated director skill output
+  bundle as a managed console project. Body accepts
+  `{ "skillOutputPath": "/absolute/skill/output", "name": "target-project", "overwrite": false }`
+  (`path` and `outputPath` are accepted aliases for `skillOutputPath`; `projectName`
+  is accepted as an alias for `name`). `skillOutputPath` must be a local directory
+  that passes the same realpath allowlist boundary as local imports: absolute path,
+  no protocol/null byte, and inside `ROUTE_B_IMPORT_ROOTS` (default: `$HOME`).
+  The adapter reads the skill bundle's `data/scene-map-390.json` / `scene-plan.json`,
+  `data/asset-manifest.json`, `data/audio-manifest.json`, source video, audio,
+  captions, and scene media assets, then writes
+  `hyperframes-composer/projects/:name/packaging-plan.json`,
+  `hyperframes-composer/projects/:name/project.json`, managed captions/audio assets,
+  and atomically publishes `hyperframes-composer/manifests/:name.json` through the
+  existing packaging-plan save path. Success returns
+  `{ ok:true, name, manifestName, projectDir, manifestPath, planPath, handoff, summary }`.
+  `handoff` is the `SkillProjectHandoff` mapping record with source bundle,
+  source/audio/captions paths, imported scene ids, skipped scene ids, and media
+  bindings. `summary` includes `{ scenes, cards, skippedScenes, captions, mediaBindings }`.
+  Existing projects return `409` unless `overwrite:true`; invalid bundles return
+  `422`; security failures return `4xx { ok:false, error }`.
 - `POST /projects/:name/recaption` - rerun subtitle recognition for an existing
   project. The API loads `projects/:name/packaging-plan.json` when present, or
   synthesizes a plan from `manifests/:name.json`, then uses `plan.source.audio`

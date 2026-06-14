@@ -648,6 +648,63 @@ export async function applyTemplate(projectName: string, templateId: string, inp
   return { ok: true, manifestName: data.manifestName ?? data.name };
 }
 
+// ── v3-5 一句话自动生成（无凭据路径）：脚本 → 确定性切句 → text-only 可编辑项目 ──
+//   POST /generate/from-script {script(≤20000),name?,title?,overwrite?}
+//     -> 200 {ok,name,manifestName,scenes,manifestPath,planPath} / 400 / 413 / 409 / 422 {ok:false,error,failures}
+import type { GenerateResult } from "./generate-form";
+
+export async function generateFromScript(input: { script: string; name?: string; title?: string; overwrite?: boolean }): Promise<GenerateResult> {
+  const body: Record<string, unknown> = { script: input.script };
+  if (input.name) body.name = input.name;
+  if (input.title) body.title = input.title;
+  if (input.overwrite) body.overwrite = input.overwrite;
+  const res = await req("POST", "/generate/from-script", body);
+  const text = await res.text();
+  const data = text ? JSON.parse(text) : {};
+  if (res.ok) {
+    return { ok: true, name: data.name, manifestName: data.manifestName ?? data.name, scenes: data.scenes ?? 0, manifestPath: data.manifestPath, planPath: data.planPath };
+  }
+  // 4xx：保留 status 给前端映射友好提示，读 body error/failures 不吞。
+  return { ok: false, status: res.status, error: data.error ?? `${res.status} ${res.statusText}`, failures: data.failures ?? [] };
+}
+
+// ── 打开 skill 产物：把一个 skill 产出目录/入口导入为 console 项目 ──
+//   POST /projects/from-skill-output { skillOutputPath, projectName? }
+//     成功 { ok:true, name } | { ok:true, project:{name} } | { ok:true, projectId } —— 做容错抽项目名。
+//     失败 { ok:false, error }（如不可识别的 skill 产物结构）。
+//   契约和 @全栈工程师锁定；shape 容错（参考 listDigitalHumans 的兼容写法）。
+export interface SkillOutputResult {
+  ok: boolean;
+  /** 新建/更新的 console 项目名（容错抽取）。 */
+  name?: string;
+  error?: string;
+}
+
+/** 从返回体里容错抽取项目名：name / project.name / projectName / projectId / manifestName。 */
+function extractProjectName(data: Record<string, unknown>): string | undefined {
+  const project = data.project as { name?: unknown } | undefined;
+  const candidate = data.name ?? project?.name ?? data.projectName ?? data.projectId ?? data.manifestName;
+  return typeof candidate === "string" && candidate.trim() ? candidate : undefined;
+}
+
+export async function openSkillOutput(skillOutputPath: string, projectName?: string): Promise<SkillOutputResult> {
+  const body = projectName ? { skillOutputPath, projectName } : { skillOutputPath };
+  const res = await req("POST", "/projects/from-skill-output", body);
+  const text = await res.text();
+  // 失败可能返回非 JSON 文本（如纯文本 500），容错解析。
+  let data: Record<string, unknown> = {};
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    return res.ok ? { ok: false, error: "服务返回无法解析" } : { ok: false, error: `${res.status} ${res.statusText}: ${text.slice(0, 300)}` };
+  }
+  if (data.ok === false) return { ok: false, error: typeof data.error === "string" ? data.error : `${res.status} ${res.statusText}` };
+  if (data.ok === undefined && !res.ok) return { ok: false, error: `${res.status} ${res.statusText}: ${text.slice(0, 300)}` };
+  const name = extractProjectName(data);
+  if (!name) return { ok: false, error: "服务未返回可识别的项目名" };
+  return { ok: true, name };
+}
+
 export async function importFromVideo(videoPath: string, name?: string): Promise<RouteBImportResult> {
   // Failure returns { ok:false, stderr, logPath } (status may be 200 or 500), so
   // read the body either way — only throw if there's no usable body at all.
@@ -659,4 +716,69 @@ export async function importFromVideo(videoPath: string, name?: string): Promise
     throw new Error(`${res.status} ${res.statusText}: ${text.slice(0, 500)}`);
   }
   return data as RouteBImportResult;
+}
+
+// ── v3-1: 模型/provider 配置中心 ──────────────────────────────────────────
+import type { Provider, ProviderHealth, ProviderUpdateResult } from "./providers";
+
+/** GET /providers → 列表（密钥永远 redact，只有 isKeySet 布尔）。 */
+export async function getProviders(): Promise<Provider[]> {
+  const data = await asJson(await req("GET", "/providers"));
+  return (data.providers ?? []) as Provider[];
+}
+
+/**
+ * PUT /providers/:id ← 配置（apiKeyValue 是写入用，永不回显）。
+ * 200 → { ok:true, provider }(redacted)；422 → { ok:false, error, failures }（读 body，不吞）；404 → { ok:false, error }。
+ */
+export async function updateProvider(id: string, body: Record<string, unknown>): Promise<ProviderUpdateResult> {
+  const res = await req("PUT", `/providers/${encodeURIComponent(id)}`, body);
+  const text = await res.text();
+  const data = text ? JSON.parse(text) : {};
+  if (res.ok) return { ok: true, provider: data.provider as Provider };
+  // 4xx：读 body 给出 error/failures，不吞
+  return { ok: false, error: data.error ?? `${res.status} ${res.statusText}`, failures: data.failures ?? [] };
+}
+
+/** POST /providers/:id/health-check → 三态健康（up/down/unconfigured）。 */
+export async function checkProviderHealth(id: string): Promise<ProviderHealth> {
+  const res = await req("POST", `/providers/${encodeURIComponent(id)}/health-check`);
+  const text = await res.text();
+  const data = text ? JSON.parse(text) : {};
+  if (!res.ok && data.status === undefined) {
+    throw new Error(`${res.status} ${res.statusText}: ${text.slice(0, 300)}`);
+  }
+  return data as ProviderHealth;
+}
+
+// v3-3 任务历史。后端契约（live 4099）：
+//   GET  /projects/:name/history          -> 200 { ok, name, entries[] }（倒序，新→旧）
+//   GET  /projects/:name/history/:id       -> 200 { ok, name, entry, plan } / 404 { ok:false, error }
+//   POST /projects/:name/history/:id/restore -> 200 { ok, name, manifestName, historyEntry }
+//                                               404 / 422 { ok:false, error, failures }（校验失败不发布）
+import type { HistoryDetailResult, HistoryEntry, HistoryListResult, HistoryRestoreResult } from "./history";
+
+export async function getProjectHistory(name: string): Promise<HistoryListResult> {
+  const res = await req("GET", `/projects/${encodeURIComponent(name)}/history`);
+  const text = await res.text();
+  const data = text ? JSON.parse(text) : {};
+  if (res.ok) return { ok: true, name: data.name, entries: (data.entries ?? []) as HistoryEntry[] };
+  return { ok: false, error: data.error ?? `${res.status} ${res.statusText}` };
+}
+
+export async function getHistoryEntry(name: string, id: string): Promise<HistoryDetailResult> {
+  const res = await req("GET", `/projects/${encodeURIComponent(name)}/history/${encodeURIComponent(id)}`);
+  const text = await res.text();
+  const data = text ? JSON.parse(text) : {};
+  if (res.ok) return { ok: true, name: data.name, entry: data.entry as HistoryEntry, plan: data.plan ?? null };
+  return { ok: false, error: data.error ?? `${res.status} ${res.statusText}` };
+}
+
+export async function restoreHistory(name: string, id: string): Promise<HistoryRestoreResult> {
+  const res = await req("POST", `/projects/${encodeURIComponent(name)}/history/${encodeURIComponent(id)}/restore`);
+  const text = await res.text();
+  const data = text ? JSON.parse(text) : {};
+  if (res.ok) return { ok: true, name: data.name, manifestName: data.manifestName, historyEntry: data.historyEntry as HistoryEntry };
+  // 4xx：读 body 给 error/failures，不吞（404 友好提示 / 422 展示 failures）
+  return { ok: false, error: data.error ?? `${res.status} ${res.statusText}`, failures: data.failures ?? [] };
 }

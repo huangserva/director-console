@@ -2,6 +2,37 @@
 
 ## Milestones
 
+- v3-5 — Deterministic script-to-editable-project backend: implemented in `apps/console-api`.
+  - Endpoint: `POST /generate/from-script`.
+  - Input: existing plain script text only; no LLM expansion, image/video generation, TTS, or DUIX calls.
+  - Pipeline: deterministic script segmentation → `buildScenePlan` → text-only manifest → `manifestToPlan`
+    → `savePackagingPlanForProject`.
+  - Output: managed editable project with `TitleCard`/`StepCard` cards only; video/audio/subtitle tracks stay empty
+    for user binding in the editor.
+  - History: records `kind:"generate"` with a full plan snapshot.
+  - Robustness on 2026-06-14: script segmentation now secondarily splits long Chinese punctuation runs and clamps text by
+    composer `TEXT_BUDGETS`, so generated `StepCard` items stay within manifest text budgets.
+  - Security hardening on 2026-06-14: generation cleans partial manifest/plan publishes if post-save artifact writes fail.
+- v3-3 — Task history and packaging-plan snapshots backend: implemented in `apps/console-api`.
+  - Endpoints: `GET /projects/:name/history`, `GET /projects/:name/history/:id`,
+    `POST /projects/:name/history/:id/restore`.
+  - Storage: append-only `projects/<name>/history.json` plus full plan snapshots under
+    `projects/<name>/snapshots/<entryId>.json`; both runtime artifact paths are gitignored.
+  - Hooks: `from-skill-output`, `route-b/import`, `route-a/run`, `product-intro/run`,
+    `apply-template`, `recaption`, and both render endpoints append entries when a managed project
+    exists.
+  - Restore: publishes through the existing `savePackagingPlanForProject` path so
+    `planToManifest` and manifest validation gate rollback.
+  - Security hardening on 2026-06-14: history snapshot reads/writes reject symlinked snapshot dirs/files and require
+    realpath confinement under the managed project snapshot directory.
+- v3-1 — Provider configuration center backend: implemented in `apps/console-api`.
+  - Endpoints: `GET /providers`, `PUT /providers/:id`, `POST /providers/:id/health-check`.
+  - Providers: `tts`, `asr`, `duix`, `image`, `video`, `proxy`.
+  - Persistence: non-secret provider config goes to gitignored `provider-config.json`; secret values go to
+    gitignored `.env.local` and are redacted from API responses.
+  - Security hardening on 2026-06-14: provider secret env var names reject dangerous process/env names; health checks are
+    loopback-only unless explicitly enabled for remote hosts.
+  - Verification on 2026-06-14: `apps/console-api` `npm run test` and `npm run lint`.
 - M0 — Console API over hyperframes-composer: implemented in `apps/console-api`.
   - Endpoints: `GET /manifests`, `GET /manifests/:name`, `PUT /manifests/:name`,
     `POST /compose/:name`, `POST /lint`, `POST /inspect`.

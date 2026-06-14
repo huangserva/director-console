@@ -525,8 +525,21 @@ function firstExisting(root, candidates) {
   return null;
 }
 
-function captionsFromPath(captionsPath) {
+function isWithinPath(child, root) {
+  if (child === root) return true;
+  const rootWithSep = root.endsWith(path.sep) ? root : `${root}${path.sep}`;
+  return child.startsWith(rootWithSep);
+}
+
+function captionsFromPath(captionsPath, root) {
   if (!captionsPath) return [];
+  if (root) {
+    const realRoot = fs.realpathSync(root);
+    const realCaptionsPath = fs.realpathSync(captionsPath);
+    if (!isWithinPath(realCaptionsPath, realRoot)) {
+      throw new Error("caption timeline path must stay inside the skill output root");
+    }
+  }
   const payload = readJsonIfExists(captionsPath);
   if (Array.isArray(payload?.captions)) return payload.captions.map(normalizeCaptionCue);
   if (Array.isArray(payload)) return payload.map(normalizeCaptionCue);
@@ -669,7 +682,7 @@ export async function skillOutputToPackagingPlan(skillOutputDir, options = {}) {
     audioManifest.caption_timeline,
     ...skillCaptionCandidates,
   ]);
-  const cues = captionsFromPath(captions);
+  const cues = captionsFromPath(captions, root);
   const cards = [];
   const skippedScenes = [];
   let cutoffStart = null;
@@ -724,7 +737,7 @@ export async function skillOutputToPackagingPlan(skillOutputDir, options = {}) {
     engine: {
       skillProjectHandoff: {
         version: 1,
-        sourceDir: root,
+        sourceDir: path.basename(root),
         skippedScenes,
       },
     },

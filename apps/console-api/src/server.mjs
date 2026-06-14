@@ -3,7 +3,8 @@ import fsSync from "node:fs";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { validateManifest } from "../../../hyperframes-composer/scripts/manifest-rules.mjs";
+import { pipeline } from "node:stream/promises";
+import { TEXT_BUDGETS, validateManifest } from "../../../hyperframes-composer/scripts/manifest-rules.mjs";
 import {
   applyTemplate,
   extractTemplate,
@@ -38,6 +39,7 @@ import {
 } from "../../../packages/protocol/src/index.mjs";
 
 const DEFAULT_BODY_LIMIT = 5 * 1024 * 1024;
+const MAX_FROM_SCRIPT_CHARS = 20_000;
 
 // 15 min envelope for shelled-out children (compose/inspect/lint). Generous enough
 // for a real inspect render, but a hung child eventually dies. Override via env.
@@ -70,6 +72,26 @@ function sanitizeJsonBody(value) {
     return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, sanitizeJsonBody(entry)]));
   }
   return value;
+}
+
+function compactWhitespace(value) {
+  return String(value || "").replace(/\s+/g, " ").trim();
+}
+
+function textWeight(value = "") {
+  return [...String(value)].reduce((total, char) => total + (char.charCodeAt(0) > 127 ? 2 : 1), 0);
+}
+
+function clipTextByWeight(value, maxWeight) {
+  let output = "";
+  let weight = 0;
+  for (const char of compactWhitespace(value)) {
+    const next = char.charCodeAt(0) > 127 ? 2 : 1;
+    if (weight + next > maxWeight) break;
+    output += char;
+    weight += next;
+  }
+  return output.trim();
 }
 
 function jsonResponse(response, status, body) {
@@ -154,6 +176,35 @@ const PREVIEW_MEDIA_CONTENT_TYPES = new Map([
 ]);
 
 const DIGITAL_HUMAN_VIDEO_EXTENSIONS = new Set([".mp4", ".mov", ".m4v", ".webm", ".mkv"]);
+const SKILL_LOCALIZED_MEDIA_EXTENSIONS = new Set([
+  ".mp4",
+  ".mov",
+  ".m4v",
+  ".webm",
+  ".mkv",
+  ".png",
+  ".jpg",
+  ".jpeg",
+  ".webp",
+  ".gif",
+  ".wav",
+  ".mp3",
+  ".m4a",
+  ".aac",
+  ".flac",
+]);
+
+const PROVIDER_DEFINITIONS = [
+  { id: "tts", label: "CosyVoice3 TTS", enabled: true, baseUrl: "http://127.0.0.1:4090", extra: { healthPath: "/health" } },
+  { id: "asr", label: "FunASR / Paraformer ASR", enabled: true, extra: { mode: "local", fallback: "whisper" } },
+  { id: "duix", label: "HeyGem 数字人", enabled: true, baseUrl: "http://127.0.0.1:8383", extra: { healthPath: "/easy/query" } },
+  { id: "image", label: "图像生成", enabled: false },
+  { id: "video", label: "视频生成", enabled: false },
+  { id: "proxy", label: "全局 HTTP 代理", enabled: false },
+];
+
+const PROVIDER_IDS = new Set(PROVIDER_DEFINITIONS.map((provider) => provider.id));
+const DANGEROUS_PROVIDER_SECRET_ENV = new Set(["PATH", "NODE_OPTIONS", "HOME", "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY"]);
 
 function previewMediaContentType(filePath) {
   return PREVIEW_MEDIA_CONTENT_TYPES.get(path.extname(filePath).toLowerCase()) || null;
@@ -195,10 +246,23 @@ function mediaPreviewUrl(mediaPath, { previewBasePath }) {
   return `${previewBasePath}/media?path=${encodeURIComponent(mediaPath)}`;
 }
 
+function composerPreviewUrl(relativePath, { previewBasePath }) {
+  return `${previewBasePath}/${relativePath
+    .split(/[\\/]+/)
+    .filter(Boolean)
+    .map((part) => encodeURIComponent(part))
+    .join("/")}`;
+}
+
 function cardMediaUrls(media = {}, { previewBasePath }) {
   const entries = Object.entries(media || {}).filter(([, value]) => typeof value === "string" && value.trim());
   if (!entries.length) return undefined;
-  return Object.fromEntries(entries.map(([slot, value]) => [slot, mediaPreviewUrl(value, { previewBasePath })]));
+  return Object.fromEntries(
+    entries.map(([slot, value]) => [
+      slot,
+      path.isAbsolute(value) ? mediaPreviewUrl(value, { previewBasePath }) : composerPreviewUrl(value, { previewBasePath }),
+    ]),
+  );
 }
 
 function mediaBindingsFromManifest(manifest) {
@@ -335,7 +399,9 @@ async function serveProjectSourceVideo({ composerRoot, projectName, request, res
     jsonResponse(response, 404, { ok: false, error: "source video not found" });
     return true;
   }
-  const check = await validateVideoPath(sourceVideo, importRoots);
+  const check = path.isAbsolute(sourceVideo)
+    ? await validateVideoPath(sourceVideo, importRoots)
+    : await validateProjectRelativeSourceVideo({ composerRoot, projectName, sourceVideo });
   if (!check.ok) {
     const status = check.status === 400 && check.stderr?.startsWith("videoPath not found:") ? 404 : check.status;
     jsonResponse(response, status, { ok: false, error: check.stderr });
@@ -372,6 +438,40 @@ async function serveProjectSourceVideo({ composerRoot, projectName, request, res
   });
   fsSync.createReadStream(check.realPath).pipe(response);
   return true;
+}
+
+async function validateProjectRelativeSourceVideo({ composerRoot, projectName, sourceVideo }) {
+  if (typeof sourceVideo !== "string" || !sourceVideo.trim()) {
+    return { ok: false, status: 400, stderr: "source video path is required" };
+  }
+  if (sourceVideo.includes("://")) {
+    return { ok: false, status: 400, stderr: "source video must be a local project path, not a URL/protocol" };
+  }
+  if (sourceVideo.includes("\0")) {
+    return { ok: false, status: 400, stderr: "source video contains an invalid null byte" };
+  }
+  const sourcePath = resolveComposerPath(composerRoot, sourceVideo);
+  const projectMediaDir = path.join(projectDirForName(composerRoot, projectName), "media");
+  const resolvedSourcePath = path.resolve(sourcePath);
+  const resolvedProjectMediaDir = path.resolve(projectMediaDir);
+  if (!isWithin(resolvedSourcePath, resolvedProjectMediaDir)) {
+    return { ok: false, status: 403, stderr: "source video is outside the project media directory" };
+  }
+  let realPath;
+  let realMediaDir;
+  try {
+    realPath = await fs.realpath(sourcePath);
+    realMediaDir = await fs.realpath(projectMediaDir);
+  } catch {
+    return { ok: false, status: 404, stderr: `source video not found: ${sourceVideo}` };
+  }
+  if (!isWithin(realPath, realMediaDir)) {
+    return { ok: false, status: 403, stderr: "source video is outside the project media directory" };
+  }
+  if (!DIGITAL_HUMAN_VIDEO_EXTENSIONS.has(path.extname(realPath).toLowerCase())) {
+    return { ok: false, status: 400, stderr: "unsupported source video type" };
+  }
+  return { ok: true, realPath };
 }
 
 async function servePreviewMedia({ mediaPath, request, response, composerRoot, digitalHumansRoot }) {
@@ -1351,6 +1451,199 @@ async function writeJsonAtomically(filePath, value) {
   await fs.rename(tmpPath, filePath);
 }
 
+async function readProviderConfig(providerConfigPath) {
+  try {
+    const parsed = JSON.parse(await fs.readFile(providerConfigPath, "utf8"));
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch (error) {
+    if (error.code === "ENOENT") return {};
+    throw error;
+  }
+}
+
+function normalizeProviderConfig(id, config = {}) {
+  const definition = PROVIDER_DEFINITIONS.find((provider) => provider.id === id);
+  return {
+    id,
+    label: definition.label,
+    enabled: Boolean(config.enabled ?? definition.enabled ?? false),
+    ...(config.baseUrl || definition.baseUrl ? { baseUrl: config.baseUrl || definition.baseUrl } : {}),
+    ...(config.endpoint || definition.endpoint ? { endpoint: config.endpoint || definition.endpoint } : {}),
+    ...(config.apiKeyEnvVar ? { apiKeyEnvVar: config.apiKeyEnvVar } : {}),
+    ...(config.proxy ? { proxy: config.proxy } : {}),
+    ...(config.extra || definition.extra ? { extra: { ...(definition.extra || {}), ...(config.extra || {}) } } : {}),
+  };
+}
+
+async function loadProviders({ providerConfigPath }) {
+  const persisted = await readProviderConfig(providerConfigPath);
+  return PROVIDER_DEFINITIONS.map((definition) => normalizeProviderConfig(definition.id, persisted[definition.id]));
+}
+
+function providerEnv(providerEnvPath, env) {
+  return { ...process.env, ...env, ...loadEnvFiles([providerEnvPath]) };
+}
+
+function redactProvider(provider, envValues) {
+  return {
+    ...provider,
+    isKeySet: provider.apiKeyEnvVar ? Boolean(envValues[provider.apiKeyEnvVar]) : false,
+  };
+}
+
+function validateProviderId(id) {
+  return PROVIDER_IDS.has(id);
+}
+
+function isHttpUrl(value) {
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function validateProviderPatch(body) {
+  const failures = [];
+  for (const key of ["baseUrl", "endpoint", "proxy"]) {
+    if (body[key] !== undefined && body[key] !== "" && (typeof body[key] !== "string" || !isHttpUrl(body[key]))) {
+      failures.push(`${key} must be an http(s) URL`);
+    }
+  }
+  if (body.apiKeyEnvVar !== undefined && body.apiKeyEnvVar !== "" && !/^[A-Za-z_][A-Za-z0-9_]*$/.test(body.apiKeyEnvVar)) {
+    failures.push("apiKeyEnvVar must be an environment variable name");
+  }
+  if (body.apiKeyEnvVar !== undefined && body.apiKeyEnvVar !== "" && !isAllowedProviderSecretEnvVar(body.apiKeyEnvVar)) {
+    failures.push("apiKeyEnvVar must be a non-dangerous *_API_KEY or *_TOKEN environment variable name");
+  }
+  if (body.enabled !== undefined && typeof body.enabled !== "boolean") {
+    failures.push("enabled must be boolean");
+  }
+  if (body.extra !== undefined && (body.extra === null || typeof body.extra !== "object" || Array.isArray(body.extra))) {
+    failures.push("extra must be an object");
+  }
+  if (body.apiKeyValue !== undefined && typeof body.apiKeyValue !== "string") {
+    failures.push("apiKeyValue must be a string");
+  }
+  return failures;
+}
+
+function isAllowedProviderSecretEnvVar(value) {
+  const name = String(value || "");
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) return false;
+  if (DANGEROUS_PROVIDER_SECRET_ENV.has(name)) return false;
+  if (/^(?:LD_|DYLD_)/.test(name)) return false;
+  return /(?:_API_KEY|_TOKEN)$/.test(name);
+}
+
+function providerPatchFromBody(body) {
+  const patch = {};
+  for (const key of ["enabled", "baseUrl", "endpoint", "apiKeyEnvVar", "proxy", "extra"]) {
+    if (body[key] !== undefined) patch[key] = body[key];
+  }
+  return patch;
+}
+
+async function saveProviderConfig(providerConfigPath, configs) {
+  const persisted = {};
+  for (const provider of configs) {
+    persisted[provider.id] = Object.fromEntries(Object.entries(provider).filter(([key]) => key !== "id" && key !== "label" && key !== "isKeySet"));
+  }
+  await writeJsonAtomically(providerConfigPath, persisted);
+}
+
+function envValueLine(name, value) {
+  return `${name}=${JSON.stringify(value)}`;
+}
+
+async function writeProviderSecret(providerEnvPath, envVar, value, env) {
+  if (!envVar || value === undefined) return;
+  let lines = [];
+  try {
+    lines = (await fs.readFile(providerEnvPath, "utf8")).split(/\r?\n/);
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
+  const pattern = new RegExp(`^${envVar.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}=`);
+  let replaced = false;
+  lines = lines.map((line) => {
+    if (pattern.test(line)) {
+      replaced = true;
+      return envValueLine(envVar, value);
+    }
+    return line;
+  });
+  if (!replaced) {
+    if (lines.length && lines.at(-1) !== "") lines.push("");
+    lines.push(envValueLine(envVar, value));
+  }
+  await fs.mkdir(path.dirname(providerEnvPath), { recursive: true });
+  await fs.writeFile(providerEnvPath, `${lines.filter((line, index) => line !== "" || index !== lines.length - 1).join("\n")}\n`, "utf8");
+  env[envVar] = value;
+}
+
+function providerHealthUrl(provider) {
+  const base = provider.endpoint || provider.baseUrl;
+  if (!base) return null;
+  if (provider.id === "tts") return new URL(provider.extra?.healthPath || "/health", base).toString();
+  if (provider.id === "duix") return new URL(provider.extra?.healthPath || "/easy/query", base).toString();
+  return base;
+}
+
+async function fetchHealth(url, timeoutMs = 2000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const started = Date.now();
+  try {
+    const result = await fetch(url, { method: "GET", signal: controller.signal });
+    return {
+      ok: result.ok,
+      status: result.ok ? "up" : "down",
+      latencyMs: Date.now() - started,
+      detail: `HTTP ${result.status}`,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      status: "down",
+      latencyMs: Date.now() - started,
+      detail: error.message || String(error),
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function isAllowedProviderHealthUrl(url, env = {}) {
+  if (env.CONSOLE_API_ALLOW_REMOTE_PROVIDER_HEALTH === "1" || process.env.CONSOLE_API_ALLOW_REMOTE_PROVIDER_HEALTH === "1") return true;
+  try {
+    const parsed = new URL(url);
+    return ["localhost", "127.0.0.1", "::1", "[::1]"].includes(parsed.hostname);
+  } catch {
+    return false;
+  }
+}
+
+async function checkProviderHealth(provider, env = {}) {
+  if (!provider.enabled) {
+    return { ok: false, status: "unconfigured", detail: "provider is disabled" };
+  }
+  if (provider.id === "asr") {
+    return { ok: true, status: "up", detail: "local ASR provider is enabled" };
+  }
+  const url = providerHealthUrl(provider);
+  if (!url) {
+    return { ok: false, status: "unconfigured", detail: "provider endpoint is not configured" };
+  }
+  // Provider health checks are server-side fetches. By default they are limited
+  // to loopback services to avoid turning the local console into an SSRF probe.
+  if (!isAllowedProviderHealthUrl(url, env)) {
+    return { ok: false, status: "unconfigured", detail: "provider health-check host is not allowed" };
+  }
+  return fetchHealth(url);
+}
+
 async function loadPackagingPlanForProject({ composerRoot, projectName }) {
   const projectDir = projectDirForName(composerRoot, projectName);
   const planPath = path.join(projectDir, "packaging-plan.json");
@@ -1376,6 +1669,292 @@ async function loadPackagingPlanForProject({ composerRoot, projectName }) {
     planPath,
     manifestPath,
   };
+}
+
+function historyPathForProject(composerRoot, projectName) {
+  return path.join(projectDirForName(composerRoot, projectName), "history.json");
+}
+
+function snapshotsDirForProject(composerRoot, projectName) {
+  return path.join(projectDirForName(composerRoot, projectName), "snapshots");
+}
+
+function safeHistoryId(value) {
+  const id = String(value || "");
+  return /^[A-Za-z0-9_-]+$/.test(id) ? id : null;
+}
+
+async function validateHistorySnapshotPath({ composerRoot, projectName, snapshotPath, forWrite = false }) {
+  const projectDir = projectDirForName(composerRoot, projectName);
+  const snapshotsDir = snapshotsDirForProject(composerRoot, projectName);
+  const resolvedSnapshotPath = path.resolve(snapshotPath);
+  const resolvedSnapshotsDir = path.resolve(snapshotsDir);
+  if (!isWithin(resolvedSnapshotPath, resolvedSnapshotsDir)) {
+    return { ok: false, status: 404, error: "history snapshot not found" };
+  }
+  if (forWrite) await fs.mkdir(snapshotsDir, { recursive: true });
+
+  let projectStat;
+  let snapshotsStat;
+  try {
+    projectStat = await fs.lstat(projectDir);
+    snapshotsStat = await fs.lstat(snapshotsDir);
+  } catch (error) {
+    if (error.code === "ENOENT") return { ok: false, status: 404, error: "history snapshot not found" };
+    throw error;
+  }
+  if (projectStat.isSymbolicLink() || snapshotsStat.isSymbolicLink() || !snapshotsStat.isDirectory()) {
+    return { ok: false, status: 404, error: "history snapshot not found" };
+  }
+
+  const realProjectDir = await fs.realpath(projectDir);
+  const realSnapshotsDir = await fs.realpath(snapshotsDir);
+  if (!isWithin(realSnapshotsDir, realProjectDir)) {
+    return { ok: false, status: 404, error: "history snapshot not found" };
+  }
+
+  try {
+    const snapshotStat = await fs.lstat(snapshotPath);
+    if (snapshotStat.isSymbolicLink() || !snapshotStat.isFile()) {
+      return { ok: false, status: 404, error: "history snapshot not found" };
+    }
+    const realSnapshotPath = await fs.realpath(snapshotPath);
+    if (!isWithin(realSnapshotPath, realSnapshotsDir)) {
+      return { ok: false, status: 404, error: "history snapshot not found" };
+    }
+  } catch (error) {
+    if (error.code === "ENOENT" && forWrite) return { ok: true };
+    if (error.code === "ENOENT") return { ok: false, status: 404, error: "history snapshot not found" };
+    throw error;
+  }
+
+  return { ok: true };
+}
+
+async function writeHistorySnapshotAtomically({ composerRoot, projectName, id, plan }) {
+  const snapshotPath = path.join(snapshotsDirForProject(composerRoot, projectName), `${id}.json`);
+  const check = await validateHistorySnapshotPath({ composerRoot, projectName, snapshotPath, forWrite: true });
+  if (!check.ok) throw Object.assign(new Error(check.error), { status: check.status });
+  await writeJsonAtomically(snapshotPath, plan);
+}
+
+async function readProjectHistory(composerRoot, projectName) {
+  try {
+    const parsed = JSON.parse(await fs.readFile(historyPathForProject(composerRoot, projectName), "utf8"));
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    if (error.code === "ENOENT") return [];
+    throw error;
+  }
+}
+
+function nextHistoryId(kind, entries) {
+  return `${kind}-${String(entries.length + 1).padStart(4, "0")}`;
+}
+
+function redactHistoryParams(value) {
+  if (Array.isArray(value)) return value.map((entry) => redactHistoryParams(entry));
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entry]) => [
+        key,
+        /(?:api[-_]?key|token|secret|password|credential)/i.test(key) ? "[redacted]" : redactHistoryParams(entry),
+      ]),
+    );
+  }
+  return value;
+}
+
+function normalizeScriptInput(value) {
+  if (typeof value !== "string") return { ok: false, status: 400, error: "script is required" };
+  const script = sanitizeJsonString(value).trim();
+  if (!script) return { ok: false, status: 400, error: "script is required" };
+  if (script.length > MAX_FROM_SCRIPT_CHARS) {
+    return { ok: false, status: 413, error: `script must be ${MAX_FROM_SCRIPT_CHARS} characters or fewer` };
+  }
+  return { ok: true, script };
+}
+
+function splitScriptIntoChunks(script) {
+  const paragraphs = script
+    .split(/\n{2,}|\r?\n/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const chunks = [];
+  for (const paragraph of paragraphs.length ? paragraphs : [script]) {
+    const sentences = paragraph
+      .split(/(?<=[。！？!?；;，,、])/u)
+      .map((part) => part.trim())
+      .filter(Boolean);
+    chunks.push(...(sentences.length ? sentences : [paragraph]));
+  }
+  return chunks.length ? chunks : [script];
+}
+
+function splitTextByBudget(value, maxWeight) {
+  const pieces = splitScriptIntoChunks(value);
+  const chunks = [];
+  for (const piece of pieces) {
+    const text = compactWhitespace(piece);
+    if (!text) continue;
+    if (textWeight(text) <= maxWeight) {
+      chunks.push(text);
+      continue;
+    }
+    let current = "";
+    let currentWeight = 0;
+    for (const char of text) {
+      const next = char.charCodeAt(0) > 127 ? 2 : 1;
+      if (current && currentWeight + next > maxWeight) {
+        chunks.push(current.trim());
+        current = "";
+        currentWeight = 0;
+      }
+      if (next > maxWeight) continue;
+      current += char;
+      currentWeight += next;
+    }
+    if (current.trim()) chunks.push(current.trim());
+  }
+  return chunks;
+}
+
+function transcriptFromScript(script) {
+  let cursor = 0;
+  const segments = splitScriptIntoChunks(script).map((text, index) => {
+    const duration = Math.max(3, Math.min(8, Math.ceil(compactWhitespace(text).length / 10)));
+    const start = cursor;
+    const end = Number((cursor + duration).toFixed(3));
+    cursor = end;
+    return { index, start, end, text };
+  });
+  return {
+    language: "zh",
+    text: segments.map((segment) => segment.text).join("\n"),
+    timeline: "script",
+    segments,
+  };
+}
+
+function textOnlyManifestFromScenePlan({ scenePlan, compositionId, title, output }) {
+  const duration = Number(Math.max(...scenePlan.scenes.map((scene) => scene.end)).toFixed(3));
+  return {
+    compositionId,
+    duration,
+    output,
+    hyperframesEntry: output,
+    scenes: scenePlan.scenes.map((scene, index) => {
+      const text = compactWhitespace(scene.text || scene.summary || "");
+      if (index === 0) {
+        return {
+          id: scene.id,
+          component: "TitleCard",
+          scene_type: "title_card",
+          start: scene.start,
+          duration: scene.duration,
+          track: 10 + index * 10,
+          props: {
+            cornerLeft: "脚本生成",
+            cornerName: `场景 ${index + 1}`,
+            kicker: "确定性切分",
+            title: clipTextByWeight(title, TEXT_BUDGETS.title) || clipTextByWeight(scene.summary, TEXT_BUDGETS.title) || `场景 ${index + 1}`,
+            subline: clipTextByWeight(text, TEXT_BUDGETS.subline) || "文本卡片",
+          },
+        };
+      }
+      const items = splitTextByBudget(scene.text || scene.summary || "", TEXT_BUDGETS.stepItem)
+        .map(compactWhitespace)
+        .filter(Boolean)
+        .slice(0, 3);
+      const budgetedItems = items.map((item) => clipTextByWeight(item, TEXT_BUDGETS.stepItem)).filter(Boolean);
+      return {
+        id: scene.id,
+        component: "StepCard",
+        scene_type: "step_card",
+        start: scene.start,
+        duration: scene.duration,
+        track: 10 + index * 10,
+        finePieces: ["StepPanel"],
+        props: {
+          kicker: `场景 ${String(index + 1).padStart(2, "0")}`,
+          title: clipTextByWeight(scene.summary, TEXT_BUDGETS.title) || `场景 ${index + 1}`,
+          items: budgetedItems.length ? budgetedItems : [clipTextByWeight(text, TEXT_BUDGETS.stepItem) || `场景 ${index + 1}`],
+        },
+      };
+    }),
+  };
+}
+
+function buildFromScriptPlan({ script, projectName, title }) {
+  const transcript = transcriptFromScript(script);
+  const scenePlan = buildScenePlan({ transcript, targetWindowSeconds: 10, maxScenes: 12 });
+  const output = managedProjectOutput(projectName);
+  const manifest = textOnlyManifestFromScenePlan({ scenePlan, compositionId: projectName, title, output });
+  const plan = manifestToPlan(manifest, { projectId: projectName });
+  return { transcript, scenePlan, manifest, plan };
+}
+
+async function appendProjectHistory({
+  composerRoot,
+  projectName,
+  kind,
+  params = {},
+  artifacts = {},
+  validation = { ok: true },
+  result = {},
+  plan = null,
+  now = isoNow(),
+}) {
+  const projectDir = projectDirForName(composerRoot, projectName);
+  await fs.mkdir(projectDir, { recursive: true });
+  const entries = await readProjectHistory(composerRoot, projectName);
+  const id = nextHistoryId(kind, entries);
+  let snapshotPlan = plan;
+  if (!snapshotPlan) {
+    const loaded = await loadPackagingPlanForProject({ composerRoot, projectName });
+    if (loaded.ok) snapshotPlan = loaded.plan;
+  }
+  let planSnapshotRef = null;
+  if (snapshotPlan) {
+    planSnapshotRef = `snapshots/${id}.json`;
+    await writeHistorySnapshotAtomically({ composerRoot, projectName, id, plan: snapshotPlan });
+  }
+  const entry = {
+    id,
+    ts: now,
+    kind,
+    params: redactHistoryParams(params),
+    planSnapshotRef,
+    artifacts,
+    validation,
+    result,
+  };
+  await writeJsonAtomically(historyPathForProject(composerRoot, projectName), [...entries, entry]);
+  return entry;
+}
+
+async function readProjectHistoryEntry(composerRoot, projectName, entryId) {
+  const id = safeHistoryId(entryId);
+  if (!id) return { ok: false, status: 404, error: "history entry not found" };
+  const entries = await readProjectHistory(composerRoot, projectName);
+  const entry = entries.find((item) => item.id === id);
+  if (!entry) return { ok: false, status: 404, error: "history entry not found" };
+  let plan = null;
+  if (entry.planSnapshotRef) {
+    const snapshotPath = path.join(projectDirForName(composerRoot, projectName), entry.planSnapshotRef);
+    const snapshotsDir = snapshotsDirForProject(composerRoot, projectName);
+    const relative = path.relative(snapshotsDir, snapshotPath);
+    if (relative.startsWith("..") || path.isAbsolute(relative)) return { ok: false, status: 404, error: "history snapshot not found" };
+    const snapshotCheck = await validateHistorySnapshotPath({ composerRoot, projectName, snapshotPath });
+    if (!snapshotCheck.ok) return snapshotCheck;
+    try {
+      plan = JSON.parse(await fs.readFile(snapshotPath, "utf8"));
+    } catch (error) {
+      if (error.code === "ENOENT") return { ok: false, status: 404, error: "history snapshot not found" };
+      throw error;
+    }
+  }
+  return { ok: true, entry, plan };
 }
 
 function managedProjectOutput(projectName) {
@@ -1591,21 +2170,231 @@ export async function defaultRouteBImporter(
   }
 }
 
-async function localizeSkillProjectAudio({ composerRoot, projectName, plan }) {
-  const sourceAudio = plan.source?.audio;
-  if (!sourceAudio || !path.isAbsolute(sourceAudio)) return plan;
-  const ext = path.extname(sourceAudio) || ".wav";
-  const audioRef = `projects/${projectName}/audio/master${ext}`;
-  const audioPath = path.join(composerRoot, audioRef);
-  await fs.mkdir(path.dirname(audioPath), { recursive: true });
-  await fs.copyFile(sourceAudio, audioPath);
+function collectSkillProjectMediaPaths(plan) {
+  const values = [];
+  if (typeof plan.source?.video === "string") values.push(plan.source.video);
+  if (typeof plan.source?.audio === "string") values.push(plan.source.audio);
+  for (const clip of plan.tracks?.video || []) {
+    if (typeof clip.src === "string") values.push(clip.src);
+  }
+  for (const clip of plan.tracks?.audio || []) {
+    if (typeof clip.src === "string") values.push(clip.src);
+  }
+  for (const card of plan.tracks?.card || []) {
+    collectStringMediaValues(card.media, values);
+    collectStringMediaValues(card.engine?.props?.media, values);
+  }
+  for (const segment of plan.segments || []) {
+    collectStringMediaValues(segment.media, values);
+  }
+  return [...new Set(values.filter((value) => typeof value === "string" && path.isAbsolute(value)))];
+}
+
+async function validateImportFilePath(filePath, importRoots = [], { allowedExtensions = SKILL_LOCALIZED_MEDIA_EXTENSIONS } = {}) {
+  if (typeof filePath !== "string" || !filePath.trim()) {
+    return { ok: false, status: 400, error: "media path is required" };
+  }
+  if (filePath.includes("://")) {
+    return { ok: false, status: 400, error: "media path must be a local filesystem path, not a URL/protocol" };
+  }
+  if (filePath.includes("\0")) {
+    return { ok: false, status: 400, error: "media path contains an invalid null byte" };
+  }
+  if (!path.isAbsolute(filePath)) {
+    return { ok: false, status: 400, error: "media path must be absolute before localization" };
+  }
+  const ext = path.extname(filePath).toLowerCase();
+  if (allowedExtensions && !allowedExtensions.has(ext)) {
+    return { ok: false, status: 400, error: `unsupported media extension for localization: ${ext || "(none)"}` };
+  }
+
+  let realPath;
+  try {
+    realPath = await fs.realpath(filePath);
+  } catch {
+    return { ok: false, status: 404, error: `media path not found: ${filePath}` };
+  }
+  const roots = await realImportRoots(importRoots);
+  if (!roots.some((root) => isWithin(realPath, root))) {
+    return { ok: false, status: 403, error: `media path is outside allowed import roots: ${filePath}` };
+  }
+  try {
+    const stat = await fs.stat(realPath);
+    if (!stat.isFile()) return { ok: false, status: 400, error: `media path is not a file: ${filePath}` };
+    return { ok: true, realPath, stat: statSnapshot(stat) };
+  } catch {
+    return { ok: false, status: 404, error: `media path not found: ${filePath}` };
+  }
+}
+
+function safeMediaFileName(filePath) {
+  const parsed = path.parse(filePath);
+  const name = parsed.name.replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "media";
+  const ext = parsed.ext.replace(/[^A-Za-z0-9.]/g, "") || ".bin";
+  return `${name}${ext}`;
+}
+
+async function allocateLocalizedMediaTarget({ mediaDir, realPath, usedNames }) {
+  const parsed = path.parse(safeMediaFileName(realPath));
+  for (let index = 0; index < 1000; index += 1) {
+    const fileName = index === 0 ? `${parsed.name}${parsed.ext}` : `${parsed.name}-${index + 1}${parsed.ext}`;
+    if (usedNames.has(fileName)) continue;
+    const targetPath = path.join(mediaDir, fileName);
+    try {
+      await fs.lstat(targetPath);
+      usedNames.add(fileName);
+      continue;
+    } catch {
+      usedNames.add(fileName);
+      return { fileName, targetPath };
+    }
+  }
+  throw new Error(`could not allocate localized media name for ${realPath}`);
+}
+
+function statSnapshot(stat) {
   return {
-    ...plan,
-    source: { ...(plan.source || {}), audio: audioRef },
-    tracks: {
-      ...(plan.tracks || {}),
-      audio: (plan.tracks?.audio || []).map((clip, index) => (index === 0 ? { ...clip, src: audioRef } : clip)),
-    },
+    dev: stat.dev,
+    ino: stat.ino,
+    size: stat.size,
+    mtimeMs: stat.mtimeMs,
+  };
+}
+
+function sameStatSnapshot(left, right) {
+  return left.dev === right.dev && left.ino === right.ino && left.size === right.size && left.mtimeMs === right.mtimeMs;
+}
+
+async function prepareLocalizedMediaDir({ composerRoot, projectName }) {
+  const projectsRoot = path.join(composerRoot, "projects");
+  const projectDir = projectDirForName(composerRoot, projectName);
+  const mediaRefDir = `projects/${projectName}/media`;
+  const mediaDir = path.join(composerRoot, mediaRefDir);
+  await fs.mkdir(projectsRoot, { recursive: true });
+  try {
+    const projectStat = await fs.lstat(projectDir);
+    if (projectStat.isSymbolicLink()) {
+      const error = new Error("project directory must not be a symlink");
+      error.status = 400;
+      throw error;
+    }
+    if (!projectStat.isDirectory()) {
+      const error = new Error("project directory must be a real directory");
+      error.status = 400;
+      throw error;
+    }
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+    await fs.mkdir(projectDir);
+  }
+  const [realProjectsRoot, realProjectDir] = await Promise.all([fs.realpath(projectsRoot), fs.realpath(projectDir)]);
+  if (!isWithin(realProjectDir, realProjectsRoot)) {
+    const error = new Error("project directory escapes the composer projects root");
+    error.status = 400;
+    throw error;
+  }
+  try {
+    const existing = await fs.lstat(mediaDir);
+    if (existing.isSymbolicLink()) {
+      const error = new Error("project media directory must not be a symlink");
+      error.status = 400;
+      throw error;
+    }
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
+  await fs.mkdir(mediaDir, { recursive: true });
+  const realMediaDir = await fs.realpath(mediaDir);
+  if (!isWithin(realMediaDir, realProjectDir)) {
+    const error = new Error("project media directory escapes the project root");
+    error.status = 400;
+    throw error;
+  }
+  const mediaStat = await fs.lstat(mediaDir);
+  if (!mediaStat.isDirectory() || mediaStat.isSymbolicLink()) {
+    const error = new Error("project media directory must be a real directory");
+    error.status = 400;
+    throw error;
+  }
+  return { mediaRefDir, mediaDir };
+}
+
+async function copyLocalizedMediaFile(realPath, targetPath, sourceStat) {
+  const targetDir = path.dirname(targetPath);
+  const tempPath = path.join(targetDir, `.${path.basename(targetPath)}.${process.pid}.${Date.now()}.tmp`);
+  let readHandle;
+  try {
+    try {
+      const targetStat = await fs.lstat(targetPath);
+      if (targetStat.isSymbolicLink()) throw new Error("localized media target must not be a symlink");
+      throw Object.assign(new Error("localized media target already exists"), { code: "EEXIST" });
+    } catch (error) {
+      if (error.code !== "ENOENT") throw error;
+    }
+    readHandle = await fs.open(realPath, "r");
+    const openedStat = statSnapshot(await readHandle.stat());
+    if (!sameStatSnapshot(sourceStat, openedStat)) {
+      throw new Error("media source changed during localization");
+    }
+    await pipeline(readHandle.createReadStream({ autoClose: false }), fsSync.createWriteStream(tempPath, { flags: "wx" }));
+    const afterStat = statSnapshot(await readHandle.stat());
+    if (!sameStatSnapshot(openedStat, afterStat)) {
+      throw new Error("media source changed during localization");
+    }
+    await fs.link(tempPath, targetPath);
+  } finally {
+    await readHandle?.close();
+    await fs.rm(tempPath, { force: true });
+  }
+}
+
+function replaceLocalizedMediaPaths(value, replacements) {
+  if (typeof value === "string") return replacements.get(value) || value;
+  if (Array.isArray(value)) return value.map((item) => replaceLocalizedMediaPaths(item, replacements));
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, replaceLocalizedMediaPaths(item, replacements)]));
+}
+
+async function localizeSkillProjectMedia({ composerRoot, projectName, plan, importRoots }) {
+  const mediaPaths = collectSkillProjectMediaPaths(plan);
+  if (!mediaPaths.length) return { plan, localizedPaths: [] };
+
+  const { mediaRefDir, mediaDir } = await prepareLocalizedMediaDir({ composerRoot, projectName });
+
+  const replacements = new Map();
+  const realPathRefs = new Map();
+  const usedNames = new Set();
+  const localizedPaths = [];
+
+  for (const mediaPath of mediaPaths) {
+    const check = await validateImportFilePath(mediaPath, importRoots);
+    if (!check.ok) {
+      const error = new Error(check.error);
+      error.status = check.status;
+      throw error;
+    }
+
+    let ref = realPathRefs.get(check.realPath);
+    if (!ref) {
+      const target = await allocateLocalizedMediaTarget({ mediaDir, realPath: check.realPath, usedNames });
+      await copyLocalizedMediaFile(check.realPath, target.targetPath, check.stat);
+      ref = `${mediaRefDir}/${target.fileName}`;
+      localizedPaths.push(target.targetPath);
+      realPathRefs.set(check.realPath, ref);
+    }
+    replacements.set(mediaPath, ref);
+    replacements.set(check.realPath, ref);
+  }
+
+  return { plan: replaceLocalizedMediaPaths(plan, replacements), localizedPaths };
+}
+
+function skillHandoffAssetsFromPlan(plan) {
+  const cards = plan.tracks?.card || [];
+  return {
+    digitalHumans: [...new Set(cards.map((card) => card.media?.pip).filter(Boolean))],
+    screens: [...new Set(cards.map((card) => card.media?.screen).filter(Boolean))],
+    presenters: [...new Set(cards.map((card) => card.media?.presenter).filter(Boolean))],
   };
 }
 
@@ -1629,6 +2418,8 @@ export function createApiServer(options = {}) {
   const importRoots = options.importRoots || getImportRoots(env);
   const digitalHumansRoot = options.digitalHumansRoot || path.resolve(composerRoot, "..", "assets", "digital-humans");
   const templatesRoot = options.templatesRoot || path.resolve(import.meta.dirname, "../../../templates");
+  const providerConfigPath = options.providerConfigPath || path.resolve(import.meta.dirname, "../../../provider-config.json");
+  const providerEnvPath = options.providerEnvPath || path.resolve(import.meta.dirname, "../../../.env.local");
   // Per-name lock: reject a concurrent import of the same name so two runs can't
   // clobber each other's shared tmp/project dirs. (A real queue is deferred.)
   const importsInFlight = new Set();
@@ -1680,6 +2471,50 @@ export function createApiServer(options = {}) {
       if (request.method === "GET" && url.pathname === "/manifests") {
         const files = await fs.readdir(path.join(composerRoot, "manifests"));
         jsonResponse(response, 200, { manifests: files.filter((file) => file.endsWith(".json")).map((file) => file.replace(/\.json$/, "")).sort() });
+        return;
+      }
+
+      if (request.method === "GET" && url.pathname === "/providers") {
+        const envValues = providerEnv(providerEnvPath, env);
+        const providers = await loadProviders({ providerConfigPath });
+        jsonResponse(response, 200, { providers: providers.map((provider) => redactProvider(provider, envValues)) });
+        return;
+      }
+
+      if (parts[0] === "providers" && parts.length === 2 && request.method === "PUT") {
+        const providerId = parts[1];
+        if (!validateProviderId(providerId)) {
+          jsonResponse(response, 404, { ok: false, error: "provider not found" });
+          return;
+        }
+        const body = await readJsonBody(request);
+        const failures = validateProviderPatch(body);
+        if (failures.length) {
+          jsonResponse(response, 422, { ok: false, error: failures.join("; "), failures });
+          return;
+        }
+        const providers = await loadProviders({ providerConfigPath });
+        const nextProviders = providers.map((provider) =>
+          provider.id === providerId ? normalizeProviderConfig(provider.id, { ...provider, ...providerPatchFromBody(body) }) : provider,
+        );
+        await saveProviderConfig(providerConfigPath, nextProviders);
+        const nextProvider = nextProviders.find((provider) => provider.id === providerId);
+        if (body.apiKeyValue !== undefined) {
+          await writeProviderSecret(providerEnvPath, nextProvider.apiKeyEnvVar, body.apiKeyValue, env);
+        }
+        jsonResponse(response, 200, { ok: true, provider: redactProvider(nextProvider, providerEnv(providerEnvPath, env)) });
+        return;
+      }
+
+      if (parts[0] === "providers" && parts.length === 3 && parts[2] === "health-check" && request.method === "POST") {
+        const providerId = parts[1];
+        if (!validateProviderId(providerId)) {
+          jsonResponse(response, 404, { ok: false, error: "provider not found" });
+          return;
+        }
+        const provider = (await loadProviders({ providerConfigPath })).find((item) => item.id === providerId);
+        const health = await checkProviderHealth(provider, env);
+        jsonResponse(response, 200, { providerId, ...health });
         return;
       }
 
@@ -1836,18 +2671,31 @@ export function createApiServer(options = {}) {
             return;
           }
           let converted;
+          let localizedPaths = [];
           try {
             converted = await skillOutputToPackagingPlan(dirCheck.realPath, { projectId: name });
+            const localized = await localizeSkillProjectMedia({ composerRoot, projectName: name, plan: converted.plan, importRoots });
+            localizedPaths = localized.localizedPaths;
+            converted = {
+              ...converted,
+              plan: localized.plan,
+            };
+            converted = {
+              ...converted,
+              handoff: {
+                ...converted.handoff,
+                source: converted.plan.source,
+                assets: skillHandoffAssetsFromPlan(converted.plan),
+              },
+            };
           } catch (error) {
-            jsonResponse(response, 422, { ok: false, error: error.message || String(error) });
+            await Promise.all(localizedPaths.map((filePath) => fs.rm(filePath, { force: true })));
+            jsonResponse(response, error.status || 422, { ok: false, error: error.message || String(error) });
             return;
           }
-          converted = {
-            ...converted,
-            plan: await localizeSkillProjectAudio({ composerRoot, projectName: name, plan: converted.plan }),
-          };
           const result = await savePackagingPlanForProject({ composerRoot, projectName: name, plan: converted.plan });
           if (!result.ok) {
+            await Promise.all(localizedPaths.map((filePath) => fs.rm(filePath, { force: true })));
             jsonResponse(response, result.status, { ok: false, error: result.error, failures: result.failures });
             return;
           }
@@ -1855,7 +2703,7 @@ export function createApiServer(options = {}) {
             id: name,
             name,
             recipeId: "skill-output-handoff",
-            inputs: { skillOutputPath: dirCheck.realPath },
+            inputs: { skillOutputPath: path.basename(dirCheck.realPath) },
             sourceCapabilities: ["skill-output-handoff"],
             assets: converted.handoff.assets,
             outputs: {
@@ -1864,6 +2712,16 @@ export function createApiServer(options = {}) {
             },
             updatedAt: isoNow(),
           });
+          await appendProjectHistory({
+            composerRoot,
+            projectName: name,
+            kind: "import",
+            params: { skillOutputPath: path.basename(dirCheck.realPath), projectName: name },
+            plan: result.plan,
+            artifacts: { manifestPath: result.path, planPath: result.planPath },
+            validation: { ok: true },
+            result: { ok: true, summary: converted.summary },
+          });
           jsonResponse(response, 200, {
             ok: true,
             name,
@@ -1871,9 +2729,108 @@ export function createApiServer(options = {}) {
             projectDir,
             manifestPath: result.path,
             planPath: result.planPath,
-            handoff: converted.handoff,
+            handoff: { ...converted.handoff, source: result.plan.source },
             summary: converted.summary,
           });
+        });
+        return;
+      }
+
+      if (request.method === "POST" && url.pathname === "/generate/from-script") {
+        const body = await readJsonBody(request);
+        const scriptInput = normalizeScriptInput(body.script);
+        if (!scriptInput.ok) {
+          jsonResponse(response, scriptInput.status, { ok: false, error: scriptInput.error });
+          return;
+        }
+        const name = sanitizeProjectName(body.name || body.title || "script-project");
+        if (!name) {
+          jsonResponse(response, 400, { ok: false, error: "project name is required" });
+          return;
+        }
+        await withProjectLock(name, async () => {
+          const projectDir = projectDirForName(composerRoot, name);
+          const manifestPath = path.join(composerRoot, "manifests", `${name}.json`);
+          const projectExisted = await pathExists(projectDir);
+          if (body.overwrite !== true && ((await pathExists(path.join(projectDir, "packaging-plan.json"))) || (await pathExists(manifestPath)))) {
+            jsonResponse(response, 409, { ok: false, error: `project "${name}" already exists` });
+            return;
+          }
+          let built;
+          try {
+            built = buildFromScriptPlan({
+              script: scriptInput.script,
+              projectName: name,
+              title: typeof body.title === "string" ? body.title.trim() : "",
+            });
+          } catch (error) {
+            jsonResponse(response, 422, { ok: false, error: error.message || String(error) });
+            return;
+          }
+          let result = null;
+          const transcriptPath = path.join(projectDir, "transcript.json");
+          const scenePlanPath = path.join(projectDir, "scene-plan.json");
+          const projectJsonPath = path.join(projectDir, "project.json");
+          try {
+            result = await savePackagingPlanForProject({ composerRoot, projectName: name, plan: built.plan });
+            if (!result.ok) {
+              jsonResponse(response, result.status, { ok: false, error: result.error, failures: result.failures });
+              return;
+            }
+            await writeJsonAtomically(transcriptPath, built.transcript);
+            await writeJsonAtomically(scenePlanPath, built.scenePlan);
+            await writeJsonAtomically(projectJsonPath, {
+              id: name,
+              name,
+              recipeId: "script-to-text-cards",
+              inputs: {
+                title: typeof body.title === "string" ? body.title.trim() : undefined,
+                scriptLength: scriptInput.script.length,
+              },
+              sourceCapabilities: ["script-to-text-cards"],
+              outputs: {
+                manifest: result.path,
+                packagingPlan: result.planPath,
+                transcript: transcriptPath,
+                scenePlan: scenePlanPath,
+              },
+              updatedAt: isoNow(),
+            });
+            await appendProjectHistory({
+              composerRoot,
+              projectName: name,
+              kind: "generate",
+              params: {
+                title: typeof body.title === "string" ? body.title.trim() : undefined,
+                script: scriptInput.script,
+                scriptLength: scriptInput.script.length,
+              },
+              plan: result.plan,
+              artifacts: {
+                manifestPath: result.path,
+                planPath: result.planPath,
+                transcriptPath,
+                scenePlanPath,
+              },
+              validation: { ok: true },
+              result: { ok: true, scenes: built.scenePlan.scenes.length },
+            });
+            jsonResponse(response, 200, {
+              ok: true,
+              name,
+              manifestName: name,
+              scenes: built.scenePlan.scenes.length,
+              manifestPath: result.path,
+              planPath: result.planPath,
+            });
+          } catch (error) {
+            await fs.rm(manifestPath, { force: true });
+            if (result?.planPath) await fs.rm(result.planPath, { force: true });
+            await fs.rm(transcriptPath, { recursive: true, force: true });
+            await fs.rm(projectJsonPath, { force: true });
+            if (!projectExisted) await fs.rm(projectDir, { recursive: true, force: true });
+            jsonResponse(response, error.status || 500, { ok: false, error: error.message || String(error) });
+          }
         });
         return;
       }
@@ -1897,6 +2854,15 @@ export function createApiServer(options = {}) {
             const name = safeManifestName(projectName);
             const rendered = await renderManifest({ composerRoot, logDir, runScript, name, renderOptions: renderValidation.options });
             const status = rendered.result.code === 0 ? 200 : 500;
+            await appendProjectHistory({
+              composerRoot,
+              projectName,
+              kind: "render",
+              params: renderValidation.options,
+              artifacts: { mp4Path: rendered.mp4Path, manifestPath: path.join(composerRoot, "manifests", name) },
+              validation: { ok: rendered.result.code === 0, ...(rendered.result.code === 0 ? {} : { failures: [rendered.result.stderr || "render failed"] }) },
+              result: { ok: rendered.result.code === 0, code: rendered.result.code, stage: rendered.renderSkipped ? "compose" : "render" },
+            });
             jsonResponse(response, status, {
               ok: rendered.result.code === 0,
               name: publicManifestName(name),
@@ -1918,6 +2884,13 @@ export function createApiServer(options = {}) {
           await withProjectLock(projectName, async () => {
             const result = await recaptionProject({ composerRoot, projectName, deps: recaptionDeps });
             if (!result.ok) {
+              await appendProjectHistory({
+                composerRoot,
+                projectName,
+                kind: "recaption",
+                validation: { ok: false, failures: [result.stderr || "recaption failed"] },
+                result: { ok: false, stage: result.stage },
+              });
               jsonResponse(response, result.status || 500, {
                 ok: false,
                 name: projectName,
@@ -1926,6 +2899,14 @@ export function createApiServer(options = {}) {
               });
               return;
             }
+            await appendProjectHistory({
+              composerRoot,
+              projectName,
+              kind: "recaption",
+              artifacts: { captionsPath: result.captionsPath, manifestPath: path.join(composerRoot, "manifests", `${projectName}.json`) },
+              validation: { ok: true },
+              result: { ok: true, captionCount: result.captionCount },
+            });
             jsonResponse(response, 200, result);
           });
           return;
@@ -1944,6 +2925,53 @@ export function createApiServer(options = {}) {
             workflowRun: loaded.workflowRun,
           });
           return;
+        }
+
+        if (parts.length >= 3 && parts[2] === "history") {
+          if (request.method === "GET" && parts.length === 3) {
+            const entries = await readProjectHistory(composerRoot, projectName);
+            jsonResponse(response, 200, { ok: true, name: projectName, entries: [...entries].reverse() });
+            return;
+          }
+          if (request.method === "GET" && parts.length === 4) {
+            const loaded = await readProjectHistoryEntry(composerRoot, projectName, parts[3]);
+            if (!loaded.ok) {
+              jsonResponse(response, loaded.status, { ok: false, error: loaded.error });
+              return;
+            }
+            jsonResponse(response, 200, { ok: true, name: projectName, entry: loaded.entry, plan: loaded.plan });
+            return;
+          }
+          if (request.method === "POST" && parts.length === 5 && parts[4] === "restore") {
+            await withProjectLock(projectName, async () => {
+              const loaded = await readProjectHistoryEntry(composerRoot, projectName, parts[3]);
+              if (!loaded.ok) {
+                jsonResponse(response, loaded.status, { ok: false, error: loaded.error });
+                return;
+              }
+              if (!loaded.plan) {
+                jsonResponse(response, 422, { ok: false, error: "history entry has no plan snapshot", failures: ["history entry has no plan snapshot"] });
+                return;
+              }
+              const result = await savePackagingPlanForProject({ composerRoot, projectName, plan: loaded.plan });
+              if (!result.ok) {
+                jsonResponse(response, result.status, { ok: false, error: result.error, failures: result.failures });
+                return;
+              }
+              const entry = await appendProjectHistory({
+                composerRoot,
+                projectName,
+                kind: "restore",
+                params: { restoredEntryId: loaded.entry.id },
+                plan: result.plan,
+                artifacts: { manifestPath: result.path },
+                validation: { ok: true },
+                result: { ok: true, restoredEntryId: loaded.entry.id },
+              });
+              jsonResponse(response, 200, { ok: true, name: projectName, manifestName: projectName, historyEntry: entry });
+            });
+            return;
+          }
         }
 
         if (parts.length === 3 && parts[2] === "packaging-plan") {
@@ -2067,9 +3095,28 @@ export function createApiServer(options = {}) {
           await withProjectLock(projectName, async () => {
             const result = await savePackagingPlanForProject({ composerRoot, projectName, plan });
             if (!result.ok) {
+              await appendProjectHistory({
+                composerRoot,
+                projectName,
+                kind: "apply-template",
+                params: { templateId, inputs: body.inputs || {} },
+                plan,
+                validation: { ok: false, failures: result.failures || [result.error] },
+                result: { ok: false },
+              });
               jsonResponse(response, result.status, { error: result.error, failures: result.failures });
               return;
             }
+            await appendProjectHistory({
+              composerRoot,
+              projectName,
+              kind: "apply-template",
+              params: { templateId, inputs: body.inputs || {} },
+              plan: result.plan,
+              artifacts: { manifestPath: result.path, planPath: result.planPath },
+              validation: { ok: true },
+              result: { ok: true },
+            });
             jsonResponse(response, 200, {
               ok: true,
               name: projectName,
@@ -2218,6 +3265,15 @@ export function createApiServer(options = {}) {
         await withProjectLock(projectName, async () => {
           const rendered = await renderManifest({ composerRoot, logDir, runScript, name, renderOptions: renderValidation.options });
           const status = rendered.result.code === 0 ? 200 : 500;
+          await appendProjectHistory({
+            composerRoot,
+            projectName,
+            kind: "render",
+            params: renderValidation.options,
+            artifacts: { mp4Path: rendered.mp4Path, manifestPath: path.join(composerRoot, "manifests", name) },
+            validation: { ok: rendered.result.code === 0, ...(rendered.result.code === 0 ? {} : { failures: [rendered.result.stderr || "render failed"] }) },
+            result: { ok: rendered.result.code === 0, code: rendered.result.code, stage: rendered.renderSkipped ? "compose" : "render" },
+          });
           jsonResponse(response, status, {
             ok: rendered.result.code === 0,
             name: projectName,
@@ -2373,6 +3429,18 @@ export function createApiServer(options = {}) {
               logLines.push(`blockedStage=${result.stageId || "unknown"}`);
             }
             const logPath = await writeRouteALog(logDir, name, `${logLines.join("\n")}\n`);
+            await appendProjectHistory({
+              composerRoot,
+              projectName: name,
+              kind: "import",
+              params: inputs,
+              artifacts: {
+                ...(manifestName ? { manifestPath: path.join(composerRoot, "manifests", `${name}.json`) } : {}),
+                logPath,
+              },
+              validation: { ok: true },
+              result: { ok: true, blocked: Boolean(result.blocked), stageId: result.stageId },
+            });
             jsonResponse(response, 200, {
               ok: true,
               name,
@@ -2384,6 +3452,17 @@ export function createApiServer(options = {}) {
             await fs.rm(path.join(composerRoot, "manifests", `.${name}.route-a-${process.pid}.json.tmp`), { force: true });
             if (!projectExisted) await fs.rm(projectDir, { recursive: true, force: true });
             const logPath = await writeRouteALog(logDir, name, error.stack || error.message || String(error));
+            if (projectExisted) {
+              await appendProjectHistory({
+                composerRoot,
+                projectName: name,
+                kind: "import",
+                params: inputs,
+                artifacts: { logPath },
+                validation: { ok: false, failures: [error.message || String(error)] },
+                result: { ok: false },
+              });
+            }
             jsonResponse(response, 500, {
               ok: false,
               stderr: error.message || String(error),
@@ -2498,6 +3577,18 @@ export function createApiServer(options = {}) {
               logLines.push(`blockedStage=${result.stageId || "unknown"}`);
             }
             const logPath = await writeProductIntroLog(logDir, name, `${logLines.join("\n")}\n`);
+            await appendProjectHistory({
+              composerRoot,
+              projectName: name,
+              kind: "import",
+              params: inputs,
+              artifacts: {
+                ...(manifestName ? { manifestPath: path.join(composerRoot, "manifests", `${name}.json`) } : {}),
+                logPath,
+              },
+              validation: { ok: true },
+              result: { ok: true, blocked: Boolean(result.blocked), stageId: result.stageId },
+            });
             jsonResponse(response, 200, {
               ok: true,
               name,
@@ -2509,6 +3600,17 @@ export function createApiServer(options = {}) {
             await fs.rm(path.join(composerRoot, "manifests", `.${name}.route-a-${process.pid}.json.tmp`), { force: true });
             if (!projectExisted) await fs.rm(projectDir, { recursive: true, force: true });
             const logPath = await writeProductIntroLog(logDir, name, error.stack || error.message || String(error));
+            if (projectExisted) {
+              await appendProjectHistory({
+                composerRoot,
+                projectName: name,
+                kind: "import",
+                params: inputs,
+                artifacts: { logPath },
+                validation: { ok: false, failures: [error.message || String(error)] },
+                result: { ok: false },
+              });
+            }
             jsonResponse(response, 500, {
               ok: false,
               stderr: error.message || String(error),
@@ -2574,6 +3676,16 @@ export function createApiServer(options = {}) {
               throw new Error(`route-b workflow-run failed:\n${completed.failures.join("\n")}`);
             }
             await saveWorkflowProject(projectDirForName(composerRoot, result.manifestName), created.project, completed.value, now);
+            await appendProjectHistory({
+              composerRoot,
+              projectName: result.manifestName,
+              kind: "import",
+              params: { videoPath, manifestName },
+              artifacts: { manifestPath: path.join(composerRoot, "manifests", `${result.manifestName}.json`), logPath: result.logPath },
+              validation: { ok: true },
+              result: { ok: true, scenes: result.scenes },
+              now,
+            });
             jsonResponse(response, 200, {
               ok: true,
               manifestName: result.manifestName,

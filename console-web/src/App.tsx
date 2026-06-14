@@ -14,8 +14,11 @@ import {
   chooseNativeFile,
   digitalHumanMediaPath,
   type DigitalHuman,
+  generateFromScript,
   listManifests,
   listRecipes,
+  openSkillOutput,
+  type SkillOutputResult,
   listTemplates,
   ManifestValidationError,
   putPackagingPlan,
@@ -53,6 +56,7 @@ import { fieldHint, fieldLabel, sceneRoleLabel } from "./lib/field-labels";
 import { componentName, QUALITY_LABELS, T } from "./lib/i18n";
 import { applyThemeToManifest, type Theme } from "./lib/themes";
 import { CaptionsModal } from "./shell/CaptionsModal";
+import { ProviderConfigModal } from "./shell/ProviderConfigModal";
 import { ComponentForm } from "./shell/ComponentForm";
 import { DigitalHumanPickerModal } from "./shell/DigitalHumanPickerModal";
 import { ImportSummary } from "./shell/ImportSummary";
@@ -64,12 +68,14 @@ import {
   CARD_TYPE_MARKER,
   makeCardScene,
   manifestToPlan,
+  patchManifestAudioFromLive,
   rederivePlanFromManifest,
   type CardType,
   type LibraryFilter,
   type PackagingPlan,
   type PlanCard,
 } from "./lib/packaging-plan";
+import { isEditAllowed } from "./lib/edit-gate";
 import { resolveNav, type NavId, type RailTab } from "./lib/nav";
 import { applyEdits, flattenEditable, setAtPath } from "./lib/props";
 import { getComponentDef } from "./lib/component-defs";
@@ -86,8 +92,11 @@ import {
   MEDIA_PLACEHOLDER,
   moveScene,
   placeSceneAtStart,
+  precheckUnboundMedia,
   sceneUnboundMediaCount,
+  summarizeMediaMissing,
 } from "./lib/scene-templates";
+import { generateErrorMessage, validateGenerateForm } from "./lib/generate-form";
 import { splitClip, timelineEndMax } from "./lib/timeline-edit";
 import { compact } from "./lib/string-list";
 import { computeStageGates, type StageGate } from "./lib/workflow";
@@ -95,6 +104,7 @@ import { Canvas } from "./shell/Canvas";
 import { ComponentLibrary } from "./shell/ComponentLibrary";
 import { FourTrackTimeline } from "./shell/FourTrackTimeline";
 import { Icon, type IconName } from "./shell/Icon";
+import { HistoryPanel } from "./shell/HistoryPanel";
 import { Inspector, type InspectorTab } from "./shell/Inspector";
 import { SmartStrip } from "./shell/SmartStrip";
 import { TemplateLibrary, type TemplateStatus } from "./shell/TemplateLibrary";
@@ -116,7 +126,9 @@ type Busy =
   | "render"
   | "recaption"
   | "saveCues"
-  | "applyTheme";
+  | "applyTheme"
+  | "openSkill"
+  | "generate";
 
 const EMPTY_PRODUCT_INTRO: ProductIntroValues = {
   sourceVideoPath: "",
@@ -148,7 +160,10 @@ const RAIL_TABS: { id: RailTab; icon: IconName; label: string }[] = [
 ];
 
 // P0 自由时间轴：scene → {start,duration} 跨度，喂给 timelineEndMax 算项目总时长。
-const sceneSpan = (s: Scene) => ({ start: Number(s.start ?? 0), duration: Number(s.duration ?? 0) });
+const sceneSpan = (s: Scene) => ({
+  start: Number(s.start ?? 0),
+  duration: Number(s.duration ?? 0),
+});
 
 export default function App() {
   const [manifests, setManifests] = useState<string[]>([]);
@@ -175,13 +190,16 @@ export default function App() {
   const [stylePackOpen, setStylePackOpen] = useState(false);
   const [dhPickerOpen, setDhPickerOpen] = useState(false);
   const [exportSettingsOpen, setExportSettingsOpen] = useState(false);
+  const [providerConfigOpen, setProviderConfigOpen] = useState(false); // v3-1 配置中心
   const [renderOptions, setRenderOptions] = useState<RenderOptions>({});
 
   // ③ 时间线 dock 可拉伸：高度持久化到 localStorage，跨刷新保留。web-only（指针事件）。
   const [dockHeight, setDockHeight] = useState<number>(() => {
     if (typeof localStorage === "undefined") return DOCK_DEFAULT_PX;
     const raw = Number(localStorage.getItem("pc-dock-height"));
-    return Number.isFinite(raw) && raw > 0 ? clampDockHeight(raw, typeof window !== "undefined" ? window.innerHeight : 900) : DOCK_DEFAULT_PX;
+    return Number.isFinite(raw) && raw > 0
+      ? clampDockHeight(raw, typeof window !== "undefined" ? window.innerHeight : 900)
+      : DOCK_DEFAULT_PX;
   });
   useEffect(() => {
     if (typeof localStorage === "undefined") return;
@@ -274,12 +292,18 @@ export default function App() {
   const [selectedCueId, setSelectedCueId] = useState<string | null>(null);
 
   // 剪映式全轨道选中：视频/音频轨片段选中（卡片用 selectedId、字幕用 selectedCueId）。三者互斥。
-  const [selectedClip, setSelectedClip] = useState<{ kind: "video" | "audio"; id: string } | null>(null);
+  const [selectedClip, setSelectedClip] = useState<{
+    kind: "video" | "audio";
+    id: string;
+  } | null>(null);
   // 统一选中入口：选卡片 / 选轨道片段时清掉另一种，保证 Inspector 只显示一类。
+  // 用户主动选卡 = 想编辑这张卡：退出预览模式回到可编辑画布（手柄/编辑层才渲染）。播放自动跟随
+  // （下方 effect）走裸 setSelectedId，不经此入口，故预览播放时的自动高亮不会被踢出预览。
   const selectCard = useCallback((id: string | null) => {
     setSelectedId(id);
     setSelectedClip(null);
     setSelectedCueId(null);
+    setPreviewMode(false);
   }, []);
   const selectTrackClip = useCallback((kind: "video" | "audio", id: string) => {
     setSelectedClip({ kind, id });
@@ -317,6 +341,7 @@ export default function App() {
     setStylePackOpen(false);
     setDhPickerOpen(false);
     setExportSettingsOpen(false);
+    setProviderConfigOpen(false);
   }, []);
   const openCaptionsPanel = useCallback(() => {
     closeTopModals();
@@ -336,18 +361,19 @@ export default function App() {
   }, [closeTopModals]);
 
   useEffect(() => {
-    if (!previewOpen && !captionsOpen && !stylePackOpen && !dhPickerOpen && !exportSettingsOpen) return;
+    if (!previewOpen && !captionsOpen && !stylePackOpen && !dhPickerOpen && !exportSettingsOpen && !providerConfigOpen) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") closeTopModals();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [captionsOpen, closeTopModals, dhPickerOpen, exportSettingsOpen, previewOpen, stylePackOpen]);
+  }, [captionsOpen, closeTopModals, dhPickerOpen, exportSettingsOpen, previewOpen, stylePackOpen, providerConfigOpen]);
 
   const [lintResult, setLintResult] = useState<LintResult | null>(null);
   const [inspectResult, setInspectResult] = useState<InspectResult | null>(null);
   const [composeResult, setComposeResult] = useState<ComposeResult | null>(null);
   const [composeWarnCount, setComposeWarnCount] = useState<number | null>(null);
+  const [renderWarnCount, setRenderWarnCount] = useState<number | null>(null);
   const [renderResult, setRenderResult] = useState<RenderResult | null>(null);
   const [importSummary, setImportSummary] = useState<ImportSummaryData | null>(null);
 
@@ -356,10 +382,22 @@ export default function App() {
   const [videoPath, setVideoPath] = useState("");
   const [projectName, setProjectName] = useState("");
   const [importFailure, setImportFailure] = useState<RouteBImportResult | null>(null);
+  // 打开 skill 产物：产出目录/入口路径 + 失败态。
+  const [skillOutputPath, setSkillOutputPath] = useState("");
+  const [skillFailure, setSkillFailure] = useState<SkillOutputResult | null>(null);
+  // v3-5 一句话自动生成（无凭据：粘脚本）：脚本 + 首卡标题 + 失败提示。
+  const [generateScript, setGenerateScript] = useState("");
+  const [generateTitle, setGenerateTitle] = useState("");
+  const [generateFailure, setGenerateFailure] = useState<string | null>(null);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [recipesError, setRecipesError] = useState<string | null>(null);
   const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(null);
-  const [routeA, setRouteA] = useState<RouteAValues>({ sourceVideoPath: "", topic: "", approvedScript: "", voiceReference: "" });
+  const [routeA, setRouteA] = useState<RouteAValues>({
+    sourceVideoPath: "",
+    topic: "",
+    approvedScript: "",
+    voiceReference: "",
+  });
   const [routeAFailure, setRouteAFailure] = useState<RouteARunResult | null>(null);
   const [productIntro, setProductIntro] = useState<ProductIntroValues>(EMPTY_PRODUCT_INTRO);
   const [productIntroFailure, setProductIntroFailure] = useState<RouteARunResult | null>(null);
@@ -390,6 +428,10 @@ export default function App() {
     [],
   );
   const visiblePlan = plan ?? emptyPlan;
+  // B14: recaption（字幕 ASR）是 ~30s 的长后台操作，只改 captions、不改卡片。它不该冻结整个卡片编辑层。
+  // editGateOpen = 没有任何阻塞操作，或仅在跑 recaption —— 卡片插/选/改/拖在 recaption 期间保持可用；
+  // 而服务端改写类按钮（套用模板/保存/合成/渲染/换项目）仍只在 busy===null 时可用，避免与 recaption 撞车。
+  const editGateOpen = isEditAllowed(busy);
   // 核心编辑 C：源视频可播放 URL，由 @全栈工程师 经 GET packaging-plan 放在 plan.source.videoUrl。
   // 为空时播放/预览优雅降级（按钮禁用 + 提示），不报错。
   const videoUrl = visiblePlan.source.videoUrl ?? null;
@@ -408,8 +450,10 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const loadManifest = useCallback(async (n: string) => {
-    if (!n) return;
+  // Returns the freshly-loaded manifest so callers (e.g. apply-template) can run a
+  // precheck on the new value without waiting for the async state update to settle.
+  const loadManifest = useCallback(async (n: string): Promise<Manifest | null> => {
+    if (!n) return null;
     setBusy("load");
     setError(null);
     setErrorDetails(null);
@@ -426,11 +470,13 @@ export default function App() {
       // is the single reconciliation point — everything downstream reads `plan`.
       const live = await getPackagingPlan(n).catch(() => null);
       setPlan((live as unknown as PackagingPlan) ?? manifestToPlan(m));
+      return m;
     } catch (e) {
       setManifest(null);
       setPlan(null);
       setError("无法加载项目，请重试或检查本地服务。");
       setErrorDetails(String(e));
+      return null;
     } finally {
       setBusy(null);
     }
@@ -452,23 +498,15 @@ export default function App() {
     refreshTemplates();
   }, [refreshTemplates]);
 
-  const selectedScene: Scene | undefined = useMemo(
-    () => manifest?.scenes.find((s) => s.id === selectedId),
-    [manifest, selectedId],
-  );
-  const selectedCard: PlanCard | null = useMemo(
-    () => plan?.tracks.card.find((c) => c.id === selectedId) ?? null,
-    [plan, selectedId],
-  );
+  const selectedScene: Scene | undefined = useMemo(() => manifest?.scenes.find((s) => s.id === selectedId), [manifest, selectedId]);
+  const selectedCard: PlanCard | null = useMemo(() => plan?.tracks.card.find((c) => c.id === selectedId) ?? null, [plan, selectedId]);
 
   const mediaSlots = useMemo(() => (selectedScene ? listMediaSlots(selectedScene) : []), [selectedScene]);
   const fields = useMemo(() => {
     if (!selectedScene) return [];
     const mediaPaths = new Set(mediaSlots.map((s) => s.path));
     // Hide media slots (own section) and the internal card-type marker.
-    return flattenEditable(selectedScene.props ?? {}).filter(
-      (f) => !mediaPaths.has(f.path) && f.path !== CARD_TYPE_MARKER,
-    );
+    return flattenEditable(selectedScene.props ?? {}).filter((f) => !mediaPaths.has(f.path) && f.path !== CARD_TYPE_MARKER);
   }, [selectedScene, mediaSlots]);
 
   const unboundSceneIds = useMemo(() => {
@@ -488,23 +526,43 @@ export default function App() {
   }, [manifest]);
 
   const updateScene = (id: string, mutate: (scene: Scene) => Scene) => {
-    setManifest((prev) => (prev ? { ...prev, scenes: prev.scenes.map((s) => (s.id === id ? mutate(s) : s)) } : prev));
+    // Serious-1: 非-recaption 的 busy（save/compose/render/template/load…）下禁止 mutate manifest，
+    // 防服务端改写/渲染中 UI 还能改（render 用旧版 / save 中又 dirty）。recaption 期间放行（与编辑层一致）。
+    if (!editGateOpen) return;
+    setManifest((prev) =>
+      prev
+        ? {
+            ...prev,
+            scenes: prev.scenes.map((s) => (s.id === id ? mutate(s) : s)),
+          }
+        : prev,
+    );
     setDirty(true);
+    // 任何内容/属性编辑（Inspector 改字、scene_type、画布拖拽改版式）都回到可编辑画布，
+    // 让改动立刻显示在编辑层（预览模式下编辑层不渲染，改了看不见 → B07）。
+    setPreviewMode(false);
   };
 
   const onFieldChange = (path: string, value: string) => {
     if (!selectedScene) return;
-    updateScene(selectedScene.id, (s) => ({ ...s, props: applyEdits(s.props ?? {}, { [path]: value }) }));
+    updateScene(selectedScene.id, (s) => ({
+      ...s,
+      props: applyEdits(s.props ?? {}, { [path]: value }),
+    }));
   };
 
   // 组件专属表单的数组字段（字符串数组如 browser.icons/items，或对象数组如 cards/media.items）增删改：整组替换该点路径。
   const onListChange = (path: string, items: unknown[]) => {
     if (!selectedScene) return;
-    updateScene(selectedScene.id, (s) => ({ ...s, props: setAtPath(s.props ?? {}, path, items) }));
+    updateScene(selectedScene.id, (s) => ({
+      ...s,
+      props: setAtPath(s.props ?? {}, path, items),
+    }));
   };
 
   // 媒体绑定：原生文件选择器选一个 mp4 → 把绝对路径写进 card.props.media.<slot>（落 manifest + dirty 持久）。
   const onBindMedia = async (slotPath: string) => {
+    if (!editGateOpen) return; // Serious-1: 非-recaption busy 下不开文件选择器、不写 manifest
     setError(null);
     try {
       const res = await chooseNativeFile("video");
@@ -522,6 +580,7 @@ export default function App() {
 
   // 画中画卡底层大画面 media.screen：内容/讲解素材，视频或图片都可选（kind:"any" 无类型过滤）。
   const onChooseScreenMedia = async (slotPath: string) => {
+    if (!editGateOpen) return; // Serious-1: 同上
     setError(null);
     try {
       const res = await chooseNativeFile("any", false, "选择内容素材（视频或图片）");
@@ -539,6 +598,7 @@ export default function App() {
 
   // 画中画卡右下角圆窗 media.pip：从数字人库选一个 → 写绝对路径进 manifest（非绑任意文件）。
   const onPickDigitalHuman = (dh: DigitalHuman) => {
+    if (!editGateOpen) return; // Serious-1: 同上
     onFieldChange("media.pip", digitalHumanMediaPath(dh));
     setDhPickerOpen(false);
   };
@@ -553,7 +613,11 @@ export default function App() {
     const end = timelineEndMax([prev.scenes.map(sceneSpan)], 0);
     const placed = { ...newScene, start: end };
     const scenes = [...prev.scenes, placed];
-    return { ...prev, scenes, duration: Math.max(timelineEndMax([scenes.map(sceneSpan)], 1), prev.duration || 0) };
+    return {
+      ...prev,
+      scenes,
+      duration: Math.max(timelineEndMax([scenes.map(sceneSpan)], 1), prev.duration || 0),
+    };
   };
 
   const onInsertScene = () => {
@@ -566,6 +630,7 @@ export default function App() {
     });
     setManifest((prev) => (prev ? appendSceneAtEnd(prev, newScene) : prev));
     setSelectedId(newScene.id);
+    setPreviewMode(false); // 插卡=要编辑新卡：回到可编辑画布，让新卡作为可选中卡片显示（B06）
     setDirty(true);
   };
 
@@ -576,13 +641,21 @@ export default function App() {
     if (!manifest) return;
     setError(null);
     setErrorDetails(null);
+    setPreviewMode(false); // 插卡=要编辑新卡：回到可编辑画布（点选/拖入都生效）（B06）
     const existingIds = manifest.scenes.map((s) => s.id);
     if (opts?.start != null && Number.isFinite(opts.start)) {
-      const newScene = makeCardScene(cardType, { afterScene: null, existingIds });
+      const newScene = makeCardScene(cardType, {
+        afterScene: null,
+        existingIds,
+      });
       setManifest((prev) => {
         if (!prev) return prev;
         const scenes = placeSceneAtStart(prev.scenes, newScene, opts.start as number);
-        return { ...prev, scenes, duration: Math.max(timelineEndMax([scenes.map(sceneSpan)], 1), prev.duration || 0) };
+        return {
+          ...prev,
+          scenes,
+          duration: Math.max(timelineEndMax([scenes.map(sceneSpan)], 1), prev.duration || 0),
+        };
       });
       setSelectedId(newScene.id);
       setDirty(true);
@@ -590,9 +663,7 @@ export default function App() {
     }
     const anchorId = opts?.afterId ?? selectedId;
     const afterScene =
-      (anchorId ? manifest.scenes.find((s) => s.id === anchorId) : null) ??
-      manifest.scenes[manifest.scenes.length - 1] ??
-      null;
+      (anchorId ? manifest.scenes.find((s) => s.id === anchorId) : null) ?? manifest.scenes[manifest.scenes.length - 1] ?? null;
     const newScene = makeCardScene(cardType, { afterScene, existingIds });
     setManifest((prev) => (prev ? appendSceneAtEnd(prev, newScene) : prev));
     setSelectedId(newScene.id);
@@ -618,7 +689,14 @@ export default function App() {
   };
 
   const onMoveScene = (sceneId: string, direction: "up" | "down") => {
-    setManifest((prev) => (prev ? applyReflow({ ...prev, scenes: moveScene(prev.scenes, sceneId, direction) }) : prev));
+    setManifest((prev) =>
+      prev
+        ? applyReflow({
+            ...prev,
+            scenes: moveScene(prev.scenes, sceneId, direction),
+          })
+        : prev,
+    );
     setDirty(true);
   };
 
@@ -627,7 +705,11 @@ export default function App() {
     setManifest((prev) => {
       if (!prev) return prev;
       const scenes = prev.scenes.map((s) => (s.id === sceneId ? { ...s, start: Number(start.toFixed(3)) } : s));
-      return { ...prev, scenes, duration: Math.max(timelineEndMax([scenes.map(sceneSpan)], 1), prev.duration || 0) };
+      return {
+        ...prev,
+        scenes,
+        duration: Math.max(timelineEndMax([scenes.map(sceneSpan)], 1), prev.duration || 0),
+      };
     });
     setSelectedId(sceneId);
     setDirty(true);
@@ -637,8 +719,20 @@ export default function App() {
   const onTrimCard = (sceneId: string, span: { start: number; duration: number }) => {
     setManifest((prev) => {
       if (!prev) return prev;
-      const scenes = prev.scenes.map((s) => (s.id === sceneId ? { ...s, start: Number(span.start.toFixed(3)), duration: Number(span.duration.toFixed(3)) } : s));
-      return { ...prev, scenes, duration: Math.max(timelineEndMax([scenes.map(sceneSpan)], 1), prev.duration || 0) };
+      const scenes = prev.scenes.map((s) =>
+        s.id === sceneId
+          ? {
+              ...s,
+              start: Number(span.start.toFixed(3)),
+              duration: Number(span.duration.toFixed(3)),
+            }
+          : s,
+      );
+      return {
+        ...prev,
+        scenes,
+        duration: Math.max(timelineEndMax([scenes.map(sceneSpan)], 1), prev.duration || 0),
+      };
     });
     setSelectedId(sceneId);
     setDirty(true);
@@ -665,13 +759,28 @@ export default function App() {
       }
       // 落 manifest（而非仅 plan 内存）：写 source.videoClips / audio.clips 多段，重派生时 manifestToPlan 不合并。
       const nextClips = arr.flatMap((x) => (x.id === c.id ? parts : [x]));
-      const toManifestClip = (x: (typeof nextClips)[number]) => ({ id: x.id, src: x.src ?? null, start: x.start, duration: x.duration, mediaStart: x.mediaStart ?? 0 });
+      const toManifestClip = (x: (typeof nextClips)[number]) => ({
+        id: x.id,
+        src: x.src ?? null,
+        start: x.start,
+        duration: x.duration,
+        mediaStart: x.mediaStart ?? 0,
+      });
       const mClips = nextClips.map(toManifestClip);
-      const m = manifest as Manifest & { source?: Record<string, unknown>; audio?: Record<string, unknown> };
+      const m = manifest as Manifest & {
+        source?: Record<string, unknown>;
+        audio?: Record<string, unknown>;
+      };
       const next: Manifest =
         selectedClip.kind === "video"
-          ? ({ ...m, source: { ...(m.source ?? {}), videoClips: mClips } } as Manifest)
-          : ({ ...m, audio: { ...(m.audio ?? {}), clips: mClips } } as Manifest);
+          ? ({
+              ...m,
+              source: { ...(m.source ?? {}), videoClips: mClips },
+            } as Manifest)
+          : ({
+              ...m,
+              audio: { ...(m.audio ?? {}), clips: mClips },
+            } as Manifest);
       setManifest(next);
       setSelectedClip({ kind: selectedClip.kind, id: parts[0].id });
       setDirty(true);
@@ -688,7 +797,11 @@ export default function App() {
       const [a, b] = splitClip({ ...selectedScene } as Scene & { start: number; duration: number }, t) as Scene[];
       delete (b as { mediaStart?: number }).mediaStart; // 卡片 scene 无源媒体入点，去掉 split 带出的字段
       const scenes = manifest.scenes.flatMap((s) => (s.id === selectedScene.id ? [a, b] : [s]));
-      setManifest({ ...manifest, scenes, duration: Math.max(timelineEndMax([scenes.map(sceneSpan)], 1), manifest.duration || 0) });
+      setManifest({
+        ...manifest,
+        scenes,
+        duration: Math.max(timelineEndMax([scenes.map(sceneSpan)], 1), manifest.duration || 0),
+      });
       setSelectedId(a.id);
       setDirty(true);
       setNotice(`已在 ${t.toFixed(2)}s 处分割卡片。`);
@@ -704,7 +817,7 @@ export default function App() {
       const el = document.activeElement as HTMLElement | null;
       const tag = el?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el?.isContentEditable) return;
-      if (busy !== null) return;
+      if (busy !== null && busy !== "recaption") return; // B14: 编辑层在 recaption 期间保持可用
       if (e.key === "Delete" || e.key === "Backspace") {
         if (!selectedId) return;
         e.preventDefault();
@@ -727,19 +840,31 @@ export default function App() {
   // the plan, so canvas/inspector reflect the change immediately.
   const onLayoutChange = (patch: Partial<Layout> | Record<string, unknown>) => {
     if (!selectedScene) return;
-    updateScene(selectedScene.id, (s) => ({ ...s, props: patchLayout(s.props ?? {}, patch as Record<string, unknown>) }));
+    updateScene(selectedScene.id, (s) => ({
+      ...s,
+      props: patchLayout(s.props ?? {}, patch as Record<string, unknown>),
+    }));
   };
   const onFontChange = (patch: Record<string, unknown>) => {
     if (!selectedScene) return;
-    updateScene(selectedScene.id, (s) => ({ ...s, props: patchFont(s.props ?? {}, patch) }));
+    updateScene(selectedScene.id, (s) => ({
+      ...s,
+      props: patchFont(s.props ?? {}, patch),
+    }));
   };
   const onColorChange = (patch: Record<string, unknown>) => {
     if (!selectedScene) return;
-    updateScene(selectedScene.id, (s) => ({ ...s, props: patchColor(s.props ?? {}, patch) }));
+    updateScene(selectedScene.id, (s) => ({
+      ...s,
+      props: patchColor(s.props ?? {}, patch),
+    }));
   };
   const onAnimationChange = (patch: Record<string, unknown>) => {
     if (!selectedScene) return;
-    updateScene(selectedScene.id, (s) => ({ ...s, props: patchAnimation(s.props ?? {}, patch) }));
+    updateScene(selectedScene.id, (s) => ({
+      ...s,
+      props: patchAnimation(s.props ?? {}, patch),
+    }));
   };
 
   // v2-P3 persistence: prefer PUT /packaging-plan (P1 projects it to the manifest
@@ -815,6 +940,50 @@ export default function App() {
       setRailTab("plan");
     });
 
+  // 把一个已建好的 console 项目加载进工作台：刷新项目列表 → setName → 弹导入摘要（N 场景/M 字幕/时长）→
+  // 拉 workflow 视图。importFromVideo（Route B）与 openSkillOutput（打开 skill 产物）共用这条加载链路。
+  const loadProjectByName = async (projName: string, fallbackScenes = 0) => {
+    const names = await listManifests();
+    setManifests(names);
+    setShowWizard(false);
+    setVideoPath("");
+    setProjectName("");
+    setSkillOutputPath("");
+    setName(projName);
+    // 导入永不静默：落在可见结果上。
+    try {
+      const m = await getManifest(projName);
+      let captionCount = 0;
+      const capSrc = (m.audio as { captions?: string } | undefined)?.captions;
+      if (capSrc) captionCount = parseCaptions(await getCaptions(capSrc)).length;
+      setImportSummary({
+        name: projName,
+        scenes: m.scenes.length,
+        captions: captionCount,
+        durationSec: Number(m.duration ?? 0),
+      });
+    } catch {
+      setImportSummary({
+        name: projName,
+        scenes: fallbackScenes,
+        captions: 0,
+        durationSec: 0,
+      });
+    }
+    try {
+      const view = await getProject(projName);
+      if (view.workflowRun) {
+        setWorkflowRun(view.workflowRun);
+        setWorkflowProject(view.name);
+        setWorkflowFailures(null);
+        const recipe = recipes.find((r) => r.id === view.workflowRun!.recipeId);
+        setWorkflowRecipe(recipe ?? (await getRecipe(view.workflowRun.recipeId).catch(() => null)));
+      }
+    } catch {
+      /* workflow view is best-effort */
+    }
+  };
+
   const onImport = () =>
     run("import", async () => {
       setImportFailure(null);
@@ -824,40 +993,46 @@ export default function App() {
         setError(result.stderr ? "导入失败（详情见下）。" : "导入失败。");
         return;
       }
-      const names = await listManifests();
-      setManifests(names);
-      setShowWizard(false);
-      setVideoPath("");
-      setProjectName("");
-      setName(result.manifestName);
-      // Block 1: build the post-import summary (scenes / captions / duration) so
-      // the import is never silent — drop the operator onto a visible result.
-      try {
-        const m = await getManifest(result.manifestName);
-        let captionCount = 0;
-        const capSrc = (m.audio as { captions?: string } | undefined)?.captions;
-        if (capSrc) captionCount = parseCaptions(await getCaptions(capSrc)).length;
-        setImportSummary({
-          name: result.manifestName,
-          scenes: m.scenes.length,
-          captions: captionCount,
-          durationSec: Number(m.duration ?? 0),
-        });
-      } catch {
-        setImportSummary({ name: result.manifestName, scenes: result.scenes ?? 0, captions: 0, durationSec: 0 });
+      await loadProjectByName(result.manifestName, result.scenes ?? 0);
+    });
+
+  // 打开 skill 产物：POST /projects/from-skill-output → 拿项目名 → 走同一条加载链路。
+  // 失败给友好提示（不可识别 → 暂不支持该 skill 产物结构），原始 error 收进「查看详情」。
+  const onOpenSkillOutput = () =>
+    run("openSkill", async () => {
+      setSkillFailure(null);
+      const result = await openSkillOutput(skillOutputPath.trim(), projectName.trim() || undefined);
+      if (!result.ok || !result.name) {
+        setSkillFailure(result);
+        setError("暂不支持该 skill 产物结构（详情见下）。");
+        return;
       }
-      try {
-        const view = await getProject(result.manifestName);
-        if (view.workflowRun) {
-          setWorkflowRun(view.workflowRun);
-          setWorkflowProject(view.name);
-          setWorkflowFailures(null);
-          const recipe = recipes.find((r) => r.id === view.workflowRun!.recipeId);
-          setWorkflowRecipe(recipe ?? (await getRecipe(view.workflowRun.recipeId).catch(() => null)));
+      await loadProjectByName(result.name);
+    });
+
+  // v3-5 一句话自动生成（无凭据）：脚本 → POST /generate/from-script → 拿项目名 → 走同一条加载链路（进 4 轨编辑器）。
+  // 前置 validateGenerateForm；失败按 status 映射友好提示（读 body 不吞）；原始 422 failures 进「校验」面板。
+  const onGenerate = () =>
+    run("generate", async () => {
+      setGenerateFailure(null);
+      const pre = validateGenerateForm({ script: generateScript, name: projectName, title: generateTitle });
+      if (!pre.ok) {
+        setGenerateFailure(pre.reason ?? "请检查脚本。");
+        return;
+      }
+      const result = await generateFromScript({
+        script: generateScript,
+        name: projectName.trim() || undefined,
+        title: generateTitle.trim() || undefined,
+      });
+      if (!result.ok || !result.manifestName) {
+        setGenerateFailure(generateErrorMessage(result));
+        if (result.failures?.length) {
+          setLintResult({ ok: false, failures: result.failures });
         }
-      } catch {
-        /* workflow view is best-effort */
+        return;
       }
+      await loadProjectByName(result.manifestName, result.scenes ?? 0);
     });
 
   const enterWorkflowFromResult = async (result: RouteARunResult) => {
@@ -869,8 +1044,7 @@ export default function App() {
       setWorkflowProject(result.name ?? null);
       setWorkflowFailures(null);
       const recipe =
-        recipes.find((r) => r.id === result.workflowRun!.recipeId) ??
-        (await getRecipe(result.workflowRun.recipeId).catch(() => null));
+        recipes.find((r) => r.id === result.workflowRun!.recipeId) ?? (await getRecipe(result.workflowRun.recipeId).catch(() => null));
       setWorkflowRecipe(recipe);
     }
     if (result.manifestName) setName(result.manifestName);
@@ -891,7 +1065,12 @@ export default function App() {
         setError(result.stderr ? "数字人流程失败（详情见下）。" : "数字人流程失败。");
         return;
       }
-      setRouteA({ sourceVideoPath: "", topic: "", approvedScript: "", voiceReference: "" });
+      setRouteA({
+        sourceVideoPath: "",
+        topic: "",
+        approvedScript: "",
+        voiceReference: "",
+      });
       setProjectName("");
       await enterWorkflowFromResult(result);
     });
@@ -923,6 +1102,7 @@ export default function App() {
   const openWizard = () => {
     setShowWizard(true);
     setImportFailure(null);
+    setSkillFailure(null);
     setRouteAFailure(null);
     setProductIntroFailure(null);
     if (recipes.length === 0) {
@@ -973,7 +1153,10 @@ export default function App() {
         if (result.failures?.length) setLintResult({ ok: false, failures: result.failures });
         return;
       }
-      setTemplateStatus({ kind: "ok", text: `已另存为模板：${result.templateId}` });
+      setTemplateStatus({
+        kind: "ok",
+        text: `已另存为模板：${result.templateId}`,
+      });
       await refreshTemplates();
     });
 
@@ -985,15 +1168,56 @@ export default function App() {
       setTemplateStatus(null);
       const result = await applyTemplate(name, templateId);
       if (!result.ok) {
-        setTemplateStatus({ kind: "error", text: result.error ?? result.failures?.join("; ") ?? "套用模板失败" });
+        // 常见失败：模板要求的媒体当前项目没有，服务端 validateManifest 直接 422，原始 failures
+        // 是「<scene> media missing: <path>」这种天书。把媒体类失败收敛成「N 处媒体待绑定（卡片…）」
+        // 的友好提示，原始 failures 仍照旧进「校验」面板，不吞。
+        const summary = result.failures?.length ? summarizeMediaMissing(result.failures) : null;
+        if (summary && summary.total > 0) {
+          const cards = summary.scenes.join("、");
+          const extra = summary.otherFailures.length ? `；另有 ${summary.otherFailures.length} 项校验问题` : "";
+          setTemplateStatus({
+            kind: "warn",
+            text: `模板 ${templateId} 未套用：需 ${summary.total} 处媒体素材，当前项目未提供（卡片 ${cards}）${extra}。请先为这些卡片绑定真实素材或改用不需媒体的模板 —— 详见「校验」。`,
+          });
+        } else {
+          setTemplateStatus({
+            kind: "error",
+            text: result.error ?? result.failures?.join("; ") ?? "套用模板失败",
+          });
+        }
         if (result.failures?.length) {
           setLintResult({ ok: false, failures: result.failures });
           setInspectorTab("validation");
         }
         return;
       }
-      setTemplateStatus({ kind: "ok", text: `已套用模板 ${templateId}，方案已重写` });
-      await loadManifest(result.manifestName ?? name);
+      // 套用成功后跑一次客户端 media 预检：模板的媒体槽常落成 TODO-bind-media 占位或
+      // 指向旧项目的失效路径，直接合成/渲染会被服务端 validateManifest 422。这里把"待绑定"
+      // 的卡片/槽位数提前在套用 banner 里点明，并给一个跳到第一个未绑定卡片的动作。
+      const loaded = await loadManifest(result.manifestName ?? name);
+      const precheck = loaded ? precheckUnboundMedia(loaded) : null;
+      if (precheck && precheck.total > 0) {
+        const cards = precheck.scenes.map((s) => `${componentName(s.component)}（${s.count}）`).join("、");
+        const first = precheck.firstUnboundSceneId;
+        setTemplateStatus({
+          kind: "warn",
+          text: `已套用模板 ${templateId}，但有 ${precheck.total} 处媒体待绑定（${cards}）—— 绑定后再渲染。`,
+          action: first
+            ? {
+                label: "跳到第一个未绑定卡片",
+                onClick: () => {
+                  selectCard(first);
+                  setInspectorTab("props"); // 媒体绑定区在「属性」面板内
+                },
+              }
+            : undefined,
+        });
+        return;
+      }
+      setTemplateStatus({
+        kind: "ok",
+        text: `已套用模板 ${templateId}，方案已重写`,
+      });
     });
 
   const stageGates = useMemo(() => {
@@ -1011,7 +1235,11 @@ export default function App() {
         labelById[s.id] = s.recipeStageId;
       }
     }
-    return computeStageGates(workflowRun.stages.map((s) => ({ id: s.id, status: s.status })), dependsOnById, labelById);
+    return computeStageGates(
+      workflowRun.stages.map((s) => ({ id: s.id, status: s.status })),
+      dependsOnById,
+      labelById,
+    );
   }, [workflowRun, workflowRecipe]);
 
   // v2 finishing cut: top-bar main-flow nav → real actions (pure resolver in
@@ -1030,7 +1258,11 @@ export default function App() {
     if (r.openExportSettings) openExportSettingsPanel();
   };
 
-  // 字幕识别: re-run ASR, then reload so the subtitle track + cues refresh.
+  // 字幕识别: re-run ASR（~30s），完成后只刷新字幕来源 + 重取 cue。
+  // B14: 不再整体 loadManifest —— recaption 只改 captions、不改卡片；而编辑层在 recaption 期间已可用
+  // （editGateOpen），整体 reload 会清掉用户在 ASR 期间做的卡片编辑/选中。字幕轨(.pc-cueclip)与字幕弹窗都从
+  // `cues` 读，cues 由 [captionsSrc, captionsReloadKey] effect 重取，故 bump reloadKey 即足够刷新；
+  // 同时防御性地从 live plan 同步 source.captions（路径若变也能跟上），但不动 manifest/selectedId/卡片。
   const onRecaption = () =>
     run("recaption", async () => {
       const result = await recaptionProject(name);
@@ -1039,7 +1271,14 @@ export default function App() {
         if (result.stderr) setLintResult({ ok: false, failures: [result.stderr] });
         return;
       }
-      await loadManifest(name);
+      const live = (await getPackagingPlan(name).catch(() => null)) as PackagingPlan | null;
+      if (live?.source?.captions) {
+        // 即时刷新预览用的 plan（cues 从 plan.source.captions 重取）。
+        setPlan((prev) => (prev ? { ...prev, source: { ...prev.source, captions: live.source.captions } } : prev));
+        // B1: 同时把 captions/audio 引用 patch 回本地 manifest（保存源）——否则之后 persist() 从旧
+        // manifest 重派生 plan 会擦掉服务端刚写入的 captions 引用。只动 audio，不 reload scenes/selection。
+        setManifest((prev) => (prev ? patchManifestAudioFromLive(prev, live.source) : prev));
+      }
       setCaptionsReloadKey((k) => k + 1);
       setNotice(`字幕已重新识别（${result.captionCount ?? "?"} 条）。`);
     });
@@ -1058,7 +1297,10 @@ export default function App() {
         duration: head?.duration ?? plan.duration,
         cues: cues.map((c) => ({ start: c.start, end: c.end, text: c.text })),
       };
-      const nextPlan = { ...plan, tracks: { ...plan.tracks, subtitle: [subtitleClip] } } as unknown as typeof plan;
+      const nextPlan = {
+        ...plan,
+        tracks: { ...plan.tracks, subtitle: [subtitleClip] },
+      } as unknown as typeof plan;
       const res = await putPackagingPlan(name, nextPlan);
       if (!res.saved) setNotice("字幕已记录到本地 plan（当前服务端 PUT 端点不可用）。");
       else setNotice("字幕已保存写入 captions.json。");
@@ -1079,7 +1321,10 @@ export default function App() {
       const next = applyThemeToManifest(manifest, theme);
       setManifest(next);
       setDirty(false);
-      const nextPlan = manifestToPlan(next, { recipeId: plan?.recipeId ?? null, segments: plan?.segments });
+      const nextPlan = manifestToPlan(next, {
+        recipeId: plan?.recipeId ?? null,
+        segments: plan?.segments,
+      });
       const res = await putPackagingPlan(name, nextPlan);
       if (!res.saved) await saveManifest(name, next);
       setStylePackOpen(false);
@@ -1088,7 +1333,19 @@ export default function App() {
 
   // 渲染 (gold): real MP4 render (compose → render). Persist latest edits first so
   // the render reflects them; surface success (MP4 link/preview) or failure stderr.
-  const onRender = () =>
+  const onRender = (force = false) => {
+    // 非阻断软门禁，与「预览(HTML)」一致：仍有未绑定媒体槽时先提示「N 未绑定，仍可继续/取消」，
+    // 不直接拦死（真路径不存在仍会照旧 422→Lint 兜底，不在前端吞）。
+    // force !== true：onRender 直接当 onClick 传时 React 会塞进事件对象，只认显式 true 才放行。
+    if (force !== true && manifest) {
+      const unbound = countUnboundMedia(manifest);
+      if (unbound > 0) {
+        setRenderWarnCount(unbound);
+        setRailTab("plan"); // 让软门禁 banner 一定可见（渲染入口可能在别的 rail/弹窗）
+        return;
+      }
+    }
+    setRenderWarnCount(null);
     run("render", async () => {
       setRenderResult(null);
       setNotice(null);
@@ -1100,6 +1357,7 @@ export default function App() {
         setError(`渲染失败（${result.stage ?? "render"}）— 见「方案」面板的 stderr。`);
       }
     });
+  };
 
   // Block 2: high-level workflow steps (导入→字幕→包装→校验→渲染) for the top-bar stepper.
   const workflowSteps = useMemo(
@@ -1116,15 +1374,19 @@ export default function App() {
 
   const component = getComponent(selectedScene?.component);
   const sceneTypes = allowedSceneTypes(selectedScene?.component);
-  const sceneTypeIllegal =
-    selectedScene?.scene_type && sceneTypes.length > 0 && !sceneTypes.includes(selectedScene.scene_type);
+  const sceneTypeIllegal = selectedScene?.scene_type && sceneTypes.length > 0 && !sceneTypes.includes(selectedScene.scene_type);
 
   // 组件专属友好表单（查注册表）：命中（StatsHero/TitleCard/StepCard…）则按其 formSchema 渲染中文字段表单，
   // 写裸 prop 路径的活儿藏在背后，编辑实时反映到画布；未命中 → 回退通用裸字段表单（见下方 fields）。
   const componentDef = getComponentDef(selectedScene?.component);
   const componentForm: ReactNode =
     selectedScene && componentDef ? (
-      <ComponentForm schema={componentDef.formSchema} props={(selectedScene.props ?? {}) as Record<string, unknown>} onText={onFieldChange} onList={onListChange} />
+      <ComponentForm
+        schema={componentDef.formSchema}
+        props={(selectedScene.props ?? {}) as Record<string, unknown>}
+        onText={onFieldChange}
+        onList={onListChange}
+      />
     ) : null;
 
   // 画中画卡（ScreenWithPip）专属媒体绑定：底层大画面 media.screen 支持视频或图片（绑定素材），
@@ -1151,7 +1413,9 @@ export default function App() {
             <span className="pc-field-hint muted">底层铺满的大画面，支持视频或图片（mp4/mov/png/jpg/webp）</span>
           </span>
           {screenBound ? (
-            <span className="media-slot-file" title={screenVal}>已绑（{screenKind}）：{screenName}</span>
+            <span className="media-slot-file" title={screenVal}>
+              已绑（{screenKind}）：{screenName}
+            </span>
           ) : (
             <span className="media-slot-file muted">未绑定</span>
           )}
@@ -1180,7 +1444,9 @@ export default function App() {
             <span className="pc-field-hint muted">从数字人库选一个，作为右下角圆形口播小窗</span>
           </span>
           {pipBound ? (
-            <span className="media-slot-file" title={pipVal}>已选数字人：{pipName}</span>
+            <span className="media-slot-file" title={pipVal}>
+              已选数字人：{pipName}
+            </span>
           ) : (
             <span className="media-slot-file muted">未选数字人</span>
           )}
@@ -1216,7 +1482,10 @@ export default function App() {
           <input value={`${componentName(selectedScene.component)}（${selectedScene.component}）`} readOnly />
         </label>
         <label className="pc-ro-field">
-          场景类型 <span className="pc-raw-type" title={`原始类型 ${selectedScene.scene_type ?? ""}`}>{sceneRoleLabel(selectedScene.component)}</span>
+          场景类型{" "}
+          <span className="pc-raw-type" title={`原始类型 ${selectedScene.scene_type ?? ""}`}>
+            {sceneRoleLabel(selectedScene.component)}
+          </span>
           {sceneTypes.length > 0 ? (
             <select value={selectedScene.scene_type ?? ""} onChange={(e) => onSceneTypeChange(e.target.value)}>
               {!sceneTypes.includes(selectedScene.scene_type ?? "") && (
@@ -1235,7 +1504,8 @@ export default function App() {
       </div>
       {sceneTypeIllegal && (
         <div className="banner warn">
-          场景类型「{selectedScene.scene_type}」不适用于 {componentName(selectedScene.component)} — 允许：{sceneTypes.join(", ")}
+          场景类型「{selectedScene.scene_type}」不适用于 {componentName(selectedScene.component)} — 允许：
+          {sceneTypes.join(", ")}
         </div>
       )}
 
@@ -1245,9 +1515,7 @@ export default function App() {
         <div className="media-binds">
           <div className="panel-title">
             媒体绑定 ({mediaSlots.length})
-            {mediaSlots.some((s) => !s.bound) && (
-              <span className="unbound-tag">{mediaSlots.filter((s) => !s.bound).length} 未绑定</span>
-            )}
+            {mediaSlots.some((s) => !s.bound) && <span className="unbound-tag">{mediaSlots.filter((s) => !s.bound).length} 未绑定</span>}
           </div>
           {mediaSlots.map((slot) => {
             const isScreen = slot.path.endsWith("screen");
@@ -1258,10 +1526,20 @@ export default function App() {
               <div className={slot.bound ? "media-slot" : "media-slot unbound"} key={slot.path}>
                 <span className="prop-path">
                   {slot.path}
-                  {!slot.bound && <span className="unbound-dot" title="unbound">●</span>}
+                  {!slot.bound && (
+                    <span className="unbound-dot" title="unbound">
+                      ●
+                    </span>
+                  )}
                 </span>
                 <span className="media-slot-hint muted">{hint}</span>
-                {slot.bound ? <span className="media-slot-file" title={slot.value}>已绑：{fname}</span> : <span className="media-slot-file muted">未绑定</span>}
+                {slot.bound ? (
+                  <span className="media-slot-file" title={slot.value}>
+                    已绑：{fname}
+                  </span>
+                ) : (
+                  <span className="media-slot-file muted">未绑定</span>
+                )}
                 <span className="media-slot-actions">
                   <button className="pc-btn ghost" onClick={() => onBindMedia(slot.path)} disabled={busy !== null}>
                     {slot.bound ? "替换视频" : "绑定视频"}
@@ -1326,20 +1604,42 @@ export default function App() {
   );
 
   // 选中的视频/音频轨片段 → Inspector 只读信息面板（类型 / 源文件名 / 时长 / 入点）。
-  const selectedTrackClipObj = selectedClip ? visiblePlan.tracks[selectedClip.kind].find((c) => c.id === selectedClip.id) ?? null : null;
+  const selectedTrackClipObj = selectedClip ? (visiblePlan.tracks[selectedClip.kind].find((c) => c.id === selectedClip.id) ?? null) : null;
   const clipInfoNode: ReactNode = selectedTrackClipObj
     ? (() => {
         const c = selectedTrackClipObj;
-        const fname = String(c.src ?? "").split(/[\\/]/).pop() || "（无源文件）";
+        const fname =
+          String(c.src ?? "")
+            .split(/[\\/]/)
+            .pop() || "（无源文件）";
         const kindLabel = selectedClip?.kind === "video" ? "视频轨片段" : "音频轨片段";
         return (
           <>
             <h4>片段信息</h4>
-            <div className="pc-kv"><span className="pc-k">类型</span><span className="pc-vv">{kindLabel}</span></div>
-            <div className="pc-kv"><span className="pc-k">源文件</span><span className="pc-vv pc-clip-src" title={String(c.src ?? "")}>{fname}</span></div>
-            <div className="pc-kv"><span className="pc-k">时长</span><span className="pc-vv">{Number(c.duration).toFixed(2)}s</span></div>
-            <div className="pc-kv"><span className="pc-k">时间轴入点</span><span className="pc-vv">{Number(c.start).toFixed(2)}s</span></div>
-            {c.mediaStart != null && <div className="pc-kv"><span className="pc-k">源媒体入点</span><span className="pc-vv">{Number(c.mediaStart).toFixed(2)}s</span></div>}
+            <div className="pc-kv">
+              <span className="pc-k">类型</span>
+              <span className="pc-vv">{kindLabel}</span>
+            </div>
+            <div className="pc-kv">
+              <span className="pc-k">源文件</span>
+              <span className="pc-vv pc-clip-src" title={String(c.src ?? "")}>
+                {fname}
+              </span>
+            </div>
+            <div className="pc-kv">
+              <span className="pc-k">时长</span>
+              <span className="pc-vv">{Number(c.duration).toFixed(2)}s</span>
+            </div>
+            <div className="pc-kv">
+              <span className="pc-k">时间轴入点</span>
+              <span className="pc-vv">{Number(c.start).toFixed(2)}s</span>
+            </div>
+            {c.mediaStart != null && (
+              <div className="pc-kv">
+                <span className="pc-k">源媒体入点</span>
+                <span className="pc-vv">{Number(c.mediaStart).toFixed(2)}s</span>
+              </div>
+            )}
             <div className="pc-note muted">选中片段后按 S 在播放头处分割。</div>
             <div className="actions">
               <button className="primary" onClick={() => onSave()} disabled={busy !== null || !dirty}>
@@ -1376,6 +1676,10 @@ export default function App() {
           ))}
         </nav>
         <div className="pc-proj">
+          <button className="pc-btn ghost pc-settings-btn" onClick={() => setProviderConfigOpen(true)} title="配置中心 · 模型与服务">
+            <Icon name="settings" size={15} />
+            设置
+          </button>
           <select className="pc-projname" value={name} onChange={(e) => setName(e.target.value)} disabled={busy !== null}>
             {manifests.length === 0 && <option value="">（无项目）</option>}
             {manifests.map((n) => (
@@ -1387,7 +1691,12 @@ export default function App() {
           <button className="pc-btn ghost" onClick={() => onCompose()} disabled={busy !== null || !manifest}>
             预览
           </button>
-          <button className="pc-btn gold" onClick={onRender} disabled={busy !== null || !manifest} title="渲染 MP4（compose → render，约十几秒）">
+          <button
+            className="pc-btn gold"
+            onClick={() => onRender()}
+            disabled={busy !== null || !manifest}
+            title="渲染 MP4（compose → render，约十几秒）"
+          >
             {busy === "render" ? "渲染中…" : "渲染"}
           </button>
         </div>
@@ -1432,11 +1741,32 @@ export default function App() {
           runningProductIntro={busy === "productIntro"}
           onRunProductIntro={onRunProductIntro}
           productIntroFailure={productIntroFailure}
+          skillOutputPath={skillOutputPath}
+          setSkillOutputPath={setSkillOutputPath}
+          openingSkill={busy === "openSkill"}
+          onOpenSkillOutput={onOpenSkillOutput}
+          skillFailure={skillFailure}
+          generateScript={generateScript}
+          setGenerateScript={setGenerateScript}
+          generateTitle={generateTitle}
+          setGenerateTitle={setGenerateTitle}
+          generating={busy === "generate"}
+          onGenerate={onGenerate}
+          generateFailure={generateFailure}
           onClose={() => setShowWizard(false)}
         />
       )}
 
-      {error && <ErrorBanner message={error} details={errorDetails} onDismiss={() => { setError(null); setErrorDetails(null); }} />}
+      {error && (
+        <ErrorBanner
+          message={error}
+          details={errorDetails}
+          onDismiss={() => {
+            setError(null);
+            setErrorDetails(null);
+          }}
+        />
+      )}
       {notice && (
         <div className="pc-noticebar">
           <span>{notice}</span>
@@ -1470,7 +1800,7 @@ export default function App() {
               activeCategory={libCategory}
               onSelectCategory={setLibCategory}
               onInsert={(cardType) => onInsertCard(cardType)}
-              canInsert={!!manifest && busy === null}
+              canInsert={!!manifest && editGateOpen}
             />
           )}
           {railTab === "scenes" && (
@@ -1478,8 +1808,8 @@ export default function App() {
               manifest={manifest}
               selectedId={selectedId}
               unboundSceneIds={unboundSceneIds}
-              busy={busy !== null}
-              onSelect={setSelectedId}
+              busy={!editGateOpen}
+              onSelect={selectCard}
               onMove={onMoveScene}
               insertableComponents={insertableComponents}
               insertComponentId={insertComponentId}
@@ -1512,6 +1842,9 @@ export default function App() {
               composeWarnCount={composeWarnCount}
               onComposeAnyway={() => onCompose(true)}
               onDismissWarn={() => setComposeWarnCount(null)}
+              renderWarnCount={renderWarnCount}
+              onRenderAnyway={() => onRender(true)}
+              onDismissRenderWarn={() => setRenderWarnCount(null)}
               manifestName={name}
               onRender={onRender}
               onOpenPreview={openPreviewPanel}
@@ -1542,7 +1875,7 @@ export default function App() {
         <div className="pc-center">
           <Canvas
             card={selectedCard}
-            editable={!!selectedScene && busy === null}
+            editable={!!selectedScene && editGateOpen}
             onLayoutChange={onLayoutChange}
             videoUrl={videoUrl}
             previewMode={previewMode}
@@ -1570,7 +1903,16 @@ export default function App() {
           component={component}
           attributes={attributesNode}
           validation={validationNode}
-          editable={!!selectedScene && busy === null}
+          history={
+            <HistoryPanel
+              projectName={name || null}
+              active={inspectorTab === "history"}
+              onRestored={() => {
+                if (name) loadManifest(name);
+              }}
+            />
+          }
+          editable={!!selectedScene && editGateOpen}
           onLayoutChange={onLayoutChange}
           onFontChange={onFontChange}
           onColorChange={onColorChange}
@@ -1599,10 +1941,10 @@ export default function App() {
         onSelectClip={selectTrackClip}
         onSplit={onSplitAtPlayhead}
         canSplit={!!(selectedId || selectedClip)}
-        onMoveCard={manifest && busy === null ? onMoveCard : undefined}
-        onTrimCard={manifest && busy === null ? onTrimCard : undefined}
-        onDropCard={manifest && busy === null ? onInsertCard : undefined}
-        onDeleteScene={manifest && busy === null ? onDeleteScene : undefined}
+        onMoveCard={manifest && editGateOpen ? onMoveCard : undefined}
+        onTrimCard={manifest && editGateOpen ? onTrimCard : undefined}
+        onDropCard={manifest && editGateOpen ? onInsertCard : undefined}
+        onDeleteScene={manifest && editGateOpen ? onDeleteScene : undefined}
         hiddenTracks={hiddenTracks}
         onToggleTrackHidden={toggleTrackHidden}
         cues={cues}
@@ -1659,7 +2001,11 @@ export default function App() {
 
       <DigitalHumanPickerModal
         open={dhPickerOpen}
-        selectedPath={typeof (selectedScene?.props?.media as Record<string, unknown> | undefined)?.pip === "string" ? ((selectedScene?.props?.media as Record<string, unknown>).pip as string) : null}
+        selectedPath={
+          typeof (selectedScene?.props?.media as Record<string, unknown> | undefined)?.pip === "string"
+            ? ((selectedScene?.props?.media as Record<string, unknown>).pip as string)
+            : null
+        }
         onPick={onPickDigitalHuman}
         onClose={() => setDhPickerOpen(false)}
       />
@@ -1675,6 +2021,8 @@ export default function App() {
           onRender={onRender}
         />
       )}
+
+      {providerConfigOpen && <ProviderConfigModal onClose={() => setProviderConfigOpen(false)} />}
     </div>
   );
 }
@@ -1700,14 +2048,36 @@ function ScenesPanel(props: {
         {manifest?.scenes.map((s, i) => (
           <li key={s.id} className={s.id === selectedId ? "pc-scene active" : "pc-scene"} onClick={() => onSelect(s.id)}>
             <div className="pc-scene-reorder">
-              <button className="pc-reorder" disabled={busy || i === 0} onClick={(e) => { e.stopPropagation(); onMove(s.id, "up"); }}>▲</button>
-              <button className="pc-reorder" disabled={busy || i === (manifest?.scenes.length ?? 0) - 1} onClick={(e) => { e.stopPropagation(); onMove(s.id, "down"); }}>▼</button>
+              <button
+                className="pc-reorder"
+                disabled={busy || i === 0}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMove(s.id, "up");
+                }}
+              >
+                ▲
+              </button>
+              <button
+                className="pc-reorder"
+                disabled={busy || i === (manifest?.scenes.length ?? 0) - 1}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMove(s.id, "down");
+                }}
+              >
+                ▼
+              </button>
             </div>
             <div className="pc-scene-main">
               {/* R5-M3: semantic role name as the primary title; id + raw type secondary grey. */}
               <div className="pc-scene-id">
                 {sceneRoleLabel(s.component)} {i + 1}
-                {unboundSceneIds.has(s.id) && <span className="pc-unbound" title="有未绑定媒体">⚠ {sceneUnboundMediaCount(s)}</span>}
+                {unboundSceneIds.has(s.id) && (
+                  <span className="pc-unbound" title="有未绑定媒体">
+                    ⚠ {sceneUnboundMediaCount(s)}
+                  </span>
+                )}
               </div>
               <div className="pc-scene-meta" title={`${s.id} · ${s.scene_type}`}>
                 <span className="muted">{s.id}</span>
@@ -1755,11 +2125,7 @@ function ErrorBanner(props: { message: string; details: string | null; onDismiss
   );
 }
 
-function ExportOptionsFields(props: {
-  options: RenderOptions;
-  setOptions: (o: RenderOptions) => void;
-  disabled: boolean;
-}) {
+function ExportOptionsFields(props: { options: RenderOptions; setOptions: (o: RenderOptions) => void; disabled: boolean }) {
   const opt = props.options;
   const setOpt = (patch: Partial<RenderOptions>) => props.setOptions({ ...opt, ...patch });
   return (
@@ -1773,10 +2139,16 @@ function ExportOptionsFields(props: {
       </label>
       <label>
         帧率
-        <select value={opt.fps ?? ""} disabled={props.disabled} onChange={(e) => setOpt({ fps: e.target.value ? Number(e.target.value) : undefined })}>
+        <select
+          value={opt.fps ?? ""}
+          disabled={props.disabled}
+          onChange={(e) => setOpt({ fps: e.target.value ? Number(e.target.value) : undefined })}
+        >
           <option value="">默认</option>
           {[24, 25, 30, 60].map((f) => (
-            <option key={f} value={f}>{f}</option>
+            <option key={f} value={f}>
+              {f}
+            </option>
           ))}
         </select>
       </label>
@@ -1785,7 +2157,11 @@ function ExportOptionsFields(props: {
         <select
           value={opt.quality ?? ""}
           disabled={props.disabled}
-          onChange={(e) => setOpt({ quality: (e.target.value || undefined) as RenderOptions["quality"] })}
+          onChange={(e) =>
+            setOpt({
+              quality: (e.target.value || undefined) as RenderOptions["quality"],
+            })
+          }
         >
           <option value="">默认</option>
           {(["draft", "standard", "high"] as const).map((q) => (
@@ -1856,6 +2232,9 @@ function PlanPanel(props: {
   composeWarnCount: number | null;
   onComposeAnyway: () => void;
   onDismissWarn: () => void;
+  renderWarnCount: number | null;
+  onRenderAnyway: () => void;
+  onDismissRenderWarn: () => void;
   manifestName: string;
   onRender: () => void;
   onOpenPreview: () => void;
@@ -1910,7 +2289,9 @@ function PlanPanel(props: {
         <div className="banner ok-banner pc-render-ok">
           <div>✓ MP4 渲染完成（{render.name ?? props.manifestName}）。</div>
           <div className="pc-render-links">
-            <a href={render.previewUrl} target="_blank" rel="noreferrer">打开 MP4 ↗</a>
+            <a href={render.previewUrl} target="_blank" rel="noreferrer">
+              打开 MP4 ↗
+            </a>
             <a href={render.previewUrl} download>
               下载
             </a>
@@ -1920,8 +2301,7 @@ function PlanPanel(props: {
       )}
       {render && !render.ok && (
         <div className="banner warn">
-          渲染失败（阶段：{render.stage ?? "render"}）
-          {render.stderr && <pre className="bad">{render.stderr}</pre>}
+          渲染失败（阶段：{render.stage ?? "render"}）{render.stderr && <pre className="bad">{render.stderr}</pre>}
           {render.logPath && <div className="muted">日志：{render.logPath}</div>}
         </div>
       )}
@@ -1930,8 +2310,26 @@ function PlanPanel(props: {
         <div className="banner warn compose-warn">
           {props.composeWarnCount} 个媒体槽未绑定 — 预览可能缺素材。
           <div className="compose-warn-actions">
-            <button onClick={props.onComposeAnyway} disabled={busy !== null}>仍然合成</button>
-            <button onClick={props.onDismissWarn} disabled={busy !== null}>取消</button>
+            <button onClick={props.onComposeAnyway} disabled={busy !== null}>
+              仍然合成
+            </button>
+            <button onClick={props.onDismissWarn} disabled={busy !== null}>
+              取消
+            </button>
+          </div>
+        </div>
+      )}
+
+      {props.renderWarnCount !== null && (
+        <div className="banner warn compose-warn">
+          {props.renderWarnCount} 个媒体槽未绑定 — 渲染可能缺素材。
+          <div className="compose-warn-actions">
+            <button onClick={props.onRenderAnyway} disabled={busy !== null}>
+              仍然渲染
+            </button>
+            <button onClick={props.onDismissRenderWarn} disabled={busy !== null}>
+              取消
+            </button>
           </div>
         </div>
       )}
@@ -1985,19 +2383,40 @@ function PlaceholderPanel({
         {!manifest ? (
           <div className="pc-meta-empty">
             <div className="pc-note muted">未加载项目。</div>
-            <button className="primary" onClick={onNewProject}>+ 新建项目</button>
+            <button className="primary" onClick={onNewProject}>
+              + 新建项目
+            </button>
           </div>
         ) : (
           <>
             <dl className="pc-meta">
-              <div><dt>项目名</dt><dd className="pc-tpl-id">{name}</dd></div>
-              <div><dt>场景数</dt><dd>{manifest.scenes.length} 个</dd></div>
-              <div><dt>总时长</dt><dd>{fmtDur(manifest.duration)}</dd></div>
-              <div><dt>画面尺寸</dt><dd>1920 × 1080</dd></div>
-              <div><dt>已绑定素材</dt><dd>{media.length} 个</dd></div>
+              <div>
+                <dt>项目名</dt>
+                <dd className="pc-tpl-id">{name}</dd>
+              </div>
+              <div>
+                <dt>场景数</dt>
+                <dd>{manifest.scenes.length} 个</dd>
+              </div>
+              <div>
+                <dt>总时长</dt>
+                <dd>{fmtDur(manifest.duration)}</dd>
+              </div>
+              <div>
+                <dt>画面尺寸</dt>
+                <dd>1920 × 1080</dd>
+              </div>
+              <div>
+                <dt>已绑定素材</dt>
+                <dd>{media.length} 个</dd>
+              </div>
             </dl>
-            <button className="primary" onClick={onNewProject}>+ 新建项目</button>
-            <div className="pc-note muted" style={{ marginTop: 12 }}>组件词汇表 {catalogVersion}</div>
+            <button className="primary" onClick={onNewProject}>
+              + 新建项目
+            </button>
+            <div className="pc-note muted" style={{ marginTop: 12 }}>
+              组件词汇表 {catalogVersion}
+            </div>
           </>
         )}
       </div>
@@ -2011,13 +2430,21 @@ function PlaceholderPanel({
       {media.length === 0 ? (
         <div className="pc-meta-empty">
           <div className="pc-note muted">{manifest ? "当前项目暂无已绑定素材。" : "未加载项目。"}</div>
-          <button className="primary" onClick={onNewProject}>导入素材</button>
+          <button className="primary" onClick={onNewProject}>
+            导入素材
+          </button>
         </div>
       ) : (
         <ul className="pc-asset-list">
           {media.map((m, i) => {
             const ext = (m.path.split(".").pop() || "").toLowerCase();
-            const kind = ["mp4", "mov", "webm", "m4v", "mkv", "avi"].includes(ext) ? "视频" : ["wav", "mp3", "m4a", "aac"].includes(ext) ? "音频" : ["png", "jpg", "jpeg", "webp"].includes(ext) ? "图片" : "素材";
+            const kind = ["mp4", "mov", "webm", "m4v", "mkv", "avi"].includes(ext)
+              ? "视频"
+              : ["wav", "mp3", "m4a", "aac"].includes(ext)
+                ? "音频"
+                : ["png", "jpg", "jpeg", "webp"].includes(ext)
+                  ? "图片"
+                  : "素材";
             return (
               <li className="pc-asset" key={i} title={m.path}>
                 <span className={`pc-asset-kind kind-${kind}`}>{kind}</span>
@@ -2047,7 +2474,11 @@ function ResultsPanel(props: {
         <section>
           <div className="panel-title">
             校验{" "}
-            {lintResult.ok ? <span className="ok">✓ {T.common.lintPass}</span> : <span className="bad">✗ {T.common.lintFail(lintResult.failures.length)}</span>}
+            {lintResult.ok ? (
+              <span className="ok">✓ {T.common.lintPass}</span>
+            ) : (
+              <span className="bad">✗ {T.common.lintFail(lintResult.failures.length)}</span>
+            )}
           </div>
           {lintResult.failures.length > 0 && (
             <ul className="failures">

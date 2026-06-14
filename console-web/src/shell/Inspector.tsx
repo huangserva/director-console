@@ -29,13 +29,15 @@ export function Inspector(props: {
   component: CatalogComponent | undefined;
   attributes: ReactNode;
   validation: ReactNode;
+  /** v3-3 任务历史面板（历史 tab 内容）。 */
+  history?: ReactNode;
   editable?: boolean;
   onLayoutChange?: (patch: Record<string, unknown>) => void;
   onFontChange?: (patch: Record<string, unknown>) => void;
   onColorChange?: (patch: Record<string, unknown>) => void;
   onAnimationChange?: (patch: Record<string, unknown>) => void;
 }) {
-  const { tab, onTab, card, clipInfo, component, attributes, validation, editable } = props;
+  const { tab, onTab, card, clipInfo, component, attributes, validation, history, editable } = props;
   const layout = resolveLayout(card?.layout);
   const font = (card?.font ?? {}) as Record<string, unknown>;
   const color = (card?.color ?? {}) as Record<string, unknown>;
@@ -175,12 +177,13 @@ export function Inspector(props: {
           </div>
         )}
 
-        {tab === "history" && (
-          <div className="pc-inspsect">
-            <h4>历史</h4>
-            <div className="pc-note muted">编辑历史 / 撤销在后续阶段接入。</div>
-          </div>
-        )}
+        {tab === "history" &&
+          (history ?? (
+            <div className="pc-inspsect">
+              <h4>历史</h4>
+              <div className="pc-note muted">编辑历史 / 撤销在后续阶段接入。</div>
+            </div>
+          ))}
       </div>
     </aside>
   );

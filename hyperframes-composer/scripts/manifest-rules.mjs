@@ -2,6 +2,24 @@ import fs from "node:fs";
 import path from "node:path";
 import { registry } from "../components/registry.mjs";
 
+export const TEXT_BUDGETS = {
+  chip: 24,
+  kicker: 32,
+  title: 28,
+  subline: 44,
+  titleBeatKicker: 32,
+  titleBeatTitle: 28,
+  titleBeatSubline: 44,
+  statTitle: 24,
+  stepItem: 18,
+  cardLabel: 18,
+  panelKicker: 32,
+  panelGold: 32,
+  panelTitle: 28,
+  panelSubline: 44,
+  panelCardLabel: 18,
+};
+
 export function loadJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, "utf8"));
 }
@@ -17,20 +35,25 @@ function getNested(object, dotted) {
 function validateTextBudget(scene, failures) {
   const props = scene.props || {};
   const checks = [
-    ["chip", props.chip, 24],
-    ["kicker", props.kicker, 32],
-    ["title", props.title, 28],
-    ["subline", props.subline, 44],
-    ["titleBeat.kicker", props.titleBeat?.kicker, 32],
-    ["titleBeat.title", props.titleBeat?.title, 28],
-    ["titleBeat.subline", props.titleBeat?.subline, 44],
-    ["stat.title", props.stat?.title, 24],
+    ["chip", props.chip, TEXT_BUDGETS.chip],
+    ["kicker", props.kicker, TEXT_BUDGETS.kicker],
+    ["title", props.title, TEXT_BUDGETS.title],
+    ["subline", props.subline, TEXT_BUDGETS.subline],
+    ["titleBeat.kicker", props.titleBeat?.kicker, TEXT_BUDGETS.titleBeatKicker],
+    ["titleBeat.title", props.titleBeat?.title, TEXT_BUDGETS.titleBeatTitle],
+    ["titleBeat.subline", props.titleBeat?.subline, TEXT_BUDGETS.titleBeatSubline],
+    ["stat.title", props.stat?.title, TEXT_BUDGETS.statTitle],
   ];
-  for (const card of props.cards || []) checks.push(["card.label", card.label || card.big, 18]);
-  for (const item of props.items || []) checks.push(["step.item", item, 18]);
+  for (const card of props.cards || []) checks.push(["card.label", card.label || card.big, TEXT_BUDGETS.cardLabel]);
+  for (const item of props.items || []) checks.push(["step.item", item, TEXT_BUDGETS.stepItem]);
   for (const panel of props.panels || []) {
-    checks.push(["panel.kicker", panel.kicker, 32], ["panel.gold", panel.gold, 32], ["panel.title", panel.title, 28], ["panel.subline", panel.subline, 44]);
-    for (const card of panel.cards || []) checks.push(["panel.card.label", card.label, 18]);
+    checks.push(
+      ["panel.kicker", panel.kicker, TEXT_BUDGETS.panelKicker],
+      ["panel.gold", panel.gold, TEXT_BUDGETS.panelGold],
+      ["panel.title", panel.title, TEXT_BUDGETS.panelTitle],
+      ["panel.subline", panel.subline, TEXT_BUDGETS.panelSubline],
+    );
+    for (const card of panel.cards || []) checks.push(["panel.card.label", card.label, TEXT_BUDGETS.panelCardLabel]);
   }
   for (const [label, value, max] of checks) {
     if (value && textWeight(value) > max) failures.push(`${scene.id} text budget exceeded: ${label} weight=${textWeight(value)} max=${max}`);

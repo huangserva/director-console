@@ -1,0 +1,87 @@
+{
+  "compositionId": "first390-template-locked",
+  "duration": 144.295,
+  "source": {
+    "video": "projects/first390-template-locked/media/memos-v9-final.mp4"
+  },
+  "output": "projects/first390-template-locked/index.html",
+  "hyperframesEntry": "projects/first390-template-locked/index.html",
+  "audio": {
+    "src": "projects/first390-template-locked/media/memos-master-first120.wav",
+    "captions": "projects/first390-template-locked/captions.json"
+  },
+  "scenes": [
+    {
+      "id": "s005",
+      "component": "TitleCard",
+      "scene_type": "title_card",
+      "start": 10.133,
+      "duration": 2.687000000000001,
+      "track": 10,
+      "finePieces": [],
+      "props": {
+        "cornerLeft": "技能产物",
+        "cornerName": "s005",
+        "kicker": "导入场景",
+        "title": "HyperFrames ti",
+        "subline": "可在控制台继续编辑"
+      }
+    },
+    {
+      "id": "s006",
+      "component": "StepCard",
+      "scene_type": "step_card",
+      "start": 12.82,
+      "duration": 6.079999999999998,
+      "track": 20,
+      "finePieces": [
+        "StepPanel"
+      ],
+      "props": {
+        "kicker": "结构片段",
+        "title": "Tech presenter",
+        "items": [
+          "Point one",
+          "Point two",
+          "Point three"
+        ],
+        "chip": "技能产物",
+        "cards": [
+          {
+            "icon": "1",
+            "label": "已绑定素材"
+          }
+        ],
+        "media": {
+          "presenter": "projects/first390-template-locked/media/duix-course-presenter.mp4"
+        }
+      }
+    },
+    {
+      "id": "s007",
+      "component": "TitleCard",
+      "scene_type": "title_card",
+      "start": 18.9,
+      "duration": 7.7330000000000005,
+      "track": 30,
+      "finePieces": [],
+      "props": {
+        "cornerLeft": "CAPTION",
+        "cornerName": "Line",
+        "kicker": "结构片段",
+        "title": "Question map",
+        "subline": "Replace with subtitle text",
+        "chip": "技能产物",
+        "cards": [
+          {
+            "icon": "1",
+            "label": "已绑定素材"
+          }
+        ],
+        "media": {
+          "presenter": "projects/first390-template-locked/media/duix-question-presenter.mp4"
+        }
+      }
+    }
+  ]
+}

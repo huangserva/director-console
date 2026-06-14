@@ -1,0 +1,38 @@
+{
+  "id": "first390-template-locked",
+  "name": "first390-template-locked",
+  "recipeId": "skill-output-handoff",
+  "inputs": {
+    "skillOutputPath": "first390-template-locked"
+  },
+  "sourceCapabilities": [
+    "skill-output-handoff"
+  ],
+  "assets": {
+    "digitalHumans": [
+      "projects/first390-template-locked/media/duix-prompt-pip.mp4",
+      "projects/first390-template-locked/media/duix-agent-log-pip.mp4",
+      "projects/first390-template-locked/media/duix-doc-search-pip.mp4",
+      "projects/first390-template-locked/media/duix-env-check-pip.mp4"
+    ],
+    "screens": [
+      "projects/first390-template-locked/media/screen-codex-prompt.jpg",
+      "projects/first390-template-locked/media/screen-agent-log.jpg",
+      "projects/first390-template-locked/media/screen-doc-search.jpg",
+      "projects/first390-template-locked/media/screen-env-check.jpg"
+    ],
+    "presenters": [
+      "projects/first390-template-locked/media/duix-course-presenter.mp4",
+      "projects/first390-template-locked/media/duix-question-presenter.mp4",
+      "projects/first390-template-locked/media/duix-def-open-presenter.mp4",
+      "projects/first390-template-locked/media/duix-def-stack-presenter.mp4",
+      "projects/first390-template-locked/media/duix-def-flow-presenter.mp4",
+      "projects/first390-template-locked/media/duix-def-one-pip.mp4"
+    ]
+  },
+  "outputs": {
+    "manifest": "/Users/huangzongning/development/director-console/hyperframes-composer/manifests/first390-template-locked.json",
+    "packagingPlan": "/Users/huangzongning/development/director-console/hyperframes-composer/projects/first390-template-locked/packaging-plan.json"
+  },
+  "updatedAt": "2026-06-13T23:53:03.938Z"
+}

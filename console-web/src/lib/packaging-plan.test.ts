@@ -6,6 +6,7 @@ import {
   inferCardType,
   LIBRARY_CATEGORIES,
   manifestToPlan,
+  patchManifestAudioFromLive,
   RECOMMENDED_CARDS,
   rederivePlanFromManifest,
   summarizePlan,
@@ -208,5 +209,46 @@ describe("rederivePlanFromManifest — SAVE 用当前 manifest 重建，不被 s
     const rebuilt = rederivePlanFromManifest(splitManifest, null);
     expect(rebuilt.tracks.video).toHaveLength(2);
     expect(rebuilt.source.videoUrl ?? null).toBeNull();
+  });
+});
+
+describe("patchManifestAudioFromLive — recaption 后把 captions 引用 patch 回本地 manifest（B1 回归）", () => {
+  const stale: Manifest = {
+    compositionId: "demo",
+    duration: 30,
+    audio: { src: "projects/demo/old-audio.wav", captions: "projects/demo/old-captions.json" } as never,
+    scenes: [{ id: "s1", component: "TitleCard", scene_type: "title_card", start: 0, duration: 30, props: { title: "x" } }],
+  };
+
+  it("patches audio.captions (and audio.src) from the live plan source", () => {
+    const out = patchManifestAudioFromLive(stale, { captions: "projects/demo/captions.json", audio: "projects/demo/audio.wav" });
+    expect((out.audio as { captions?: string }).captions).toBe("projects/demo/captions.json");
+    expect((out.audio as { src?: string }).src).toBe("projects/demo/audio.wav");
+    expect(stale.audio).toEqual({ src: "projects/demo/old-audio.wav", captions: "projects/demo/old-captions.json" }); // pure: original untouched
+  });
+
+  it("keeps audio.src when live has no audio (only captions changed)", () => {
+    const out = patchManifestAudioFromLive(stale, { captions: "projects/demo/captions.json", audio: null });
+    expect((out.audio as { captions?: string }).captions).toBe("projects/demo/captions.json");
+    expect((out.audio as { src?: string }).src).toBe("projects/demo/old-audio.wav");
+  });
+
+  it("returns the manifest unchanged when live has no captions", () => {
+    expect(patchManifestAudioFromLive(stale, { captions: null, audio: "x" })).toBe(stale);
+    expect(patchManifestAudioFromLive(stale, null)).toBe(stale);
+  });
+
+  it("creates audio block when the manifest has none", () => {
+    const noAudio: Manifest = { compositionId: "m", duration: 5, scenes: [] };
+    const out = patchManifestAudioFromLive(noAudio, { captions: "projects/m/captions.json" });
+    expect((out.audio as { captions?: string }).captions).toBe("projects/m/captions.json");
+  });
+
+  it("ROOT-CAUSE: after patch, rederivePlanFromManifest carries the NEW captions (persist won't lose it)", () => {
+    // Before patch: stale manifest -> persist's rederive would PUT old captions, overwriting server's fresh ref.
+    expect(rederivePlanFromManifest(stale, null).source.captions).toBe("projects/demo/old-captions.json");
+    // After patch: rederive (what persist() uses) carries the live captions.
+    const patched = patchManifestAudioFromLive(stale, { captions: "projects/demo/captions.json" });
+    expect(rederivePlanFromManifest(patched, null).source.captions).toBe("projects/demo/captions.json");
   });
 });

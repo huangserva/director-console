@@ -14,6 +14,7 @@ import {
   countUnboundMedia,
   defaultPropsFor,
   deleteScene,
+  hasUnboundMedia,
   insertScene,
   listMediaSlots,
   makeNewScene,
@@ -21,10 +22,12 @@ import {
   moveScene,
   moveSceneToIndex,
   placeSceneAtStart,
+  precheckUnboundMedia,
   pxToSeconds,
   reflowTimeline,
   resizeSceneDuration,
   sceneUnboundMediaCount,
+  summarizeMediaMissing,
   timelineEnd,
 } from "./scene-templates";
 
@@ -325,6 +328,118 @@ describe("listMediaSlots / unbound media counting", () => {
       ],
     };
     expect(countUnboundMedia(manifest)).toBe(3);
+  });
+});
+
+describe("precheckUnboundMedia / hasUnboundMedia — 套用模板后媒体预检", () => {
+  const withId = (scene: Scene, id: string): Scene => ({ ...scene, id });
+
+  it("groups unbound slots per scene, manifest order, skipping fully-bound + text scenes", () => {
+    const manifest: Manifest = {
+      compositionId: "m",
+      duration: 20,
+      scenes: [
+        withId(makeNewScene("TitleCard"), "t1"), // text-only → 0 slots, skipped
+        withId(makeNewScene("StatsHero"), "s1"), // presenter → 1 unbound
+        withId(makeNewScene("ScreenWithPip"), "s2"), // screen + pip → 2 unbound
+      ],
+    };
+    const report = precheckUnboundMedia(manifest);
+    expect(report.total).toBe(3);
+    expect(report.firstUnboundSceneId).toBe("s1");
+    expect(report.scenes.map((s) => [s.sceneId, s.count])).toEqual([
+      ["s1", 1],
+      ["s2", 2],
+    ]);
+    expect(report.scenes[0]).toMatchObject({ component: "StatsHero", paths: ["media.presenter"] });
+    expect(report.scenes[1].paths.sort()).toEqual(["media.pip", "media.screen"]);
+  });
+
+  it("a scene whose media slots are all real paths is not reported", () => {
+    const bound: Scene = {
+      id: "ok",
+      component: "StatsHero",
+      scene_type: "hook_stat",
+      start: 0,
+      duration: 5,
+      props: { media: { presenter: "projects/demo/duix.mp4" } },
+    };
+    const manifest: Manifest = { compositionId: "m", duration: 5, scenes: [bound] };
+    const report = precheckUnboundMedia(manifest);
+    expect(report.total).toBe(0);
+    expect(report.scenes).toEqual([]);
+    expect(report.firstUnboundSceneId).toBeNull();
+  });
+
+  it("firstUnboundSceneId points at the first manifest-order scene with an unbound slot", () => {
+    const manifest: Manifest = {
+      compositionId: "m",
+      duration: 20,
+      scenes: [
+        withId(makeNewScene("TitleCard"), "t1"), // no media
+        {
+          id: "bound1",
+          component: "StatsHero",
+          scene_type: "hook_stat",
+          start: 0,
+          duration: 5,
+          props: { media: { presenter: "real.mp4" } },
+        },
+        withId(makeNewScene("StatsHero"), "first-unbound"),
+        withId(makeNewScene("ScreenWithPip"), "later"),
+      ],
+    };
+    expect(precheckUnboundMedia(manifest).firstUnboundSceneId).toBe("first-unbound");
+  });
+
+  it("treats the template-apply placeholder family (TODO-bind-*.mp4) as unbound, not just TODO-bind-media", () => {
+    // applyTemplate projects missing media as per-slot stubs with a real extension
+    // (TODO-bind-presenter.mp4 / TODO-bind-screen.mp4 / TODO-bind-pip.mp4). These must
+    // read as unbound — keying only off the bare "TODO-bind-media" string would miss them.
+    const scene: Scene = {
+      id: "applied",
+      component: "ScreenWithPip",
+      scene_type: "demo_pip",
+      start: 0,
+      duration: 5,
+      props: { media: { screen: "TODO-bind-screen.mp4", pip: "TODO-bind-pip.mp4" } },
+    };
+    const slots = listMediaSlots(scene);
+    expect(slots.every((s) => !s.bound)).toBe(true);
+    expect(sceneUnboundMediaCount(scene)).toBe(2);
+
+    const manifest: Manifest = { compositionId: "m", duration: 5, scenes: [scene] };
+    const report = precheckUnboundMedia(manifest);
+    expect(report.total).toBe(2);
+    expect(report.firstUnboundSceneId).toBe("applied");
+  });
+
+  it("hasUnboundMedia gate matches countUnboundMedia > 0", () => {
+    const clean: Manifest = { compositionId: "m", duration: 5, scenes: [makeNewScene("TitleCard")] };
+    const dirty: Manifest = { compositionId: "m", duration: 5, scenes: [makeNewScene("StatsHero")] };
+    expect(hasUnboundMedia(clean)).toBe(false);
+    expect(hasUnboundMedia(dirty)).toBe(true);
+  });
+
+  it("summarizeMediaMissing turns a failed apply's raw failures into a friendly card breakdown", () => {
+    // Real shape from POST /apply-template when the project lacks the template's media.
+    const failures = [
+      "sample-title media missing: TODO-bind-presenter.mp4",
+      "sample-steps media missing: TODO-bind-screen.mp4",
+      "sample-steps media missing: TODO-bind-pip.mp4",
+      "manifest missing compositionId",
+    ];
+    const summary = summarizeMediaMissing(failures);
+    expect(summary.total).toBe(3);
+    expect(summary.scenes).toEqual(["sample-title", "sample-steps"]); // distinct, first-seen order
+    expect(summary.otherFailures).toEqual(["manifest missing compositionId"]); // non-media failures kept verbatim
+  });
+
+  it("summarizeMediaMissing returns zero media gaps when no failure is media-related", () => {
+    const summary = summarizeMediaMissing(["manifest missing compositionId", "scene x duration too long"]);
+    expect(summary.total).toBe(0);
+    expect(summary.scenes).toEqual([]);
+    expect(summary.otherFailures.length).toBe(2);
   });
 });
 

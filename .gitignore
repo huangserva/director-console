@@ -9,3 +9,6 @@ assets/external-first390
 .env.local
 apps/console-api/.env.local
 apps/console-api/logs/
+provider-config.json
+hyperframes-composer/projects/*/history.json
+hyperframes-composer/projects/*/snapshots/

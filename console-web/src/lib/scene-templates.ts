@@ -105,9 +105,9 @@ export function componentNeedsMedia(componentId: string): boolean {
   return JSON.stringify(defaultPropsFor(componentId)).includes(MEDIA_PLACEHOLDER);
 }
 
-/** Does this scene still contain an unbound media placeholder? */
+/** Does this scene still contain an unbound media placeholder (either placeholder family)? */
 export function sceneHasUnboundMedia(scene: Scene): boolean {
-  return JSON.stringify(scene.props ?? {}).includes(MEDIA_PLACEHOLDER);
+  return /TODO-bind/i.test(JSON.stringify(scene.props ?? {}));
 }
 
 export interface MediaSlot {
@@ -118,8 +118,15 @@ export interface MediaSlot {
   bound: boolean;
 }
 
+// A media slot is unbound when it is empty OR carries any "to be bound" placeholder.
+// Two placeholder shapes exist: the UI's add-card default (MEDIA_PLACEHOLDER =
+// "TODO-bind-media", extensionless) and the template-apply family that projects a
+// per-slot stub ("TODO-bind-presenter.mp4", "TODO-bind-screen.mp4", "TODO-bind-pip.mp4").
+// Both must read as unbound so the post-apply precheck and the compose/render soft-gate
+// catch a freshly-applied template before it renders blank media (or 422s downstream).
 function isBoundMediaValue(value: string): boolean {
-  return value.trim() !== "" && value !== MEDIA_PLACEHOLDER;
+  const v = value.trim();
+  return v !== "" && v !== MEDIA_PLACEHOLDER && !/^TODO-bind/i.test(v);
 }
 
 const isPlainObject = (v: unknown): v is Record<string, unknown> =>
@@ -168,6 +175,93 @@ export function sceneUnboundMediaCount(scene: Scene): number {
 /** Total unbound media slots across the whole manifest. */
 export function countUnboundMedia(manifest: Manifest): number {
   return manifest.scenes.reduce((total, scene) => total + sceneUnboundMediaCount(scene), 0);
+}
+
+/** One scene's unbound-media breakdown, for the post-apply precheck banner. */
+export interface SceneUnboundMedia {
+  /** Scene/card id carrying unbound slots — also the jump-to target. */
+  sceneId: string;
+  /** The scene's component id; the UI maps this to a human card label. */
+  component: string;
+  /** How many media slots in this scene are still unbound. */
+  count: number;
+  /** Dotted prop paths of the unbound slots (e.g. "media.presenter"). */
+  paths: string[];
+}
+
+/** Whole-manifest unbound-media precheck result. */
+export interface MediaPrecheck {
+  /** Total unbound media slots across the manifest. */
+  total: number;
+  /** Per-scene breakdown, manifest order, only scenes with ≥1 unbound slot. */
+  scenes: SceneUnboundMedia[];
+  /** First scene (manifest order) with an unbound slot, for a jump-to action. */
+  firstUnboundSceneId: string | null;
+}
+
+/**
+ * Client-side media precheck for a manifest: which scenes still carry unbound /
+ * placeholder (TODO-bind-media) or stale-path media slots, how many, and where.
+ * Pure — used to warn right after applying a template (its slots usually land as
+ * placeholders or point at the old project's media) BEFORE the user composes /
+ * renders and the server's validateManifest 422s with a cryptic error.
+ */
+export function precheckUnboundMedia(manifest: Manifest): MediaPrecheck {
+  const scenes: SceneUnboundMedia[] = [];
+  for (const scene of manifest.scenes) {
+    const unbound = listMediaSlots(scene).filter((slot) => !slot.bound);
+    if (unbound.length > 0) {
+      scenes.push({
+        sceneId: scene.id,
+        component: scene.component,
+        count: unbound.length,
+        paths: unbound.map((slot) => slot.path),
+      });
+    }
+  }
+  const total = scenes.reduce((sum, s) => sum + s.count, 0);
+  return { total, scenes, firstUnboundSceneId: scenes[0]?.sceneId ?? null };
+}
+
+/** Soft-gate predicate: true when compose/render should warn before proceeding. */
+export function hasUnboundMedia(manifest: Manifest): boolean {
+  return countUnboundMedia(manifest) > 0;
+}
+
+/** Friendly breakdown of a failed apply's media-missing failures. */
+export interface MediaMissingSummary {
+  /** Number of "<scene> media missing: <path>" failures. */
+  total: number;
+  /** Distinct scene ids that are missing media, first-seen order. */
+  scenes: string[];
+  /** Failures that are NOT media-missing — surfaced verbatim so nothing is swallowed. */
+  otherFailures: string[];
+}
+
+// Server apply/lint emits one line per missing media file: "<sceneId> media missing: <path>".
+const MEDIA_MISSING_RE = /^(.+?) media missing: /;
+
+/**
+ * Summarize a failed template-apply's failure list. The server 422s an apply when the
+ * projected media files don't exist (template stubs like TODO-bind-presenter.mp4, or a
+ * source project's media the new project lacks), emitting raw "media missing" lines. We
+ * turn those into a friendly "N 处媒体待绑定（卡片…）" banner while keeping every non-media
+ * failure verbatim — the precheck never swallows a real validation error.
+ */
+export function summarizeMediaMissing(failures: string[]): MediaMissingSummary {
+  const scenes: string[] = [];
+  const otherFailures: string[] = [];
+  let total = 0;
+  for (const failure of failures) {
+    const match = MEDIA_MISSING_RE.exec(failure);
+    if (match) {
+      total += 1;
+      if (!scenes.includes(match[1])) scenes.push(match[1]);
+    } else {
+      otherFailures.push(failure);
+    }
+  }
+  return { total, scenes, otherFailures };
 }
 
 function uniqueId(base: string, existingIds: Set<string>): string {

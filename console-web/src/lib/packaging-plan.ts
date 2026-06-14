@@ -299,6 +299,25 @@ export function rederivePlanFromManifest(
   return next;
 }
 
+/**
+ * B1: recaption 成功后，把服务端刚写入的字幕/音频引用 patch 回本地 manifest 的 `audio.captions`
+ * （及 `audio.src`，若 live 带）。`manifestToPlan`/`rederivePlanFromManifest` 从 `manifest.audio.captions`
+ * 派生 `plan.source.captions`；recaption 的轻量刷新只更新了 plan 不更新 manifest，于是后续 persist() 会用
+ * 旧 manifest 重派生 plan、把刚识别出的 captions 引用擦掉。patch manifest（保存源）即堵住这条竞态。
+ * 纯函数：只动 audio，不碰 scenes/selection（保持 B14「recaption 期间不 reload、不 clobber 编辑」）。
+ * live 没有 captions（recaption 未产出新引用）时原样返回。
+ */
+export function patchManifestAudioFromLive(
+  manifest: Manifest,
+  liveSource: { captions?: string | null; audio?: string | null } | null | undefined,
+): Manifest {
+  if (!liveSource?.captions) return manifest;
+  const audio: Record<string, unknown> = { ...((manifest.audio as Record<string, unknown> | undefined) ?? {}) };
+  audio.captions = liveSource.captions;
+  if (liveSource.audio) audio.src = liveSource.audio;
+  return { ...manifest, audio };
+}
+
 // ── Smart-plan-strip summary (pure) ──────────────────────────────────────────
 export interface PlanSummary {
   segmentCount: number;

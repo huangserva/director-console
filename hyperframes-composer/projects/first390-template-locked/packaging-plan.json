@@ -1,0 +1,435 @@
+{
+  "schemaVersion": "2026-06-12",
+  "projectId": "first390-template-locked",
+  "recipeId": null,
+  "duration": 144.295,
+  "source": {
+    "video": "projects/first390-template-locked/media/memos-v9-final.mp4",
+    "audio": "projects/first390-template-locked/media/memos-master-first120.wav",
+    "captions": "projects/first390-template-locked/captions.json"
+  },
+  "tracks": {
+    "video": [
+      {
+        "id": "video-main",
+        "track": "video",
+        "src": "projects/first390-template-locked/media/memos-v9-final.mp4",
+        "start": 0,
+        "duration": 144.295
+      }
+    ],
+    "audio": [
+      {
+        "id": "audio-main",
+        "track": "audio",
+        "src": "projects/first390-template-locked/media/memos-master-first120.wav",
+        "start": 0,
+        "duration": 144.295
+      }
+    ],
+    "subtitle": [
+      {
+        "id": "subtitle-main",
+        "track": "subtitle",
+        "src": "projects/first390-template-locked/captions.json",
+        "start": 0,
+        "duration": 144.295
+      }
+    ],
+    "card": [
+      {
+        "id": "s005",
+        "type": "caption",
+        "engine": {
+          "component": "TitleCard",
+          "scene_type": "title_card",
+          "track": 10,
+          "finePieces": [],
+          "props": {
+            "cornerLeft": "技能产物",
+            "cornerName": "s005",
+            "kicker": "导入场景",
+            "title": "HyperFrames ti",
+            "subline": "可在控制台继续编辑"
+          }
+        },
+        "content": {
+          "cornerLeft": "技能产物",
+          "cornerName": "s005",
+          "kicker": "导入场景",
+          "title": "HyperFrames ti",
+          "subline": "可在控制台继续编辑"
+        },
+        "media": {},
+        "timeline": {
+          "track": "card",
+          "start": 10.133,
+          "duration": 2.687000000000001
+        },
+        "validation": {
+          "status": "unchecked",
+          "failures": []
+        }
+      },
+      {
+        "id": "s006",
+        "type": "info-structure",
+        "engine": {
+          "component": "StepCard",
+          "scene_type": "step_card",
+          "track": 20,
+          "finePieces": [
+            "StepPanel"
+          ],
+          "props": {
+            "kicker": "结构片段",
+            "title": "Tech presenter",
+            "items": [
+              "Point one",
+              "Point two",
+              "Point three"
+            ],
+            "chip": "技能产物",
+            "cards": [
+              {
+                "icon": "1",
+                "label": "已绑定素材"
+              }
+            ],
+            "media": {
+              "presenter": "projects/first390-template-locked/media/duix-course-presenter.mp4"
+            }
+          }
+        },
+        "content": {
+          "chip": "技能产物",
+          "kicker": "结构片段",
+          "title": "Tech presenter",
+          "cards": [
+            {
+              "icon": "1",
+              "label": "已绑定素材"
+            }
+          ]
+        },
+        "media": {
+          "presenter": "projects/first390-template-locked/media/duix-course-presenter.mp4"
+        },
+        "timeline": {
+          "track": "card",
+          "start": 12.82,
+          "duration": 6.079999999999998
+        },
+        "validation": {
+          "status": "unchecked",
+          "failures": []
+        }
+      },
+      {
+        "id": "s007",
+        "type": "caption",
+        "engine": {
+          "component": "TitleCard",
+          "scene_type": "title_card",
+          "track": 30,
+          "finePieces": [],
+          "props": {
+            "cornerLeft": "CAPTION",
+            "cornerName": "Line",
+            "kicker": "结构片段",
+            "title": "Question map",
+            "subline": "Replace with subtitle text",
+            "chip": "技能产物",
+            "cards": [
+              {
+                "icon": "1",
+                "label": "已绑定素材"
+              }
+            ],
+            "media": {
+              "presenter": "projects/first390-template-locked/media/duix-question-presenter.mp4"
+            }
+          }
+        },
+        "content": {
+          "chip": "技能产物",
+          "kicker": "结构片段",
+          "title": "Question map",
+          "cards": [
+            {
+              "icon": "1",
+              "label": "已绑定素材"
+            }
+          ]
+        },
+        "media": {
+          "presenter": "projects/first390-template-locked/media/duix-question-presenter.mp4"
+        },
+        "timeline": {
+          "track": "card",
+          "start": 18.9,
+          "duration": 7.7330000000000005
+        },
+        "validation": {
+          "status": "unchecked",
+          "failures": []
+        }
+      }
+    ]
+  },
+  "segments": [
+    {
+      "id": "s005",
+      "kind": "card-1",
+      "start": 10.133,
+      "duration": 2.687000000000001,
+      "content": {
+        "cornerLeft": "技能产物",
+        "cornerName": "s005",
+        "kicker": "导入场景",
+        "title": "HyperFrames ti",
+        "subline": "可在控制台继续编辑"
+      },
+      "media": {}
+    },
+    {
+      "id": "s006",
+      "kind": "card-2",
+      "start": 12.82,
+      "duration": 6.079999999999998,
+      "content": {
+        "chip": "技能产物",
+        "kicker": "结构片段",
+        "title": "Tech presenter",
+        "cards": [
+          {
+            "icon": "1",
+            "label": "已绑定素材"
+          }
+        ]
+      },
+      "media": {
+        "presenter": "projects/first390-template-locked/media/duix-course-presenter.mp4"
+      }
+    },
+    {
+      "id": "s007",
+      "kind": "card-3",
+      "start": 18.9,
+      "duration": 7.7330000000000005,
+      "content": {
+        "chip": "技能产物",
+        "kicker": "结构片段",
+        "title": "Question map",
+        "cards": [
+          {
+            "icon": "1",
+            "label": "已绑定素材"
+          }
+        ]
+      },
+      "media": {
+        "presenter": "projects/first390-template-locked/media/duix-question-presenter.mp4"
+      }
+    },
+    {
+      "id": "s009",
+      "kind": "card-4",
+      "start": 32.433,
+      "duration": 5.786999999999999,
+      "content": {
+        "chip": "技能产物",
+        "kicker": "结构片段",
+        "title": "Designed for A",
+        "cards": [
+          {
+            "icon": "1",
+            "label": "已绑定素材"
+          }
+        ]
+      },
+      "media": {
+        "presenter": "projects/first390-template-locked/media/duix-def-open-presenter.mp4"
+      }
+    },
+    {
+      "id": "s010",
+      "kind": "card-5",
+      "start": 38.22,
+      "duration": 7.020000000000003,
+      "content": {
+        "chip": "技能产物",
+        "kicker": "结构片段",
+        "title": "Agent structur",
+        "cards": [
+          {
+            "icon": "1",
+            "label": "已绑定素材"
+          }
+        ]
+      },
+      "media": {
+        "presenter": "projects/first390-template-locked/media/duix-def-stack-presenter.mp4"
+      }
+    },
+    {
+      "id": "s011",
+      "kind": "card-6",
+      "start": 45.24,
+      "duration": 6.809999999999995,
+      "content": {
+        "chip": "技能产物",
+        "kicker": "结构片段",
+        "title": "Web to video",
+        "cards": [
+          {
+            "icon": "1",
+            "label": "已绑定素材"
+          }
+        ]
+      },
+      "media": {
+        "presenter": "projects/first390-template-locked/media/duix-def-flow-presenter.mp4"
+      }
+    },
+    {
+      "id": "s012",
+      "kind": "card-7",
+      "start": 52.05,
+      "duration": 16.516999999999996,
+      "content": {
+        "chip": "技能产物",
+        "kicker": "结构片段",
+        "title": "One sentence t",
+        "cards": [
+          {
+            "icon": "1",
+            "label": "已绑定素材"
+          }
+        ]
+      },
+      "media": {
+        "presenter": "projects/first390-template-locked/media/duix-def-one-pip.mp4"
+      }
+    },
+    {
+      "id": "s013",
+      "kind": "card-8",
+      "start": 68.567,
+      "duration": 16.466000000000008,
+      "content": {
+        "label": "Prompt input"
+      },
+      "media": {
+        "screen": "projects/first390-template-locked/media/screen-codex-prompt.jpg",
+        "pip": "projects/first390-template-locked/media/duix-prompt-pip.mp4"
+      }
+    },
+    {
+      "id": "s014",
+      "kind": "card-9",
+      "start": 85.033,
+      "duration": 5.466999999999999,
+      "content": {
+        "kicker": "s014",
+        "title": "Step 01 produc",
+        "items": [
+          "来自技能时间线",
+          "可继续编辑"
+        ]
+      },
+      "media": {}
+    },
+    {
+      "id": "s015",
+      "kind": "card-10",
+      "start": 90.5,
+      "duration": 7,
+      "content": {
+        "label": "Agent log proo"
+      },
+      "media": {
+        "screen": "projects/first390-template-locked/media/screen-agent-log.jpg",
+        "pip": "projects/first390-template-locked/media/duix-agent-log-pip.mp4"
+      }
+    },
+    {
+      "id": "s016",
+      "kind": "card-11",
+      "start": 97.5,
+      "duration": 5.367000000000004,
+      "content": {
+        "kicker": "s016",
+        "title": "Step 02 web se",
+        "items": [
+          "来自技能时间线",
+          "可继续编辑"
+        ]
+      },
+      "media": {}
+    },
+    {
+      "id": "s017",
+      "kind": "card-12",
+      "start": 102.867,
+      "duration": 6.599999999999994,
+      "content": {
+        "label": "Official docs "
+      },
+      "media": {
+        "screen": "projects/first390-template-locked/media/screen-doc-search.jpg",
+        "pip": "projects/first390-template-locked/media/duix-doc-search-pip.mp4"
+      }
+    },
+    {
+      "id": "s018",
+      "kind": "card-13",
+      "start": 109.467,
+      "duration": 8.832999999999998,
+      "content": {
+        "kicker": "s018",
+        "title": "Step 03 enviro",
+        "items": [
+          "来自技能时间线",
+          "可继续编辑"
+        ]
+      },
+      "media": {}
+    },
+    {
+      "id": "s019",
+      "kind": "card-14",
+      "start": 118.3,
+      "duration": 7.367000000000004,
+      "content": {
+        "label": "Environment ch"
+      },
+      "media": {
+        "screen": "projects/first390-template-locked/media/screen-env-check.jpg",
+        "pip": "projects/first390-template-locked/media/duix-env-check-pip.mp4"
+      }
+    },
+    {
+      "id": "s020",
+      "kind": "card-15",
+      "start": 125.667,
+      "duration": 8.966000000000008,
+      "content": {
+        "kicker": "s020",
+        "title": "Step 04 init p",
+        "items": [
+          "来自技能时间线",
+          "可继续编辑"
+        ]
+      },
+      "media": {}
+    }
+  ],
+  "templateRef": {
+    "id": "p5-smoke-tpl",
+    "version": "2026-06-12"
+  },
+  "output": "projects/first390-template-locked/index.html",
+  "hyperframesEntry": "projects/first390-template-locked/index.html",
+  "engine": {}
+}

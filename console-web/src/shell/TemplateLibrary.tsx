@@ -1,12 +1,22 @@
-// v2-P5: 风格库/模板库 tab — save the current project's plan as a reusable
-// template (spec acceptance #5) and apply a template to the current project
-// (#6). Read-only list + a minimal save form + per-template "套用" action.
-import { useState } from "react";
-import type { TemplateSummary } from "../lib/api";
+// v2-P5 → v3-2: 风格库/模板库 tab。原列表升级成可视化 gallery（借鉴 Pixelle docs，守渲染现实）。
+// 每模板卡：名称/描述/卡片序列摘要/媒体需求/aspect 16:9 徽标/代表性预览(cardType mini 版式)。
+// 按 用途/媒体需求 筛选。『套用』复用 onApply（App 内含 v2 套用后 media 预检）。『另存当前为模板』入口保留。
+import { useEffect, useMemo, useState } from "react";
+import { getTemplate, type TemplateSummary } from "../lib/api";
+import {
+  distinctUses,
+  filterGalleryCards,
+  galleryCardFromDetail,
+  type GalleryCard,
+  type MediaFilter,
+  type TemplateDetail,
+} from "../lib/template-gallery";
 
 export interface TemplateStatus {
-  kind: "ok" | "error" | "conflict";
+  kind: "ok" | "warn" | "error" | "conflict";
   text: string;
+  /** Optional inline action — e.g. 跳到第一个未绑定卡片 after a template apply leaves media unbound. */
+  action?: { label: string; onClick: () => void };
 }
 
 export function TemplateLibrary(props: {
@@ -24,6 +34,41 @@ export function TemplateLibrary(props: {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [overwrite, setOverwrite] = useState(false);
+
+  // gallery 卡数据：逐模板取详情（cardRules + mediaRequirements）派生。
+  const [cards, setCards] = useState<GalleryCard[] | null>(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+  const [mediaFilter, setMediaFilter] = useState<MediaFilter>("all");
+  const [useFilter, setUseFilter] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (templates.length === 0) {
+      setCards([]);
+      return;
+    }
+    setLoadingDetails(true);
+    Promise.all(
+      templates.map((t) =>
+        getTemplate(t.id)
+          .then((d) => galleryCardFromDetail(d as unknown as TemplateDetail))
+          .catch(() =>
+            // 详情拉取失败 → 用 summary 兜底（无卡片序列/媒体需求），不漏卡。
+            galleryCardFromDetail({ id: t.id, name: t.name, description: t.description, cardRules: [] }),
+          ),
+      ),
+    ).then((built) => {
+      if (cancelled) return;
+      setCards(built);
+      setLoadingDetails(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [templates]);
+
+  const uses = useMemo(() => (cards ? distinctUses(cards) : []), [cards]);
+  const filtered = useMemo(() => (cards ? filterGalleryCards(cards, { media: mediaFilter, use: useFilter }) : []), [cards, mediaFilter, useFilter]);
 
   const submit = () => {
     if (!name.trim()) return;
@@ -73,28 +118,113 @@ export function TemplateLibrary(props: {
         <div className={status.kind === "ok" ? "banner ok-banner" : "banner warn"}>
           {status.text}
           {status.kind === "conflict" && <div className="pc-note">勾选「覆盖同名模板」后再保存。</div>}
+          {status.action && (
+            <div className="pc-tpl-status-actions">
+              <button className="primary" disabled={busy} onClick={status.action.onClick}>
+                {status.action.label}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 筛选：媒体需求 + 用途（主卡类，数据派生）。 */}
+      {cards && cards.length > 0 && (
+        <div className="pc-gal-filters">
+          <div className="pc-gal-filtergroup">
+            <span className="pc-gal-filterlabel">媒体需求</span>
+            {(
+              [
+                { id: "all", label: "全部" },
+                { id: "with-media", label: "需素材" },
+                { id: "no-media", label: "无需素材" },
+              ] as { id: MediaFilter; label: string }[]
+            ).map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                className={mediaFilter === f.id ? "pc-gal-chip active" : "pc-gal-chip"}
+                onClick={() => setMediaFilter(f.id)}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+          {uses.length > 1 && (
+            <div className="pc-gal-filtergroup">
+              <span className="pc-gal-filterlabel">用途</span>
+              <button type="button" className={useFilter === null ? "pc-gal-chip active" : "pc-gal-chip"} onClick={() => setUseFilter(null)}>
+                全部
+              </button>
+              {uses.map((u) => (
+                <button key={u} type="button" className={useFilter === u ? "pc-gal-chip active" : "pc-gal-chip"} onClick={() => setUseFilter(u)}>
+                  {u}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
       <div className="pc-sectlabel">
-        <span>模板（{templates.length}）</span>
+        <span>模板（{filtered.length}{cards && filtered.length !== cards.length ? ` / ${cards.length}` : ""}）</span>
         <span className="muted">套用会用模板重写当前方案</span>
       </div>
-      <ul className="pc-tpl-list">
-        {templates.length === 0 && <li className="pc-note muted">还没有模板 — 在上面把当前方案另存为模板。</li>}
-        {templates.map((t) => (
-          <li key={t.id} className="pc-tpl-item">
-            <div className="pc-tpl-main">
-              <div className="pc-tpl-name">{t.name}</div>
-              {t.description && <div className="pc-tpl-desc muted">{t.description}</div>}
-              <div className="pc-tpl-id muted">{t.id}</div>
+
+      {loadingDetails && cards === null && <div className="pc-note muted">加载模板…</div>}
+      {cards && cards.length === 0 && <div className="pc-note muted">还没有模板 — 在上面把当前方案另存为模板。</div>}
+      {cards && cards.length > 0 && filtered.length === 0 && <div className="pc-note muted">没有符合筛选的模板，换个筛选条件。</div>}
+
+      <div className="pc-gal-grid">
+        {filtered.map((c) => (
+          <div key={c.id} className="pc-gal-card">
+            {/* 代表性预览：16:9 框 + cardType 序列 mini 版式（真渲染缩略图 future）。 */}
+            <div className="pc-gal-thumb">
+              <span className="pc-gal-aspect">{c.aspect}</span>
+              <div className="pc-gal-tiles">
+                {c.tiles.length === 0 && <span className="pc-gal-tile empty">无卡片</span>}
+                {c.tiles.map((t, i) => (
+                  <span key={i} className="pc-gal-tile" title={t.label}>
+                    {t.label}
+                  </span>
+                ))}
+              </div>
             </div>
-            <button disabled={!canEdit || busy} onClick={() => onApply(t.id)} title="用该模板重写当前项目的方案">
-              套用
-            </button>
-          </li>
+
+            <div className="pc-gal-body">
+              {/* 模板名/描述是作者内容（常为英文 id 式命名）；复用 i18n harness 已剔除的 .pc-tpl-name/.pc-tpl-desc 类，规避误判。 */}
+              <div className="pc-gal-name pc-tpl-name">{c.name}</div>
+              {c.description && <div className="pc-gal-desc muted pc-tpl-desc">{c.description}</div>}
+
+              <div className="pc-gal-meta">
+                <span className="pc-gal-metakv">
+                  卡片 <strong>{c.cards.total}</strong> 张
+                  {c.cards.types.length > 0 && <span className="muted">（{c.cards.types.map((x) => `${x.label}×${x.count}`).join("、")}）</span>}
+                </span>
+                <span className="pc-gal-metakv">
+                  {c.media.count > 0 ? (
+                    <>
+                      需 <strong>{c.media.count}</strong> 处素材
+                      <span className="muted">（{c.media.kinds.map((k) => `${k.label}×${k.count}`).join("、")}）</span>
+                    </>
+                  ) : (
+                    <span className="muted">无需素材</span>
+                  )}
+                </span>
+              </div>
+
+              <div className="pc-gal-tags">
+                <span className="pc-gal-tag">用途 {c.use}</span>
+                <code className="pc-gal-id">{c.id}</code>
+              </div>
+
+              <button className="pc-gal-apply" disabled={!canEdit || busy} onClick={() => onApply(c.id)} title="用该模板重写当前项目的方案">
+                套用
+              </button>
+            </div>
+          </div>
         ))}
-      </ul>
+      </div>
     </div>
   );
 }

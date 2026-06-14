@@ -16,6 +16,7 @@ const manifestsDir = path.join(composerRoot, "manifests");
 const testManifestName = `api-test-${process.pid}.json`;
 const testManifestPath = path.join(manifestsDir, testManifestName);
 const testRenderPath = path.join(composerRoot, "render", `${testManifestName.replace(/\.json$/, "")}.mp4`);
+const testProjectDir = path.join(composerRoot, "projects", testManifestName.replace(/\.json$/, ""));
 const routeBManifestName = `route-b-api-${process.pid}`;
 const routeBManifestPath = path.join(manifestsDir, `${routeBManifestName}.json`);
 const routeBProjectDir = path.join(composerRoot, "projects", routeBManifestName);
@@ -76,6 +77,12 @@ const noAudioProjectDir = path.join(composerRoot, "projects", noAudioProjectName
 const skillAdapterProjectName = `skill-adapter-${process.pid}`;
 const skillAdapterManifestPath = path.join(manifestsDir, `${skillAdapterProjectName}.json`);
 const skillAdapterProjectDir = path.join(composerRoot, "projects", skillAdapterProjectName);
+const fromScriptProjectName = `from-script-${process.pid}`;
+const fromScriptManifestPath = path.join(manifestsDir, `${fromScriptProjectName}.json`);
+const fromScriptProjectDir = path.join(composerRoot, "projects", fromScriptProjectName);
+const fromScriptLongProjectName = `from-script-long-${process.pid}`;
+const fromScriptLongManifestPath = path.join(manifestsDir, `${fromScriptLongProjectName}.json`);
+const fromScriptLongProjectDir = path.join(composerRoot, "projects", fromScriptLongProjectName);
 
 async function fileExists(target) {
   try {
@@ -424,6 +431,16 @@ async function probePreviewVideoInChrome(url) {
   }
 }
 
+async function withHttpProbeServer(handler, fn) {
+  const probe = http.createServer(handler);
+  const baseUrl = await listen(probe);
+  try {
+    return await fn(baseUrl);
+  } finally {
+    await new Promise((resolve) => probe.close(resolve));
+  }
+}
+
 describe("console-api", () => {
   let server;
   let baseUrl;
@@ -439,6 +456,8 @@ describe("console-api", () => {
   let digitalHumanLink;
   let digitalHumanNeighborVideo;
   let unboundVideo;
+  let providerConfigPath;
+  let providerEnvPath;
   let originalIndexHtml;
   const scriptCalls = [];
 
@@ -471,12 +490,16 @@ describe("console-api", () => {
     await fs.symlink(digitalHumanVideo, digitalHumanLink);
     unboundVideo = path.join(fixtureRoot, "unbound.mp4");
     await fs.writeFile(unboundVideo, "fake unbound media");
+    providerConfigPath = path.join(fixtureRoot, "provider-config.json");
+    providerEnvPath = path.join(fixtureRoot, ".env.local");
     server = http.createServer(
       createApiServer({
         composerRoot,
         logDir,
         importRoots: [fixtureRoot],
         digitalHumansRoot: digitalHumansDir,
+        providerConfigPath,
+        providerEnvPath,
         runScript: async ({ script, args }) => {
           scriptCalls.push({ script, args });
           if (script === "compose") {
@@ -581,8 +604,13 @@ describe("console-api", () => {
     await fs.rm(noAudioProjectDir, { recursive: true, force: true });
     await fs.rm(skillAdapterManifestPath, { force: true });
     await fs.rm(skillAdapterProjectDir, { recursive: true, force: true });
+    await fs.rm(fromScriptManifestPath, { force: true });
+    await fs.rm(fromScriptProjectDir, { recursive: true, force: true });
+    await fs.rm(fromScriptLongManifestPath, { force: true });
+    await fs.rm(fromScriptLongProjectDir, { recursive: true, force: true });
     await fs.rm(path.join(composerRoot, `index-${process.pid}.html`), { force: true });
     await fs.rm(testRenderPath, { force: true });
+    await fs.rm(testProjectDir, { recursive: true, force: true });
     await fs.writeFile(path.join(composerRoot, "index.html"), originalIndexHtml, "utf8");
     await fs.rm(logDir, { recursive: true, force: true });
     await fs.rm(fixtureDir, { recursive: true, force: true });
@@ -743,6 +771,135 @@ describe("console-api", () => {
     }
   });
 
+  test("providers API redacts key values and persists non-secret config separately from .env.local", async () => {
+    await fs.writeFile(providerEnvPath, "OPENAI_IMAGE_API_KEY=existing-secret\n", "utf8");
+    await fs.writeFile(
+      providerConfigPath,
+      JSON.stringify(
+        {
+          image: {
+            enabled: true,
+            endpoint: "https://image.example.test/v1",
+            apiKeyEnvVar: "OPENAI_IMAGE_API_KEY",
+            extra: { model: "image-v1" },
+          },
+        },
+        null,
+        2,
+      ),
+    );
+
+    const listed = await request(baseUrl, "/providers");
+    assert.equal(listed.status, 200);
+    const image = listed.body.providers.find((provider) => provider.id === "image");
+    assert.equal(image.endpoint, "https://image.example.test/v1");
+    assert.equal(image.apiKeyEnvVar, "OPENAI_IMAGE_API_KEY");
+    assert.equal(image.isKeySet, true);
+    assert.equal("apiKeyValue" in image, false);
+    assert.equal(JSON.stringify(listed.body).includes("existing-secret"), false);
+
+    const updated = await request(baseUrl, "/providers/image", {
+      method: "PUT",
+      body: JSON.stringify({
+        enabled: true,
+        endpoint: "https://image2.example.test/v1",
+        apiKeyEnvVar: "OPENAI_IMAGE_API_KEY",
+        apiKeyValue: "new-secret",
+        proxy: "http://127.0.0.1:7890",
+        extra: { model: "image-v2" },
+      }),
+    });
+
+    assert.equal(updated.status, 200);
+    assert.equal(updated.body.provider.endpoint, "https://image2.example.test/v1");
+    assert.equal(updated.body.provider.isKeySet, true);
+    assert.equal(JSON.stringify(updated.body).includes("new-secret"), false);
+    const persisted = JSON.parse(await fs.readFile(providerConfigPath, "utf8"));
+    assert.equal(persisted.image.endpoint, "https://image2.example.test/v1");
+    assert.equal(persisted.image.proxy, "http://127.0.0.1:7890");
+    assert.equal(JSON.stringify(persisted).includes("new-secret"), false);
+    assert.match(await fs.readFile(providerEnvPath, "utf8"), /OPENAI_IMAGE_API_KEY="?new-secret"?/);
+  });
+
+  test("providers API validates ids and endpoint shapes", async () => {
+    const missing = await request(baseUrl, "/providers/not-a-provider", {
+      method: "PUT",
+      body: JSON.stringify({ enabled: true }),
+    });
+    assert.equal(missing.status, 404);
+
+    const invalidEndpoint = await request(baseUrl, "/providers/tts", {
+      method: "PUT",
+      body: JSON.stringify({ enabled: true, baseUrl: "file:///tmp/tts" }),
+    });
+    assert.equal(invalidEndpoint.status, 422);
+    assert.match(invalidEndpoint.body.error, /baseUrl/);
+  });
+
+  test("providers API rejects dangerous secret env var names", async () => {
+    await fs.writeFile(providerEnvPath, "", "utf8");
+    const response = await request(baseUrl, "/providers/image", {
+      method: "PUT",
+      body: JSON.stringify({
+        enabled: true,
+        endpoint: "https://image.example.test/v1",
+        apiKeyEnvVar: "PATH",
+        apiKeyValue: "malicious",
+      }),
+    });
+
+    assert.equal(response.status, 422);
+    assert.equal(response.body.ok, false);
+    assert.match(response.body.error, /apiKeyEnvVar/);
+    assert.equal((await fs.readFile(providerEnvPath, "utf8")).includes("malicious"), false);
+    assert.equal((await fs.readFile(providerEnvPath, "utf8")).includes("PATH="), false);
+  });
+
+  test("provider health-check reports up, down, and unconfigured states without throwing", async () => {
+    await withHttpProbeServer(
+      (req, res) => {
+        if (req.url === "/health") {
+          res.writeHead(200, { "content-type": "application/json" });
+          res.end(JSON.stringify({ ok: true }));
+          return;
+        }
+        res.writeHead(404);
+        res.end();
+      },
+      async (probeBaseUrl) => {
+        const configured = await request(baseUrl, "/providers/tts", {
+          method: "PUT",
+          body: JSON.stringify({ enabled: true, baseUrl: probeBaseUrl }),
+        });
+        assert.equal(configured.status, 200);
+
+        const up = await request(baseUrl, "/providers/tts/health-check", { method: "POST" });
+        assert.equal(up.status, 200);
+        assert.equal(up.body.ok, true);
+        assert.equal(up.body.status, "up");
+        assert.equal(typeof up.body.latencyMs, "number");
+      },
+    );
+
+    const downConfig = await request(baseUrl, "/providers/duix", {
+      method: "PUT",
+      body: JSON.stringify({ enabled: true, baseUrl: "http://127.0.0.1:9" }),
+    });
+    assert.equal(downConfig.status, 200);
+    const down = await request(baseUrl, "/providers/duix/health-check", { method: "POST" });
+    assert.equal(down.status, 200);
+    assert.equal(down.body.ok, false);
+    assert.equal(down.body.status, "down");
+
+    const unconfigured = await request(baseUrl, "/providers/video/health-check", { method: "POST" });
+    assert.equal(unconfigured.status, 200);
+    assert.equal(unconfigured.body.ok, false);
+    assert.equal(unconfigured.body.status, "unconfigured");
+
+    const invalid = await request(baseUrl, "/providers/nope/health-check", { method: "POST" });
+    assert.equal(invalid.status, 404);
+  });
+
   test("loads a manifest unchanged", async () => {
     const response = await request(baseUrl, `/manifests/${testManifestName.replace(/\.json$/, "")}`);
 
@@ -846,6 +1003,12 @@ describe("console-api", () => {
       { script: "render", args: ["--", "--output", `render/${name}.mp4`] },
     ]);
     assert.equal(await fs.readFile(response.body.mp4Path, "utf8"), "fake mp4 bytes");
+
+    const history = await request(baseUrl, `/projects/${name}/history`);
+    assert.equal(history.status, 200);
+    assert.equal(history.body.entries[0].kind, "render");
+    assert.equal(history.body.entries[0].artifacts.mp4Path, response.body.mp4Path);
+    assert.equal(history.body.entries[0].validation.ok, true);
   });
 
   test("render reports render script failures without pretending success", async () => {
@@ -1186,6 +1349,12 @@ describe("console-api", () => {
     assert.equal(project.workflowRunId, workflowRun.id);
     assert.deepEqual(new Set(workflowRun.stages.map((stage) => stage.status)), new Set(["succeeded"]));
     assert.equal(typeof workflowRun.updatedAt, "string");
+
+    const history = await request(baseUrl, `/projects/${routeBManifestName}/history`);
+    assert.equal(history.status, 200);
+    assert.equal(history.body.entries[0].kind, "import");
+    assert.equal(history.body.entries[0].artifacts.manifestPath, routeBManifestPath);
+    assert.equal(history.body.entries[0].validation.ok, true);
 
     const list = await request(baseUrl, "/manifests");
     assert.ok(list.body.manifests.includes(routeBManifestName));
@@ -1728,6 +1897,117 @@ describe("console-api", () => {
     assert.match(missingSellingPoints.body.stderr, /sellingPoints is required/);
   });
 
+  test("generate from script creates an editable managed project without external media", async () => {
+    const script = ["先说明为什么团队需要稳定的视频包装。", "再展示四轨编辑器如何把文字变成卡片。", "最后提醒用户可以继续绑定素材并重新渲染。"].join("\n");
+    const response = await request(baseUrl, "/generate/from-script", {
+      method: "POST",
+      body: JSON.stringify({ script, name: fromScriptProjectName, title: "脚本生成测试" }),
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body.ok, true);
+    assert.equal(response.body.name, fromScriptProjectName);
+    assert.equal(response.body.manifestName, fromScriptProjectName);
+    assert.ok(response.body.scenes > 0);
+
+    const manifest = JSON.parse(await fs.readFile(fromScriptManifestPath, "utf8"));
+    assert.equal(manifest.compositionId, fromScriptProjectName);
+    assert.equal(manifest.source, undefined);
+    assert.equal(manifest.audio, undefined);
+    assert.ok(manifest.scenes.length > 0);
+    assert.ok(manifest.scenes.every((scene) => ["TitleCard", "StepCard"].includes(scene.component)));
+
+    const planResponse = await request(baseUrl, `/projects/${fromScriptProjectName}/packaging-plan`);
+    assert.equal(planResponse.status, 200);
+    assert.equal(planResponse.body.plan.tracks.video.length, 0);
+    assert.equal(planResponse.body.plan.tracks.audio.length, 0);
+    assert.equal(planResponse.body.plan.tracks.subtitle.length, 0);
+    assert.ok(planResponse.body.plan.tracks.card.length > 0);
+
+    const history = await request(baseUrl, `/projects/${fromScriptProjectName}/history`);
+    assert.equal(history.status, 200);
+    assert.equal(history.body.entries[0].kind, "generate");
+    assert.equal(history.body.entries[0].params.title, "脚本生成测试");
+    assert.equal(history.body.entries[0].validation.ok, true);
+  });
+
+  test("generate from script keeps long Chinese StepCard text within composer budgets", async () => {
+    const longSentence = [
+      "第一部分先铺垫业务背景并说明团队每天都需要快速完成视频包装和复盘",
+      "第二部分继续解释四轨编辑器会把脚本变成可以拖拽修改的结构化卡片",
+      "第三部分强调用户随后可以按需绑定画中画素材数字人视频和字幕文本",
+      "第四部分收束到重新渲染和历史快照便于团队反复调整复现结果",
+    ].join("，");
+    const response = await request(baseUrl, "/generate/from-script", {
+      method: "POST",
+      body: JSON.stringify({
+        script: `${longSentence}\n${longSentence}\n${longSentence}\n${longSentence}`,
+        name: fromScriptLongProjectName,
+        title: "长句预算测试",
+      }),
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body.ok, true);
+    assert.ok(response.body.scenes > 0);
+    const manifest = JSON.parse(await fs.readFile(fromScriptLongManifestPath, "utf8"));
+    assert.ok(manifest.scenes.some((scene) => scene.component === "StepCard"));
+    assert.ok(manifest.scenes.every((scene) => ["TitleCard", "StepCard"].includes(scene.component)));
+  });
+
+  test("generate from script rejects empty and oversized scripts", async () => {
+    const empty = await request(baseUrl, "/generate/from-script", {
+      method: "POST",
+      body: JSON.stringify({ script: "   " }),
+    });
+    assert.equal(empty.status, 400);
+    assert.equal(empty.body.ok, false);
+
+    const oversized = await request(baseUrl, "/generate/from-script", {
+      method: "POST",
+      body: JSON.stringify({ script: "字".repeat(20001), name: `${fromScriptProjectName}-too-long` }),
+    });
+    assert.equal(oversized.status, 413);
+    assert.equal(oversized.body.ok, false);
+  });
+
+  test("generate from script rejects duplicate project names unless overwrite is explicit", async () => {
+    const duplicate = await request(baseUrl, "/generate/from-script", {
+      method: "POST",
+      body: JSON.stringify({ script: "新的脚本内容", name: fromScriptProjectName }),
+    });
+
+    assert.equal(duplicate.status, 409);
+    assert.equal(duplicate.body.ok, false);
+    assert.match(duplicate.body.error, /already exists/);
+  });
+
+  test("generate from script cleans partial publish when post-save artifact writes fail", async () => {
+    const projectName = `${fromScriptProjectName}-post-write-fail`;
+    const projectDir = path.join(composerRoot, "projects", projectName);
+    const manifestPath = path.join(manifestsDir, `${projectName}.json`);
+    try {
+      await fs.mkdir(path.join(projectDir, "scene-plan.json"), { recursive: true });
+      const response = await request(baseUrl, "/generate/from-script", {
+        method: "POST",
+        body: JSON.stringify({
+          script: "先生成一个方案。\n再制造后置写入失败。",
+          name: projectName,
+          overwrite: true,
+        }),
+      });
+
+      assert.equal(response.status, 500);
+      assert.equal(response.body.ok, false);
+      assert.equal(await fileExists(manifestPath), false);
+      assert.equal(await fileExists(path.join(projectDir, "packaging-plan.json")), false);
+      assert.equal(await fileExists(path.join(projectDir, "transcript.json")), false);
+    } finally {
+      await fs.rm(manifestPath, { force: true });
+      await fs.rm(projectDir, { recursive: true, force: true });
+    }
+  });
+
   test("lists and loads protocol recipes", async () => {
     const list = await request(baseUrl, "/recipes");
 
@@ -1965,6 +2245,65 @@ describe("console-api", () => {
     assert.equal(full.headers.get("content-type"), "video/mp4");
     assert.equal(full.text, "fake video bytes");
 
+    const relativeName = `${packagingPlanProjectName}-relative-source`;
+    const relativeProjectDir = path.join(composerRoot, "projects", relativeName);
+    await fs.mkdir(path.join(relativeProjectDir, "media"), { recursive: true });
+    await fs.writeFile(path.join(relativeProjectDir, "media", "source.mp4"), "managed source video");
+    await fs.writeFile(
+      path.join(manifestsDir, `${relativeName}.json`),
+      `${JSON.stringify(
+        titleCardManifest({
+          compositionId: relativeName,
+          source: { video: `projects/${relativeName}/media/source.mp4` },
+          output: `projects/${relativeName}/index.html`,
+          hyperframesEntry: `projects/${relativeName}/index.html`,
+        }),
+        null,
+        2,
+      )}\n`,
+    );
+    const relativeRanged = await rawRequest(baseUrl, `/preview/source/${relativeName}`, {
+      headers: { range: "bytes=0-6" },
+    });
+    assert.equal(relativeRanged.status, 206);
+    assert.equal(relativeRanged.headers.get("content-type"), "video/mp4");
+    assert.equal(relativeRanged.headers.get("content-range"), "bytes 0-6/20");
+    assert.equal(relativeRanged.text, "managed");
+
+    const relativeTextName = `${packagingPlanProjectName}-relative-text-source`;
+    const relativeTextProjectDir = path.join(composerRoot, "projects", relativeTextName);
+    await fs.mkdir(path.join(relativeTextProjectDir, "media"), { recursive: true });
+    await fs.writeFile(path.join(relativeTextProjectDir, "media", "source.txt"), "not a video");
+    await fs.writeFile(
+      path.join(manifestsDir, `${relativeTextName}.json`),
+      `${JSON.stringify(
+        titleCardManifest({
+          compositionId: relativeTextName,
+          source: { video: `projects/${relativeTextName}/media/source.txt` },
+        }),
+        null,
+        2,
+      )}\n`,
+    );
+    const relativeText = await request(baseUrl, `/preview/source/${relativeTextName}`);
+    assert.equal(relativeText.status, 400);
+    assert.match(relativeText.body.error, /unsupported source video type/);
+
+    const relativeEscapeName = `${packagingPlanProjectName}-relative-escape`;
+    await fs.writeFile(
+      path.join(manifestsDir, `${relativeEscapeName}.json`),
+      `${JSON.stringify(
+        titleCardManifest({
+          compositionId: relativeEscapeName,
+          source: { video: `projects/${relativeEscapeName}/../${relativeName}/media/source.mp4` },
+        }),
+        null,
+        2,
+      )}\n`,
+    );
+    const relativeEscape = await request(baseUrl, `/preview/source/${relativeEscapeName}`);
+    assert.equal(relativeEscape.status, 403);
+
     const noSourceName = `${packagingPlanProjectName}-no-source`;
     await fs.writeFile(path.join(manifestsDir, `${noSourceName}.json`), `${JSON.stringify(titleCardManifest({ compositionId: noSourceName }), null, 2)}\n`);
     const noSource = await request(baseUrl, `/preview/source/${noSourceName}`);
@@ -1977,6 +2316,11 @@ describe("console-api", () => {
     );
     const outside = await request(baseUrl, `/preview/source/${outsideName}`);
     assert.equal(outside.status, 403);
+    await fs.rm(path.join(manifestsDir, `${relativeName}.json`), { force: true });
+    await fs.rm(relativeProjectDir, { recursive: true, force: true });
+    await fs.rm(path.join(manifestsDir, `${relativeTextName}.json`), { force: true });
+    await fs.rm(relativeTextProjectDir, { recursive: true, force: true });
+    await fs.rm(path.join(manifestsDir, `${relativeEscapeName}.json`), { force: true });
     await fs.rm(path.join(manifestsDir, `${noSourceName}.json`), { force: true });
     await fs.rm(path.join(manifestsDir, `${outsideName}.json`), { force: true });
   });
@@ -2106,13 +2450,25 @@ describe("console-api", () => {
     assert.equal(response.body.summary.captions, 1);
     assert.equal(response.body.summary.mediaBindings.screen, 1);
     assert.equal(response.body.summary.mediaBindings.pip, 1);
+    assert.equal(response.body.handoff.source.audio, `projects/${skillAdapterProjectName}/media/master.wav`);
+    assert.equal(response.body.handoff.source.captions, `projects/${skillAdapterProjectName}/captions.json`);
 
     const savedPlan = JSON.parse(await fs.readFile(path.join(skillAdapterProjectDir, "packaging-plan.json"), "utf8"));
     const savedManifest = JSON.parse(await fs.readFile(skillAdapterManifestPath, "utf8"));
-    assert.equal(savedPlan.source.video, path.join(skillOutputDir, "assets", "source.mp4"));
-    assert.equal(savedManifest.source.video, path.join(skillOutputDir, "assets", "source.mp4"));
-    assert.equal(savedPlan.tracks.card[1].media.screen, path.join(skillOutputDir, "assets", "screen-codex-prompt.jpg"));
-    assert.equal(savedManifest.scenes[1].props.media.pip, path.join(skillOutputDir, "assets", "duix-prompt-pip.mp4"));
+    assert.equal(savedPlan.source.video, `projects/${skillAdapterProjectName}/media/source.mp4`);
+    assert.equal(savedPlan.source.audio, `projects/${skillAdapterProjectName}/media/master.wav`);
+    assert.equal(savedPlan.tracks.video[0].src, `projects/${skillAdapterProjectName}/media/source.mp4`);
+    assert.equal(savedPlan.tracks.audio[0].src, `projects/${skillAdapterProjectName}/media/master.wav`);
+    assert.equal(savedManifest.source.video, `projects/${skillAdapterProjectName}/media/source.mp4`);
+    assert.equal(savedManifest.audio.src, `projects/${skillAdapterProjectName}/media/master.wav`);
+    assert.equal(savedPlan.tracks.card[1].media.screen, `projects/${skillAdapterProjectName}/media/screen-codex-prompt.jpg`);
+    assert.equal(savedPlan.tracks.card[1].media.pip, `projects/${skillAdapterProjectName}/media/duix-prompt-pip.mp4`);
+    assert.equal(savedManifest.scenes[1].props.media.screen, `projects/${skillAdapterProjectName}/media/screen-codex-prompt.jpg`);
+    assert.equal(savedManifest.scenes[1].props.media.pip, `projects/${skillAdapterProjectName}/media/duix-prompt-pip.mp4`);
+    assert.equal(await fileExists(path.join(skillAdapterProjectDir, "media", "source.mp4")), true);
+    assert.equal(await fileExists(path.join(skillAdapterProjectDir, "media", "master.wav")), true);
+    assert.equal(await fileExists(path.join(skillAdapterProjectDir, "media", "screen-codex-prompt.jpg")), true);
+    assert.equal(await fileExists(path.join(skillAdapterProjectDir, "media", "duix-prompt-pip.mp4")), true);
 
     const loaded = await request(baseUrl, `/projects/${skillAdapterProjectName}/packaging-plan`);
     assert.equal(loaded.status, 200);
@@ -2120,10 +2476,27 @@ describe("console-api", () => {
     assert.equal(loaded.body.plan.tracks.audio.length, 1);
     assert.equal(loaded.body.plan.tracks.subtitle[0].cues[0].text, "字幕一");
     assert.equal(loaded.body.plan.tracks.card.length, 2);
+    assert.equal(loaded.body.plan.tracks.card[1].media.screen, `projects/${skillAdapterProjectName}/media/screen-codex-prompt.jpg`);
     assert.equal(
       loaded.body.plan.tracks.card[1].mediaUrls.screen,
-      `/api/preview/media?path=${encodeURIComponent(path.join(skillOutputDir, "assets", "screen-codex-prompt.jpg"))}`,
+      `/api/preview/projects/${skillAdapterProjectName}/media/screen-codex-prompt.jpg`,
     );
+
+    const sourcePreview = await rawRequest(baseUrl, `/preview/source/${skillAdapterProjectName}`, {
+      headers: { range: "bytes=0-5" },
+    });
+    assert.equal(sourcePreview.status, 206);
+    assert.equal(sourcePreview.headers.get("content-type"), "video/mp4");
+    assert.equal(sourcePreview.headers.get("content-range"), "bytes 0-5/12");
+    assert.equal(sourcePreview.text, "source");
+
+    const history = await request(baseUrl, `/projects/${skillAdapterProjectName}/history`);
+    assert.equal(history.status, 200);
+    assert.equal(history.body.entries[0].kind, "import");
+    assert.equal(history.body.entries[0].planSnapshotRef, "snapshots/import-0001.json");
+    const detail = await request(baseUrl, `/projects/${skillAdapterProjectName}/history/${history.body.entries[0].id}`);
+    assert.equal(detail.status, 200);
+    assert.equal(detail.body.plan.source.video, `projects/${skillAdapterProjectName}/media/source.mp4`);
   });
 
   test("rejects skill output directories outside the import allowlist", async () => {
@@ -2140,6 +2513,195 @@ describe("console-api", () => {
       assert.match(response.body.error, /outside the allowed import roots/);
     } finally {
       await fs.rm(outsideDir, { recursive: true, force: true });
+    }
+  });
+
+  test("rejects skill audio paths that escape the import allowlist", async () => {
+    const projectName = `${skillAdapterProjectName}-audio-escape`;
+    const projectDir = path.join(composerRoot, "projects", projectName);
+    const manifestPath = path.join(manifestsDir, `${projectName}.json`);
+    const outsideDir = await fs.mkdtemp(path.join(os.tmpdir(), "console-api-skill-secret-audio-"));
+    try {
+      const skillOutputDir = path.join(fixtureRoot, "skill-output-audio-escape");
+      await writeSkillOutputFixture(skillOutputDir);
+      const secretAudio = path.join(outsideDir, "secret.wav");
+      await fs.writeFile(secretAudio, "ALLOWLIST_ESCAPE_SECRET_AUDIO");
+      await fs.writeFile(
+        path.join(skillOutputDir, "data", "audio-manifest.json"),
+        JSON.stringify(
+          {
+            items: {
+              master_audio: { path: path.relative(skillOutputDir, secretAudio) },
+              caption_timeline: { path: "production/audio/captions.json" },
+            },
+          },
+          null,
+          2,
+        ),
+      );
+
+      const response = await request(baseUrl, "/projects/from-skill-output", {
+        method: "POST",
+        body: JSON.stringify({ skillOutputPath: skillOutputDir, name: projectName }),
+      });
+
+      assert.equal(response.status, 403);
+      assert.equal(response.body.ok, false);
+      assert.match(response.body.error, /outside allowed import roots|outside the allowed import roots/);
+      assert.equal(await fileExists(path.join(projectDir, "audio", "master.wav")), false);
+      assert.equal(await fileExists(path.join(projectDir, "media", "secret.wav")), false);
+    } finally {
+      await fs.rm(manifestPath, { force: true });
+      await fs.rm(projectDir, { recursive: true, force: true });
+      await fs.rm(outsideDir, { recursive: true, force: true });
+    }
+  });
+
+  test("rejects skill caption timelines that escape the skill output root", async () => {
+    const projectName = `${skillAdapterProjectName}-caption-escape`;
+    const projectDir = path.join(composerRoot, "projects", projectName);
+    const manifestPath = path.join(manifestsDir, `${projectName}.json`);
+    const outsideDir = await fs.mkdtemp(path.join(os.tmpdir(), "console-api-skill-secret-captions-"));
+    try {
+      const skillOutputDir = path.join(fixtureRoot, "skill-output-caption-escape");
+      await writeSkillOutputFixture(skillOutputDir);
+      const secretCaptions = path.join(outsideDir, "secret-captions.json");
+      await fs.writeFile(secretCaptions, JSON.stringify({ captions: [{ start: 0, end: 1, text: "SECRET_CAPTION" }] }));
+      await fs.writeFile(
+        path.join(skillOutputDir, "data", "audio-manifest.json"),
+        JSON.stringify(
+          {
+            items: {
+              master_audio: { path: "production/audio/master.wav" },
+              caption_timeline: { path: path.relative(skillOutputDir, secretCaptions) },
+            },
+          },
+          null,
+          2,
+        ),
+      );
+
+      const response = await request(baseUrl, "/projects/from-skill-output", {
+        method: "POST",
+        body: JSON.stringify({ skillOutputPath: skillOutputDir, name: projectName }),
+      });
+
+      assert.notEqual(response.status, 200);
+      assert.equal(response.body.ok, false);
+      assert.match(response.body.error, /caption|outside/i);
+      assert.equal(await fileExists(path.join(projectDir, "captions.json")), false);
+    } finally {
+      await fs.rm(manifestPath, { force: true });
+      await fs.rm(projectDir, { recursive: true, force: true });
+      await fs.rm(outsideDir, { recursive: true, force: true });
+    }
+  });
+
+  test("rejects skill media symlinks that resolve outside the import allowlist", async () => {
+    const projectName = `${skillAdapterProjectName}-media-symlink`;
+    const projectDir = path.join(composerRoot, "projects", projectName);
+    const manifestPath = path.join(manifestsDir, `${projectName}.json`);
+    const outsideDir = await fs.mkdtemp(path.join(os.tmpdir(), "console-api-skill-secret-media-"));
+    try {
+      const skillOutputDir = path.join(fixtureRoot, "skill-output-media-symlink");
+      await writeSkillOutputFixture(skillOutputDir);
+      const secretVideo = path.join(outsideDir, "secret.mp4");
+      await fs.writeFile(secretVideo, "SECRET_VIDEO");
+      await fs.rm(path.join(skillOutputDir, "assets", "source.mp4"));
+      await fs.symlink(secretVideo, path.join(skillOutputDir, "assets", "source.mp4"));
+
+      const response = await request(baseUrl, "/projects/from-skill-output", {
+        method: "POST",
+        body: JSON.stringify({ skillOutputPath: skillOutputDir, name: projectName }),
+      });
+
+      assert.equal(response.status, 403);
+      assert.equal(response.body.ok, false);
+      assert.match(response.body.error, /outside allowed import roots|outside the allowed import roots/);
+      assert.equal(await fileExists(path.join(projectDir, "media", "secret.mp4")), false);
+    } finally {
+      await fs.rm(manifestPath, { force: true });
+      await fs.rm(projectDir, { recursive: true, force: true });
+      await fs.rm(outsideDir, { recursive: true, force: true });
+    }
+  });
+
+  test("rejects skill imports when the target media directory is a symlink", async () => {
+    const projectName = `${skillAdapterProjectName}-target-symlink`;
+    const projectDir = path.join(composerRoot, "projects", projectName);
+    const manifestPath = path.join(manifestsDir, `${projectName}.json`);
+    const outsideDir = await fs.mkdtemp(path.join(os.tmpdir(), "console-api-skill-target-media-"));
+    try {
+      const skillOutputDir = path.join(fixtureRoot, "skill-output-target-symlink");
+      await writeSkillOutputFixture(skillOutputDir);
+      await fs.mkdir(projectDir, { recursive: true });
+      await fs.symlink(outsideDir, path.join(projectDir, "media"));
+
+      const response = await request(baseUrl, "/projects/from-skill-output", {
+        method: "POST",
+        body: JSON.stringify({ skillOutputPath: skillOutputDir, name: projectName, overwrite: true }),
+      });
+
+      assert.notEqual(response.status, 200);
+      assert.equal(response.body.ok, false);
+      assert.match(response.body.error, /media directory|symlink|project/i);
+      assert.deepEqual(await fs.readdir(outsideDir), []);
+    } finally {
+      await fs.rm(manifestPath, { force: true });
+      await fs.rm(projectDir, { recursive: true, force: true });
+      await fs.rm(outsideDir, { recursive: true, force: true });
+    }
+  });
+
+  test("rejects skill imports when the target project directory is a symlink", async () => {
+    const projectName = `${skillAdapterProjectName}-project-symlink`;
+    const projectDir = path.join(composerRoot, "projects", projectName);
+    const manifestPath = path.join(manifestsDir, `${projectName}.json`);
+    const outsideDir = await fs.mkdtemp(path.join(os.tmpdir(), "console-api-skill-project-symlink-"));
+    try {
+      const skillOutputDir = path.join(fixtureRoot, "skill-output-project-symlink");
+      await writeSkillOutputFixture(skillOutputDir);
+      await fs.symlink(outsideDir, projectDir);
+
+      const response = await request(baseUrl, "/projects/from-skill-output", {
+        method: "POST",
+        body: JSON.stringify({ skillOutputPath: skillOutputDir, name: projectName, overwrite: true }),
+      });
+
+      assert.notEqual(response.status, 200);
+      assert.equal(response.body.ok, false);
+      assert.match(response.body.error, /project directory|symlink|project root/i);
+      assert.deepEqual(await fs.readdir(outsideDir), []);
+    } finally {
+      await fs.rm(manifestPath, { force: true });
+      await fs.rm(projectDir, { recursive: true, force: true });
+      await fs.rm(outsideDir, { recursive: true, force: true });
+    }
+  });
+
+  test("allocates localized media names without overwriting existing files", async () => {
+    const projectName = `${skillAdapterProjectName}-collision`;
+    const projectDir = path.join(composerRoot, "projects", projectName);
+    const manifestPath = path.join(manifestsDir, `${projectName}.json`);
+    try {
+      const skillOutputDir = path.join(fixtureRoot, "skill-output-collision");
+      await writeSkillOutputFixture(skillOutputDir);
+      await fs.mkdir(path.join(projectDir, "media"), { recursive: true });
+      await fs.writeFile(path.join(projectDir, "media", "source.mp4"), "existing-media");
+
+      const response = await request(baseUrl, "/projects/from-skill-output", {
+        method: "POST",
+        body: JSON.stringify({ skillOutputPath: skillOutputDir, name: projectName, overwrite: true }),
+      });
+
+      assert.equal(response.status, 200);
+      assert.equal(await fs.readFile(path.join(projectDir, "media", "source.mp4"), "utf8"), "existing-media");
+      assert.equal(await fs.readFile(path.join(projectDir, "media", "source-2.mp4"), "utf8"), "source-video");
+      const savedPlan = JSON.parse(await fs.readFile(path.join(projectDir, "packaging-plan.json"), "utf8"));
+      assert.equal(savedPlan.source.video, `projects/${projectName}/media/source-2.mp4`);
+    } finally {
+      await fs.rm(manifestPath, { force: true });
+      await fs.rm(projectDir, { recursive: true, force: true });
     }
   });
 
@@ -2492,6 +3054,152 @@ describe("console-api", () => {
     assert.equal(compose.status, 200);
     assert.equal(compose.body.ok, true);
     assert.deepEqual(scriptCalls.at(-1), { script: "compose", args: ["--", `manifests/${applyTemplateProjectName}.json`] });
+
+    const history = await request(baseUrl, `/projects/${applyTemplateProjectName}/history`);
+    assert.equal(history.status, 200);
+    assert.equal(history.body.entries[0].kind, "apply-template");
+    assert.equal(history.body.entries[0].params.templateId, templateId);
+    assert.match(history.body.entries[0].planSnapshotRef, /^snapshots\/apply-template-\d{4}\.json$/);
+
+    const detail = await request(baseUrl, `/projects/${applyTemplateProjectName}/history/${history.body.entries[0].id}`);
+    assert.equal(detail.status, 200);
+    assert.equal(detail.body.entry.id, history.body.entries[0].id);
+    assert.equal(detail.body.plan.tracks.card[0].content.title, "Applied");
+  });
+
+  test("restores a packaging-plan history snapshot through manifest validation and records restore history", async () => {
+    const current = await request(baseUrl, `/projects/${packagingPlanProjectName}/packaging-plan`);
+    const originalPlan = current.body.plan;
+    originalPlan.tracks.card[0].content.title = "恢复前";
+    originalPlan.tracks.card[0].engine.props.title = "恢复前";
+    const restoreId = "restore-source";
+    await fs.mkdir(path.join(packagingPlanProjectDir, "snapshots"), { recursive: true });
+    await fs.writeFile(path.join(packagingPlanProjectDir, "snapshots", `${restoreId}.json`), JSON.stringify(originalPlan, null, 2));
+    await fs.writeFile(
+      path.join(packagingPlanProjectDir, "history.json"),
+      JSON.stringify(
+        [
+          {
+            id: restoreId,
+            ts: "2026-06-14T00:00:00.000Z",
+            kind: "apply-template",
+            params: {},
+            planSnapshotRef: `snapshots/${restoreId}.json`,
+            artifacts: {},
+            validation: { ok: true },
+            result: { ok: true },
+          },
+        ],
+        null,
+        2,
+      ),
+    );
+
+    const changedPlan = { ...originalPlan, tracks: { ...originalPlan.tracks, card: [...originalPlan.tracks.card] } };
+    changedPlan.tracks.card[0] = {
+      ...changedPlan.tracks.card[0],
+      content: { ...changedPlan.tracks.card[0].content, title: "恢复后临时修改" },
+      engine: {
+        ...changedPlan.tracks.card[0].engine,
+        props: { ...changedPlan.tracks.card[0].engine.props, title: "恢复后临时修改" },
+      },
+    };
+    const changedSave = await request(baseUrl, `/projects/${packagingPlanProjectName}/packaging-plan`, {
+      method: "PUT",
+      body: JSON.stringify(changedPlan),
+    });
+    assert.equal(changedSave.status, 200);
+
+    const restored = await request(baseUrl, `/projects/${packagingPlanProjectName}/history/${restoreId}/restore`, { method: "POST" });
+    assert.equal(restored.status, 200);
+    assert.equal(restored.body.ok, true);
+
+    const manifest = JSON.parse(await fs.readFile(packagingPlanManifestPath, "utf8"));
+    assert.equal(manifest.scenes[0].props.title, "恢复前");
+    const afterHistory = await request(baseUrl, `/projects/${packagingPlanProjectName}/history`);
+    assert.equal(afterHistory.body.entries[0].kind, "restore");
+    assert.equal(afterHistory.body.entries[0].params.restoredEntryId, restoreId);
+  });
+
+  test("history returns 404 for missing ids and restore validation failures do not publish", async () => {
+    const missing = await request(baseUrl, `/projects/${packagingPlanProjectName}/history/missing-entry`);
+    assert.equal(missing.status, 404);
+
+    const badId = "bad-snapshot";
+    await fs.mkdir(path.join(packagingPlanProjectDir, "snapshots"), { recursive: true });
+    await fs.writeFile(
+      path.join(packagingPlanProjectDir, "snapshots", `${badId}.json`),
+      JSON.stringify({ projectId: packagingPlanProjectName, tracks: { card: [] } }, null, 2),
+    );
+    await fs.writeFile(
+      path.join(packagingPlanProjectDir, "history.json"),
+      JSON.stringify(
+        [
+          {
+            id: badId,
+            ts: "2026-06-14T00:00:00.000Z",
+            kind: "apply-template",
+            params: {},
+            planSnapshotRef: `snapshots/${badId}.json`,
+            artifacts: {},
+            validation: { ok: true },
+            result: { ok: true },
+          },
+        ],
+        null,
+        2,
+      ),
+    );
+    const before = await fs.readFile(packagingPlanManifestPath, "utf8");
+    const response = await request(baseUrl, `/projects/${packagingPlanProjectName}/history/${badId}/restore`, { method: "POST" });
+    assert.equal(response.status, 422);
+    assert.match(response.body.error, /packaging plan validation failed/);
+    assert.equal(await fs.readFile(packagingPlanManifestPath, "utf8"), before);
+  });
+
+  test("history rejects snapshot symlinks without publishing escaped plans", async () => {
+    const current = await request(baseUrl, `/projects/${packagingPlanProjectName}/packaging-plan`);
+    assert.equal(current.status, 200);
+    const outsideDir = await fs.mkdtemp(path.join(os.tmpdir(), "console-api-history-escape-"));
+    const evilId = "evil-symlink";
+    try {
+      const escapedPlan = structuredClone(current.body.plan);
+      escapedPlan.tracks.card[0].content.title = "逃逸计划";
+      escapedPlan.tracks.card[0].engine.props.title = "逃逸计划";
+      const escapedPlanPath = path.join(outsideDir, "valid-plan.json");
+      await fs.writeFile(escapedPlanPath, JSON.stringify(escapedPlan, null, 2));
+      await fs.mkdir(path.join(packagingPlanProjectDir, "snapshots"), { recursive: true });
+      await fs.symlink(escapedPlanPath, path.join(packagingPlanProjectDir, "snapshots", `${evilId}.json`));
+      await fs.writeFile(
+        path.join(packagingPlanProjectDir, "history.json"),
+        JSON.stringify(
+          [
+            {
+              id: evilId,
+              ts: "2026-06-14T00:00:00.000Z",
+              kind: "apply-template",
+              params: {},
+              planSnapshotRef: `snapshots/${evilId}.json`,
+              artifacts: {},
+              validation: { ok: true },
+              result: { ok: true },
+            },
+          ],
+          null,
+          2,
+        ),
+      );
+
+      const before = await fs.readFile(packagingPlanManifestPath, "utf8");
+      const detail = await request(baseUrl, `/projects/${packagingPlanProjectName}/history/${evilId}`);
+      assert.notEqual(detail.status, 200);
+      const restored = await request(baseUrl, `/projects/${packagingPlanProjectName}/history/${evilId}/restore`, { method: "POST" });
+      assert.notEqual(restored.status, 200);
+      assert.equal(await fs.readFile(packagingPlanManifestPath, "utf8"), before);
+    } finally {
+      await fs.rm(outsideDir, { recursive: true, force: true });
+      await fs.rm(path.join(packagingPlanProjectDir, "snapshots", `${evilId}.json`), { force: true });
+    }
   });
 
   test("apply-template returns 422 for invalid persisted templates", async () => {
